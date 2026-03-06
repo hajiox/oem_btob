@@ -1,0 +1,24 @@
+🔹 Connecting to Supabase...
+🔹 Connected. Running SQL Schema...
+❌ Error executing SQL: error: relation "lp_sections" already exists
+    at C:\作業用\oem_btob\node_modules\pg\lib\client.js:631:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (C:\作業用\oem_btob\run-schema.js:17:9) {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P07',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'heap.c',
+  line: '1160',
+  routine: 'heap_create_with_catalog'
+}
