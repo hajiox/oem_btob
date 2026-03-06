@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import type { LpSection, FormStepWithQuestions } from '@/types/database'
+import type { LpSection } from '@/types/database'
+import { getActiveForm } from '@/actions/publicForm'
+import InteractiveForm from '@/components/InteractiveForm'
 
 // LP セクションスケルトン
 function SectionSkeleton() {
@@ -103,33 +105,6 @@ function DynamicSection({ section }: { section: LpSection }) {
   )
 }
 
-// フォームセクション（プレースホルダー）
-function BTOFormPlaceholder() {
-  return (
-    <section id="bto-form" className="w-full max-w-4xl mx-auto px-6 py-20">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'var(--font-heading)' }}>
-          📋 BTO見積もりフォーム
-        </h2>
-        <p className="text-[var(--color-text-muted)] text-lg">
-          管理画面からフォームを設定すると、ここに動的フォームが表示されます。
-        </p>
-      </div>
-
-      <div className="glass rounded-2xl p-8 md:p-12 text-center">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
-          <svg className="w-10 h-10 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <p className="text-[var(--color-text-muted)] text-sm">
-          管理画面 &rarr; フォームエディタ から質問と選択肢を追加してください
-        </p>
-      </div>
-    </section>
-  )
-}
-
 // フッター
 function Footer() {
   return (
@@ -156,6 +131,7 @@ function Footer() {
 // メインページ
 export default async function HomePage() {
   let sections: LpSection[] = []
+  let formSteps: any[] = []
 
   try {
     const supabase = await createClient()
@@ -166,6 +142,9 @@ export default async function HomePage() {
       .order('order_index', { ascending: true })
 
     sections = (data ?? []) as LpSection[]
+
+    // 動的フォームデータの取得
+    formSteps = await getActiveForm()
   } catch {
     // Supabase未設定時はデフォルト表示
   }
@@ -186,8 +165,11 @@ export default async function HomePage() {
           ))}
       </div>
 
-      {/* フォームプレースホルダー（フェーズ4で本実装） */}
-      <BTOFormPlaceholder />
+      {/* フォームセクション（本実装） */}
+      <section id="bto-form" className="w-full mx-auto px-4 sm:px-6 py-20 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-transparent -z-10" />
+        <InteractiveForm steps={formSteps} />
+      </section>
 
       {/* フッター */}
       <Footer />
