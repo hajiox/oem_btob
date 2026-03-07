@@ -54,16 +54,29 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
         return total
     }, [answers, steps])
 
+    // === 条件分岐：質問が表示されるかどうか ===
+    const isQuestionVisible = (q: any) => {
+        if (!q.depends_on_option_id) return true // 条件なし → 常に表示
+        // 全回答の中に、依存先optionが選択されているか確認
+        for (const [, answer] of Object.entries(answers)) {
+            const selectedIds = Array.isArray(answer) ? answer : [answer]
+            if (selectedIds.includes(q.depends_on_option_id)) return true
+        }
+        return false
+    }
+
     // === バリデーション ===
     const isCurrentStepValid = () => {
         if (currentStep >= steps.length) return false
         const currentQuestions = steps[currentStep].questions
 
         for (const q of currentQuestions) {
+            // 非表示の質問はスキップ
+            if (!isQuestionVisible(q)) continue
             if (q.is_required) {
                 const val = answers[q.id]
                 if (!val || (Array.isArray(val) && val.length === 0)) {
-                    return false // 必須なのに未回答
+                    return false
                 }
             }
         }
@@ -152,8 +165,8 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                             <label
                                 key={opt.id}
                                 className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${val === opt.id
-                                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                        : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
+                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                                    : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
@@ -186,8 +199,8 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 <label
                                     key={opt.id}
                                     className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${checked
-                                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                            : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
+                                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                                        : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
@@ -332,8 +345,8 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                             return (
                                 <div key={s.id} className={`flex items-start gap-4 transition-all duration-300 ${isActive ? 'opacity-100 scale-105' : 'opacity-40'}`}>
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${isActive ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' :
-                                            isPast ? 'border-[var(--color-primary)] bg-transparent text-[var(--color-primary)]' :
-                                                'border-white/20 bg-black text-white/50'
+                                        isPast ? 'border-[var(--color-primary)] bg-transparent text-[var(--color-primary)]' :
+                                            'border-white/20 bg-black text-white/50'
                                         }`}>
                                         <span className="text-xs font-bold">{idx + 1}</span>
                                     </div>
@@ -387,22 +400,24 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 </div>
 
                                 <div className="space-y-8">
-                                    {steps[currentStep]?.questions.map((q, idx) => (
-                                        <div key={q.id} className="relative z-10">
-                                            <h4 className="text-[15px] font-bold text-white/90 mb-1 flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded-full bg-white/10 text-white/50 text-[10px] flex items-center justify-center shrink-0">
-                                                    {idx + 1}
-                                                </span>
-                                                {q.question_text}
-                                                {q.is_required && <span className="text-red-400 text-xs px-1.5 py-0.5 rounded bg-red-400/10">必須</span>}
-                                            </h4>
-                                            {q.help_text && <p className="text-xs text-white/50 mt-1.5 ml-7">{q.help_text}</p>}
+                                    {steps[currentStep]?.questions
+                                        .filter(q => isQuestionVisible(q))
+                                        .map((q, idx) => (
+                                            <div key={q.id} className="relative z-10">
+                                                <h4 className="text-[15px] font-bold text-white/90 mb-1 flex items-center gap-2">
+                                                    <span className="w-5 h-5 rounded-full bg-white/10 text-white/50 text-[10px] flex items-center justify-center shrink-0">
+                                                        {idx + 1}
+                                                    </span>
+                                                    {q.question_text}
+                                                    {q.is_required && <span className="text-red-400 text-xs px-1.5 py-0.5 rounded bg-red-400/10">必須</span>}
+                                                </h4>
+                                                {q.help_text && <p className="text-xs text-white/50 mt-1.5 ml-7">{q.help_text}</p>}
 
-                                            <div className="ml-7">
-                                                {renderQuestionInput(q)}
+                                                <div className="ml-7">
+                                                    {renderQuestionInput(q)}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             </motion.div>
                         )}

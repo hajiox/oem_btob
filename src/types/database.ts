@@ -41,6 +41,7 @@ export interface FormQuestion {
     input_type: 'radio' | 'checkbox' | 'text' | 'textarea' | 'number' | 'select'
     is_required: boolean
     help_text: string | null
+    depends_on_option_id: string | null  // この選択肢が選ばれた時のみ表示
     created_at: string
     updated_at: string
 }

@@ -43,7 +43,8 @@ export async function saveFormEditorData(data: any) {
                     question_text: q.question_text,
                     input_type: q.input_type,
                     is_required: q.is_required,
-                    help_text: q.help_text
+                    help_text: q.help_text,
+                    depends_on_option_id: q.depends_on_option_id || null
                 })
 
                 q.options.forEach((o: any) => {
