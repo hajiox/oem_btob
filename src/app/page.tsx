@@ -87,17 +87,20 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-gray-100">
-      {/* LP画像セクション（v0オリジナルデザイン復元） */}
+      {/* LP画像セクション（v0オリジナルデザイン復元・PC表示改善） */}
       <Suspense fallback={<SectionSkeleton />}>
-        <div className="max-w-3xl mx-auto px-4 space-y-16 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-12 flex flex-col gap-12 sm:gap-16 items-center">
           {LP_IMAGES.map((img, i) => (
-            <div key={i} className="rounded-2xl shadow-2xl overflow-hidden">
+            <div
+              key={i}
+              className="w-full rounded-2xl sm:rounded-3xl shadow-xl sm:shadow-2xl overflow-hidden bg-white/5 ring-1 ring-white/20 transition-transform duration-500 hover:scale-[1.02]"
+            >
               <Image
                 src={img.src}
                 alt={img.alt}
-                width={800}
-                height={1000}
-                className="w-full h-auto"
+                width={1200}
+                height={1600}
+                className="w-full h-auto object-cover"
                 priority={i === 0}
               />
             </div>
@@ -107,7 +110,7 @@ export default async function HomePage() {
 
       {/* DB管理の動的セクション（将来のlp-editor対応） */}
       {sections.length > 0 && (
-        <div id="features" className="max-w-3xl mx-auto px-4 space-y-16">
+        <div id="features" className="max-w-4xl mx-auto px-4 py-12 flex flex-col gap-16">
           {sections
             .filter(s => s.section_type !== 'hero')
             .map(section => (
