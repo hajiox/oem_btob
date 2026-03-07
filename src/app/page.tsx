@@ -3,102 +3,38 @@ import { createClient } from '@/lib/supabase/server'
 import type { LpSection } from '@/types/database'
 import { getActiveForm } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
+import Image from 'next/image'
+
+// LP画像セクション（ハードコード）
+const LP_IMAGES = [
+  { src: '/images/lp-hero.jpg', alt: '福島の食材を楽天1位の味で。小ロット400個からの地元食材OEM' },
+  { src: '/images/lp-problems.jpg', alt: 'OEMは地獄？福島の食材で小ロット・低コスト・簡単フロー' },
+  { src: '/images/lp-cases.jpg', alt: '農家・自治体・道の駅ホテルの活用事例' },
+  { src: '/images/lp-reasons.jpg', alt: '福島専門のOEMプロ集団が企画から販売までフルサポート' },
+  { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
+]
 
 // LP セクションスケルトン
 function SectionSkeleton() {
   return (
-    <div className="w-full max-w-6xl mx-auto px-6 py-16">
+    <div className="w-full max-w-3xl mx-auto px-4 py-8">
       <div className="skeleton h-8 w-64 mb-4" />
-      <div className="skeleton h-4 w-full mb-2" />
-      <div className="skeleton h-4 w-3/4 mb-2" />
-      <div className="skeleton h-64 w-full mt-6" />
+      <div className="skeleton h-[400px] w-full rounded-2xl" />
     </div>
   )
 }
 
-// ヒーローセクション（フォールバック）
-function HeroSection() {
-  return (
-    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-      {/* 背景グラデーション */}
-      <div className="absolute inset-0 gradient-primary" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(233,69,96,0.15),transparent_70%)]" />
-
-      {/* 装飾パーティクル */}
-      <div className="absolute top-20 left-10 w-2 h-2 rounded-full bg-[var(--color-accent)] opacity-40 animate-pulse" />
-      <div className="absolute top-40 right-20 w-3 h-3 rounded-full bg-[var(--color-gold)] opacity-30 animate-pulse" style={{ animationDelay: '0.5s' }} />
-      <div className="absolute bottom-40 left-1/4 w-2 h-2 rounded-full bg-[var(--color-accent)] opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
-
-      <div className="relative z-10 text-center max-w-4xl mx-auto px-6 animate-fade-in-up">
-        <div className="inline-block px-4 py-2 rounded-full glass text-sm text-[var(--color-gold)] font-medium mb-8 tracking-wider">
-          🍽️ B2B 食品OEMサービス
-        </div>
-
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6" style={{ fontFamily: 'var(--font-heading)' }}>
-          <span className="text-white">あなただけの</span>
-          <br />
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-gold)]">
-            オリジナル食品
-          </span>
-          <br />
-          <span className="text-white">を形にします</span>
-        </h1>
-
-        <p className="text-lg md:text-xl text-[var(--color-text-muted)] max-w-2xl mx-auto mb-10 leading-relaxed">
-          小ロットから対応可能。レトルト食品、調味料、冷凍食品など、
-          御社のアイデアをプロフェッショナルが形にします。
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a
-            href="#bto-form"
-            className="px-8 py-4 rounded-xl gradient-accent text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            style={{ animation: 'pulse-glow 3s ease-in-out infinite' }}
-          >
-            🚀 無料見積もりを始める
-          </a>
-          <a
-            href="#features"
-            className="px-8 py-4 rounded-xl glass text-white font-medium text-lg hover:bg-white/10 transition-all duration-300"
-          >
-            サービスを見る →
-          </a>
-        </div>
-      </div>
-
-      {/* 下スクロールインジケーター */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <svg className="w-6 h-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-      </div>
-    </section>
-  )
-}
-
-// 動的 LP セクション描画
+// 動的 LP セクション描画（DB管理用、将来のlp-editor対応）
 function DynamicSection({ section }: { section: LpSection }) {
   return (
-    <section className="w-full max-w-6xl mx-auto px-6 py-16 animate-fade-in-up" id={`section-${section.id}`}>
-      <div className="glass rounded-2xl p-8 md:p-12">
+    <section className="w-full max-w-3xl mx-auto px-4" id={`section-${section.id}`}>
+      <div className="rounded-2xl shadow-2xl overflow-hidden">
         {section.image_url && (
-          <div className="w-full h-64 md:h-80 rounded-xl overflow-hidden mb-8 bg-white/5">
-            <img
-              src={section.image_url}
-              alt={section.title || ''}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-        {section.title && (
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4" style={{ fontFamily: 'var(--font-heading)' }}>
-            {section.title}
-          </h2>
-        )}
-        {section.description && (
-          <p className="text-[var(--color-text-muted)] leading-relaxed text-lg">
-            {section.description}
-          </p>
+          <img
+            src={section.image_url}
+            alt={section.title || ''}
+            className="w-full h-auto"
+          />
         )}
       </div>
     </section>
@@ -108,18 +44,18 @@ function DynamicSection({ section }: { section: LpSection }) {
 // フッター
 function Footer() {
   return (
-    <footer className="w-full border-t border-[var(--color-border)] mt-20">
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+    <footer className="w-full border-t border-gray-200 bg-white">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <span className="text-xl font-bold text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+            <span className="text-lg font-bold text-gray-800">
               食品OEM パートナー
             </span>
-            <p className="text-sm text-[var(--color-text-muted)] mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               あなたのアイデアを美味しい商品に
             </p>
           </div>
-          <p className="text-sm text-[var(--color-text-muted)]">
+          <p className="text-sm text-gray-400">
             &copy; {new Date().getFullYear()} Food OEM Partner. All rights reserved.
           </p>
         </div>
@@ -150,29 +86,51 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen">
-      {/* ヒーロー: DBにheroセクションがあればそれを使う、なければデフォルト */}
+    <main className="min-h-screen bg-gray-100">
+      {/* LP画像セクション（v0オリジナルデザイン復元） */}
       <Suspense fallback={<SectionSkeleton />}>
-        <HeroSection />
+        <div className="max-w-3xl mx-auto px-4 space-y-16 py-8">
+          {LP_IMAGES.map((img, i) => (
+            <div key={i} className="rounded-2xl shadow-2xl overflow-hidden">
+              <Image
+                src={img.src}
+                alt={img.alt}
+                width={800}
+                height={1000}
+                className="w-full h-auto"
+                priority={i === 0}
+              />
+            </div>
+          ))}
+        </div>
       </Suspense>
 
-      {/* 動的セクション */}
-      <div id="features">
-        {sections
-          .filter(s => s.section_type !== 'hero')
-          .map(section => (
-            <DynamicSection key={section.id} section={section} />
-          ))}
-      </div>
+      {/* DB管理の動的セクション（将来のlp-editor対応） */}
+      {sections.length > 0 && (
+        <div id="features" className="max-w-3xl mx-auto px-4 space-y-16">
+          {sections
+            .filter(s => s.section_type !== 'hero')
+            .map(section => (
+              <DynamicSection key={section.id} section={section} />
+            ))}
+        </div>
+      )}
 
-      {/* フォームセクション（本実装） */}
+      {/* フォームセクション（BTO見積もり） */}
       <section id="bto-form" className="w-full mx-auto px-4 sm:px-6 py-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-transparent -z-10" />
         <InteractiveForm steps={formSteps} />
       </section>
 
       {/* フッター */}
       <Footer />
+
+      {/* フローティング見積もりボタン */}
+      <a
+        href="#bto-form"
+        className="fixed bottom-6 right-6 z-50 px-6 py-4 bg-orange-600 hover:bg-orange-700 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+      >
+        🚀 今すぐ自動見積もり
+      </a>
     </main>
   )
 }
