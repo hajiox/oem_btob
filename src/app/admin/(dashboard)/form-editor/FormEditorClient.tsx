@@ -332,7 +332,7 @@ export default function FormEditorClient({
                                                             <div className="flex flex-wrap items-center gap-3">
                                                                 <select
                                                                     value={question.input_type}
-                                                                    onChange={(e) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, input_type: e.target.value } : q) } : s))}
+                                                                    onChange={(e) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, input_type: e.target.value as FormQuestion['input_type'] } : q) } : s))}
                                                                     className="bg-[#1a1b26] text-sm text-[var(--color-text-muted)] border border-white/10 rounded-lg px-3 py-1.5 outline-none focus:border-[var(--admin-accent)] hover:border-white/30 transition-colors"
                                                                 >
                                                                     <option value="radio">単一選択 (Radio)</option>

@@ -44,26 +44,9 @@ function StatCard({
     )
 }
 
-// ステータスバッジ
-function StatusBadge({ status }: { status: Lead['status'] }) {
-    const styles: Record<Lead['status'], { bg: string; text: string; label: string }> = {
-        new: { bg: 'rgba(99,102,241,0.1)', text: '#818cf8', label: '新規' },
-        contacted: { bg: 'rgba(59,130,246,0.1)', text: '#60a5fa', label: '連絡済' },
-        quoted: { bg: 'rgba(245,158,11,0.1)', text: '#fbbf24', label: '見積済' },
-        negotiating: { bg: 'rgba(168,85,247,0.1)', text: '#c084fc', label: '交渉中' },
-        won: { bg: 'rgba(34,197,94,0.1)', text: '#4ade80', label: '受注' },
-        lost: { bg: 'rgba(239,68,68,0.1)', text: '#f87171', label: '失注' },
-    }
-    const s = styles[status]
-    return (
-        <span
-            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
-            style={{ background: s.bg, color: s.text }}
-        >
-            {s.label}
-        </span>
-    )
-}
+// ステータスバッジ (表示専用、今回はLeadStatusSelectに置き換えるため不要になりますが、念のため残すか削除します)
+// ここでは削除して LeadStatusSelect をインポートします。
+import { LeadStatusSelect } from '@/components/admin/LeadStatusSelect'
 
 export default async function DashboardPage() {
     let leads: Lead[] = []
@@ -77,7 +60,7 @@ export default async function DashboardPage() {
             .from('leads')
             .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
-            .limit(10)
+            .limit(50)
 
         leads = (data ?? []) as Lead[]
         totalLeads = count ?? 0
@@ -151,7 +134,7 @@ export default async function DashboardPage() {
             >
                 <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--admin-border)' }}>
                     <h2 className="text-lg font-bold text-white">最新リード</h2>
-                    <span className="text-xs text-[var(--color-text-muted)]">直近10件</span>
+                    <span className="text-xs text-[var(--color-text-muted)]">直近50件</span>
                 </div>
 
                 {leads.length === 0 ? (
@@ -191,7 +174,7 @@ export default async function DashboardPage() {
                                             ¥{(lead.estimated_total_price || 0).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <StatusBadge status={lead.status} />
+                                            <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} />
                                         </td>
                                         <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
                                             {new Date(lead.created_at).toLocaleDateString('ja-JP')}
