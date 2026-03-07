@@ -6,10 +6,10 @@ export default function AdminLayout({
     children: React.ReactNode
 }) {
     return (
-        <div className="min-h-screen" style={{ background: 'var(--admin-bg)' }}>
+        <div style={{ minHeight: '100vh', background: 'var(--admin-bg)' }}>
             <AdminSidebar />
-            <main className="ml-64 min-h-screen">
-                <div className="p-8">
+            <main style={{ marginLeft: '256px', minHeight: '100vh' }}>
+                <div style={{ padding: '32px' }}>
                     {children}
                 </div>
             </main>
