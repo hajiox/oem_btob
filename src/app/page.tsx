@@ -44,18 +44,18 @@ function DynamicSection({ section }: { section: LpSection }) {
 // フッター
 function Footer() {
   return (
-    <footer className="w-full border-t border-gray-200 bg-white">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+    <footer style={{ width: '100%', borderTop: '1px solid #e5e7eb', backgroundColor: '#fff' }}>
+      <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '32px 16px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
           <div>
-            <span className="text-lg font-bold text-gray-800">
+            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>
               食品OEM パートナー
             </span>
-            <p className="text-sm text-gray-500 mt-1">
+            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
               あなたのアイデアを美味しい商品に
             </p>
           </div>
-          <p className="text-sm text-gray-400">
+          <p style={{ fontSize: '14px', color: '#9ca3af' }}>
             &copy; {new Date().getFullYear()} Food OEM Partner. All rights reserved.
           </p>
         </div>
@@ -86,21 +86,21 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100">
-      {/* LP画像セクション（v0オリジナルデザイン復元・PC表示改善） */}
+    <main style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+      {/* LP画像セクション */}
       <Suspense fallback={<SectionSkeleton />}>
-        <div className="max-w-4xl mx-auto px-4 py-12 flex flex-col gap-12 sm:gap-16 items-center">
+        <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '48px 16px', display: 'flex', flexDirection: 'column', gap: '64px', alignItems: 'center' }}>
           {LP_IMAGES.map((img, i) => (
             <div
               key={i}
-              className="w-full rounded-2xl sm:rounded-3xl shadow-xl sm:shadow-2xl overflow-hidden bg-white/5 ring-1 ring-white/20 transition-transform duration-500 hover:scale-[1.02]"
+              style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
             >
               <Image
                 src={img.src}
                 alt={img.alt}
                 width={1200}
                 height={1600}
-                className="w-full h-auto object-cover"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
                 priority={i === 0}
               />
             </div>
@@ -110,7 +110,7 @@ export default async function HomePage() {
 
       {/* DB管理の動的セクション（将来のlp-editor対応） */}
       {sections.length > 0 && (
-        <div id="features" className="max-w-4xl mx-auto px-4 py-12 flex flex-col gap-16">
+        <div id="features" style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '48px 16px', display: 'flex', flexDirection: 'column' as const, gap: '64px' }}>
           {sections
             .filter(s => s.section_type !== 'hero')
             .map(section => (
@@ -120,7 +120,7 @@ export default async function HomePage() {
       )}
 
       {/* フォームセクション（BTO見積もり） */}
-      <section id="bto-form" className="w-full mx-auto px-4 sm:px-6 py-20 relative">
+      <section id="bto-form" style={{ width: '100%', padding: '80px 16px', position: 'relative' }}>
         <InteractiveForm steps={formSteps} />
       </section>
 
@@ -130,7 +130,7 @@ export default async function HomePage() {
       {/* フローティング見積もりボタン */}
       <a
         href="#bto-form"
-        className="fixed bottom-6 right-6 z-50 px-6 py-4 bg-orange-600 hover:bg-orange-700 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+        style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 50, padding: '16px 24px', backgroundColor: '#ea580c', color: '#fff', fontWeight: 'bold', fontSize: '18px', borderRadius: '9999px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', textDecoration: 'none', transition: 'all 0.3s' }}
       >
         🚀 今すぐ自動見積もり
       </a>
