@@ -6,6 +6,7 @@ import Image from 'next/image'
 import type { LpSection } from '@/types/database'
 import { addLpSection, deleteLpSection, reorderLpSections, updateLpSectionTitle } from '@/actions/lpEditor'
 import { forceSeedInitialLpSections } from '@/actions/lpEditorForceSeed'
+import { generateImageMetadata } from '@/actions/imageMetadata'
 
 export default function LpEditorClient({ initialSections }: { initialSections: LpSection[] }) {
     const [sections, setSections] = useState<LpSection[]>(initialSections)
@@ -39,7 +40,18 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
                 }
 
                 const { url } = await res.json()
-                const result = await addLpSection(url, file.name.replace(/\.[^.]+$/, ''))
+
+                // AIで画像からメタデータ（テキスト）を自動生成
+                let aiGeneratedTitle = ''
+                try {
+                    aiGeneratedTitle = await generateImageMetadata(url)
+                } catch (aiErr) {
+                    console.error('AI Metadata generation failed:', aiErr)
+                }
+
+                const finalTitle = aiGeneratedTitle || file.name.replace(/\.[^.]+$/, '')
+
+                const result = await addLpSection(url, finalTitle)
                 if (!result.success) {
                     alert(`保存失敗: ${result.error}`)
                     continue
@@ -187,7 +199,7 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
                         ) : (
                             <Plus size={16} />
                         )}
-                        {isUploading ? 'アップロード中...' : '画像を追加'}
+                        {isUploading ? 'アップロード＆AI解析中...' : '画像を追加'}
                         <input
                             ref={fileInputRef}
                             type="file"
