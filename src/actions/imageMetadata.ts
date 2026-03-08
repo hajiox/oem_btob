@@ -2,12 +2,11 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-export async function generateImageMetadata(imageUrl: string): Promise<string> {
+export async function generateImageMetadata(imageUrl: string): Promise<{ success: boolean; text: string; error?: string }> {
     try {
         const apiKey = process.env.GEMINI_API_KEY
         if (!apiKey) {
-            console.error('GEMINI_API_KEY is not set')
-            return ''
+            return { success: false, text: '', error: 'APIキーが設定されていません (GEMINI_API_KEY is missing)' }
         }
 
         const genAI = new GoogleGenerativeAI(apiKey)
@@ -17,7 +16,7 @@ export async function generateImageMetadata(imageUrl: string): Promise<string> {
         // 画像データを取得してBase64に変換
         const response = await fetch(imageUrl)
         if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.statusText}`)
+            return { success: false, text: '', error: `画像ダウンロード失敗: ${response.statusText}` }
         }
 
         const arrayBuffer = await response.arrayBuffer()
@@ -41,9 +40,9 @@ export async function generateImageMetadata(imageUrl: string): Promise<string> {
         ])
 
         const text = result.response.text().trim()
-        return text
-    } catch (error) {
+        return { success: true, text }
+    } catch (error: any) {
         console.error('Gemini API Error:', error)
-        return ''
+        return { success: false, text: '', error: `AI解析エラー: ${error.message}` }
     }
 }

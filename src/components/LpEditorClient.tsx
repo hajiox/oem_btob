@@ -44,9 +44,16 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
                 // AIで画像からメタデータ（テキスト）を自動生成
                 let aiGeneratedTitle = ''
                 try {
-                    aiGeneratedTitle = await generateImageMetadata(url)
-                } catch (aiErr) {
-                    console.error('AI Metadata generation failed:', aiErr)
+                    const aiResult = await generateImageMetadata(url)
+                    if (aiResult.success) {
+                        aiGeneratedTitle = aiResult.text
+                    } else {
+                        console.error('AI Metadata generation failed:', aiResult.error)
+                        alert(`【警告】AI文字読み取り失敗: ${aiResult.error}`)
+                    }
+                } catch (aiErr: any) {
+                    console.error('AI Metadata API failed:', aiErr)
+                    alert(`【警告】AI呼び出しエラー: ${aiErr.message}`)
                 }
 
                 const finalTitle = aiGeneratedTitle || file.name.replace(/\.[^.]+$/, '')
