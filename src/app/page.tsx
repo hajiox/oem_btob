@@ -24,22 +24,7 @@ function SectionSkeleton() {
   )
 }
 
-// 動的 LP セクション描画（DB管理用、将来のlp-editor対応）
-function DynamicSection({ section }: { section: LpSection }) {
-  return (
-    <section className="w-full max-w-3xl mx-auto px-4" id={`section-${section.id}`}>
-      <div className="rounded-2xl shadow-2xl overflow-hidden">
-        {section.image_url && (
-          <img
-            src={section.image_url}
-            alt={section.title || ''}
-            className="w-full h-auto"
-          />
-        )}
-      </div>
-    </section>
-  )
-}
+
 
 // フッター
 function Footer() {
@@ -90,34 +75,40 @@ export default async function HomePage() {
       {/* LP画像セクション */}
       <Suspense fallback={<SectionSkeleton />}>
         <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '48px 16px', display: 'flex', flexDirection: 'column', gap: '64px', alignItems: 'center' }}>
-          {LP_IMAGES.map((img, i) => (
-            <div
-              key={i}
-              style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-            >
-              <Image
-                src={img.src}
-                alt={img.alt}
-                width={1200}
-                height={1600}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                priority={i === 0}
-              />
-            </div>
-          ))}
+          {/* DB画像があればDB優先、なければフォールバック */}
+          {sections.length > 0 ? (
+            sections.filter(s => s.image_url).map((section, i) => (
+              <div
+                key={section.id}
+                style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+              >
+                <img
+                  src={section.image_url!}
+                  alt={section.title || ''}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                />
+              </div>
+            ))
+          ) : (
+            LP_IMAGES.map((img, i) => (
+              <div
+                key={i}
+                style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+              >
+                <Image
+                  src={img.src}
+                  alt={img.alt}
+                  width={1200}
+                  height={1600}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  priority={i === 0}
+                />
+              </div>
+            ))
+          )}
         </div>
       </Suspense>
-
-      {/* DB管理の動的セクション（将来のlp-editor対応） */}
-      {sections.length > 0 && (
-        <div id="features" style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '48px 16px', display: 'flex', flexDirection: 'column' as const, gap: '64px' }}>
-          {sections
-            .filter(s => s.section_type !== 'hero')
-            .map(section => (
-              <DynamicSection key={section.id} section={section} />
-            ))}
-        </div>
-      )}
 
       {/* フォームセクション（BTO見積もり） */}
       <section id="bto-form" style={{
