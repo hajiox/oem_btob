@@ -38,7 +38,7 @@ export interface FormQuestion {
     step_id: string
     order_index: number
     question_text: string
-    input_type: 'radio' | 'checkbox' | 'text' | 'textarea' | 'number' | 'select'
+    input_type: 'radio' | 'checkbox' | 'text' | 'textarea' | 'number' | 'select' | 'select_text' | 'select_number'
     is_required: boolean
     help_text: string | null
     depends_on_option_id: string | null  // この選択肢が選ばれた時のみ表示

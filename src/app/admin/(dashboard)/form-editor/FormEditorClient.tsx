@@ -376,6 +376,8 @@ export default function FormEditorClient({
                                                                     <option value="radio">単一選択 (Radio)</option>
                                                                     <option value="checkbox">複数選択 (Checkbox)</option>
                                                                     <option value="select">ドロップダウン</option>
+                                                                    <option value="select_text">ドロップダウン＋テキスト入力</option>
+                                                                    <option value="select_number">ドロップダウン＋数値入力</option>
                                                                     <option value="text">テキスト入力</option>
                                                                     <option value="textarea">テキストエリア</option>
                                                                     <option value="number">数値入力</option>
@@ -411,7 +413,7 @@ export default function FormEditorClient({
                                                 </div>
 
                                                 {/* 選択肢リスト */}
-                                                {['radio', 'checkbox', 'select'].includes(question.input_type) && (
+                                                {['radio', 'checkbox', 'select', 'select_text', 'select_number'].includes(question.input_type) && (
                                                     <div style={{ marginLeft: '32px', paddingLeft: '16px', borderLeft: '2px solid rgba(99,102,241,0.3)', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                                                         {question.options.map((option) => (
                                                             <OptionRow

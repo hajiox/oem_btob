@@ -33,15 +33,20 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
             const q = steps.flatMap(s => s.questions).find(q => q.id === questionId)
             if (!q) return
 
+            // 複合入力タイプの場合はselectedを取得
+            let effectiveAnswer = answer
+            if (answer && typeof answer === 'object' && !Array.isArray(answer) && answer.selected) {
+                effectiveAnswer = answer.selected
+            }
+
             // 単一または複数の選択肢
-            const selectedOptionIds = Array.isArray(answer) ? answer : [answer]
+            const selectedOptionIds = Array.isArray(effectiveAnswer) ? effectiveAnswer : [effectiveAnswer]
 
             selectedOptionIds.forEach(val => {
                 // IDで選択肢を検索して金額を加算
                 const opt = q.options.find(o => o.id === val)
                 if (opt) {
                     if (opt.is_base_price) {
-                        // ベース価格がある場合は一旦リセットしてベースにする（仕様による）
                         total += opt.price_modifier
                         hasBasePrice = true
                     } else {
@@ -59,8 +64,13 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
         if (!q.depends_on_option_id) return true // 条件なし → 常に表示
         // 全回答の中に、依存先optionが選択されているか確認
         for (const [, answer] of Object.entries(answers)) {
-            const selectedIds = Array.isArray(answer) ? answer : [answer]
-            if (selectedIds.includes(q.depends_on_option_id)) return true
+            // 複合入力タイプ（select_text/select_number）の場合はselectedを参照
+            if (answer && typeof answer === 'object' && !Array.isArray(answer) && answer.selected) {
+                if (answer.selected === q.depends_on_option_id) return true
+            } else {
+                const selectedIds = Array.isArray(answer) ? answer : [answer]
+                if (selectedIds.includes(q.depends_on_option_id)) return true
+            }
         }
         return false
     }
@@ -76,6 +86,10 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
             if (q.is_required) {
                 const val = answers[q.id]
                 if (!val || (Array.isArray(val) && val.length === 0)) {
+                    return false
+                }
+                // 複合入力タイプの場合はselectedが選択されているかチェック
+                if (typeof val === 'object' && !Array.isArray(val) && !val.selected) {
                     return false
                 }
             }
@@ -111,6 +125,14 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
             } else {
                 setAnswers({ ...answers, [questionId]: [...currentVal, value] })
             }
+        } else if (type === 'select_text_selected' || type === 'select_number_selected') {
+            // 複合入力: ドロップダウン部分の変更
+            const current = answers[questionId] || { selected: '', extra: '' }
+            setAnswers({ ...answers, [questionId]: { ...current, selected: value } })
+        } else if (type === 'select_text_extra' || type === 'select_number_extra') {
+            // 複合入力: テキスト/数値部分の変更
+            const current = answers[questionId] || { selected: '', extra: '' }
+            setAnswers({ ...answers, [questionId]: { ...current, extra: value } })
         } else {
             setAnswers({ ...answers, [questionId]: value })
         }
@@ -155,7 +177,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
     // === レンダリング部品 ===
     const renderQuestionInput = (q: any) => {
-        const val = answers[q.id] || (q.input_type === 'checkbox' ? [] : '')
+        const val = answers[q.id] || (q.input_type === 'checkbox' ? [] : (q.input_type === 'select_text' || q.input_type === 'select_number') ? { selected: '', extra: '' } : '')
 
         switch (q.input_type) {
             case 'radio':
@@ -266,6 +288,62 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                             min="0"
                         />
                         <span className="text-[var(--color-text-muted)] font-medium">個</span>
+                    </div>
+                )
+
+            case 'select_text':
+                return (
+                    <div className="mt-4 space-y-3">
+                        <select
+                            value={val?.selected || ''}
+                            onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_selected')}
+                            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none"
+                            required={q.is_required}
+                        >
+                            <option value="" disabled className="text-black">選択してください</option>
+                            {q.options.map((opt: any) => (
+                                <option value={opt.id} key={opt.id} className="text-black">
+                                    {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            type="text"
+                            value={val?.extra || ''}
+                            onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_extra')}
+                            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                            placeholder="詳細をご入力ください"
+                        />
+                    </div>
+                )
+
+            case 'select_number':
+                return (
+                    <div className="mt-4 space-y-3">
+                        <select
+                            value={val?.selected || ''}
+                            onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_number_selected')}
+                            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none"
+                            required={q.is_required}
+                        >
+                            <option value="" disabled className="text-black">選択してください</option>
+                            {q.options.map((opt: any) => (
+                                <option value={opt.id} key={opt.id} className="text-black">
+                                    {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex items-center gap-2 max-w-xs">
+                            <input
+                                type="number"
+                                value={val?.extra || ''}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_number_extra')}
+                                className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors text-right"
+                                placeholder="0"
+                                min="0"
+                            />
+                            <span className="text-[var(--color-text-muted)] font-medium">個</span>
+                        </div>
                     </div>
                 )
 
