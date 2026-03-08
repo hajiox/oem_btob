@@ -5,6 +5,7 @@ import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Loader2, ImageIcon } fr
 import Image from 'next/image'
 import type { LpSection } from '@/types/database'
 import { addLpSection, deleteLpSection, reorderLpSections, updateLpSectionTitle } from '@/actions/lpEditor'
+import { forceSeedInitialLpSections } from '@/actions/lpEditorForceSeed'
 
 export default function LpEditorClient({ initialSections }: { initialSections: LpSection[] }) {
     const [sections, setSections] = useState<LpSection[]>(initialSections)
@@ -128,6 +129,19 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
         await updateLpSectionTitle(id, title)
     }
 
+    // 初期画像（デフォルト状態）の強制立ち上げ
+    const handleForceSeed = async () => {
+        if (!confirm('現在の画像をすべて削除し、初期状態の5枚の画像を復元しますか？\n（※一度消えた画像は元に戻せません）')) return
+        setIsSaving(true)
+        const result = await forceSeedInitialLpSections()
+        if (result.success) {
+            window.location.reload()
+        } else {
+            alert(`復元失敗: ${result.error}`)
+            setIsSaving(false)
+        }
+    }
+
     return (
         <div>
             {/* ヘッダー */}
@@ -147,6 +161,18 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
                             保存中...
                         </span>
                     )}
+                    <button
+                        onClick={handleForceSeed}
+                        disabled={isSaving || isUploading}
+                        style={{
+                            padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--admin-border)',
+                            background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer',
+                            fontSize: '13px', fontWeight: 600,
+                            opacity: (isSaving || isUploading) ? 0.5 : 1,
+                        }}
+                    >
+                        初期画像を復元
+                    </button>
                     <label
                         style={{
                             display: 'inline-flex', alignItems: 'center', gap: '8px',
