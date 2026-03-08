@@ -120,7 +120,39 @@ export default async function HomePage() {
       )}
 
       {/* フォームセクション（BTO見積もり） */}
-      <section id="bto-form" style={{ width: '100%', padding: '80px 16px', position: 'relative' }}>
+      <section id="bto-form" style={{
+        width: '100%',
+        padding: '96px 16px',
+        position: 'relative',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #1e1b4b 100%)',
+        overflow: 'hidden',
+      }}>
+        {/* 背景装飾 */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(236,72,153,0.1) 0%, transparent 50%)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', top: '-50%', left: '-20%', width: '60%', height: '200%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* セクション見出し */}
+        <div style={{ textAlign: 'center', marginBottom: '48px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'inline-block', padding: '8px 20px', borderRadius: '9999px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', marginBottom: '16px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#a5b4fc', letterSpacing: '0.05em' }}>✨ 簡単3ステップ</span>
+          </div>
+          <h2 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 800, color: '#fff', marginBottom: '12px', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
+            今すぐ無料で<br />
+            <span style={{ background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>自動お見積もり</span>
+          </h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto', lineHeight: 1.7 }}>
+            質問に回答するだけで、概算のお見積りが即座に算出されます。お気軽にお試しください。
+          </p>
+        </div>
+
         <InteractiveForm steps={formSteps} />
       </section>
 

@@ -12,6 +12,9 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [errorData, setErrorData] = useState<string | null>(null)
+    // steps.length = 結果画面, steps.length + 1 = お客様情報
+    const RESULT_STEP = steps.length
+    const CONTACT_STEP = steps.length + 1
 
     // ユーザーの入力状態
     const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -106,15 +109,21 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
     // === 操作ハンドラ ===
     const handleNext = () => {
-        if (isCurrentStepValid()) {
+        if (currentStep < steps.length && isCurrentStepValid()) {
             setDirection(1)
-            setCurrentStep(prev => Math.min(prev + 1, steps.length))
+            setCurrentStep(prev => prev + 1) // 結果画面(RESULT_STEP)まで進む
         }
     }
 
     const handlePrev = () => {
         setDirection(-1)
         setCurrentStep(prev => Math.max(prev - 1, 0))
+    }
+
+    // 仮申込ボタン → お客様情報へ
+    const handleApply = () => {
+        setDirection(1)
+        setCurrentStep(CONTACT_STEP)
     }
 
     const handleAnswerChange = (questionId: string, value: any, type: string) => {
@@ -180,37 +189,71 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
         const val = answers[q.id] || (q.input_type === 'checkbox' ? [] : (q.input_type === 'select_text' || q.input_type === 'select_number') ? { selected: '', extra: '' } : '')
 
         switch (q.input_type) {
-            case 'radio':
+            case 'radio': {
+                const hasImages = q.options.some((o: any) => o.image_url)
                 return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                        {q.options.map((opt: any) => (
-                            <label
-                                key={opt.id}
-                                className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${val === opt.id
-                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                    : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="radio"
-                                        name={q.id}
-                                        value={opt.id}
-                                        checked={val === opt.id}
-                                        onChange={() => handleAnswerChange(q.id, opt.id, 'radio')}
-                                        className="w-4 h-4 accent-[var(--color-primary)]"
-                                    />
-                                    <span className="font-medium text-white">{opt.label}</span>
-                                </div>
-                                {opt.price_modifier > 0 && (
-                                    <span className="text-sm font-bold text-[var(--color-primary)]">
-                                        +{opt.price_modifier.toLocaleString()}円
-                                    </span>
-                                )}
-                            </label>
-                        ))}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: hasImages ? 'repeat(auto-fill, minmax(160px, 1fr))' : 'repeat(auto-fill, minmax(240px, 1fr))',
+                        gap: '12px',
+                        marginTop: '16px',
+                    }}>
+                        {q.options.map((opt: any) => {
+                            const isSelected = val === opt.id
+                            return (
+                                <label
+                                    key={opt.id}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: hasImages ? 'column' : 'row',
+                                        alignItems: hasImages ? 'stretch' : 'center',
+                                        justifyContent: hasImages ? 'flex-start' : 'space-between',
+                                        padding: hasImages ? '0' : '16px',
+                                        borderRadius: '16px',
+                                        border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)',
+                                        background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        overflow: 'hidden',
+                                        boxShadow: isSelected ? '0 0 20px rgba(99,102,241,0.2)' : 'none',
+                                    }}
+                                >
+                                    {hasImages && opt.image_url && (
+                                        <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
+                                            <img
+                                                src={opt.image_url}
+                                                alt={opt.label}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            />
+                                            {isSelected && (
+                                                <div style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>✓</div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div style={{ padding: hasImages ? '12px' : '0', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: hasImages ? 'center' : 'flex-start' }}>
+                                        <input
+                                            type="radio"
+                                            name={q.id}
+                                            value={opt.id}
+                                            checked={isSelected}
+                                            onChange={() => handleAnswerChange(q.id, opt.id, 'radio')}
+                                            style={{ display: hasImages ? 'none' : 'block', width: '16px', height: '16px', accentColor: '#818cf8' }}
+                                        />
+                                        <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '14px' : '15px', textAlign: hasImages ? 'center' : 'left' } as React.CSSProperties}>{opt.label}</span>
+                                    </div>
+                                    {opt.price_modifier > 0 && (
+                                        <div style={{ padding: hasImages ? '0 12px 12px' : '0', textAlign: hasImages ? 'center' : 'right' } as React.CSSProperties}>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: '#818cf8' }}>
+                                                +{opt.price_modifier.toLocaleString()}円
+                                            </span>
+                                        </div>
+                                    )}
+                                </label>
+                            )
+                        })}
                     </div>
                 )
+            }
 
             case 'checkbox':
                 return (
@@ -397,70 +440,85 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     }
 
     return (
-        <div className="w-full max-w-4xl mx-auto">
+        <div style={{ width: '100%', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto', position: 'relative', zIndex: 1 }}>
 
             {/* フォームコンテナ */}
-            <div className="glass rounded-3xl shadow-lg border border-[var(--color-border)] overflow-hidden flex flex-col md:flex-row">
+            <div style={{
+                borderRadius: '24px',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'rgba(15,23,42,0.8)',
+                backdropFilter: 'blur(20px)',
+            }}>
 
-                {/* 左側：ナビゲーション・ステップ概要 */}
-                <div className="w-full md:w-1/3 bg-black/40 border-b md:border-b-0 md:border-r border-white/10 p-6 md:p-8 flex flex-col relative z-20">
-                    <div className="mb-8">
-                        <h3 className="text-xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>BTO お見積り</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2">ステップに沿ってご要望をお聞かせください。</p>
-                    </div>
-
-                    <div className="hidden md:block space-y-5 flex-1 relative">
-                        {/* プログレス縦線 */}
-                        <div className="absolute left-[15px] top-6 bottom-6 w-[2px] bg-white/10 -z-10 rounded-full"></div>
-                        <div
-                            className="absolute left-[15px] top-6 w-[2px] bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-accent)] -z-10 rounded-full transition-all duration-500"
-                            style={{ height: `calc(${progressPercent}% - 32px)` }}
-                        ></div>
-
-                        {steps.map((s, idx) => {
-                            const isActive = idx === currentStep
-                            const isPast = idx < currentStep
-                            return (
-                                <div key={s.id} className={`flex items-start gap-4 transition-all duration-300 ${isActive ? 'opacity-100 scale-105' : 'opacity-40'}`}>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${isActive ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' :
-                                        isPast ? 'border-[var(--color-primary)] bg-transparent text-[var(--color-primary)]' :
-                                            'border-white/20 bg-black text-white/50'
-                                        }`}>
-                                        <span className="text-xs font-bold">{idx + 1}</span>
-                                    </div>
-                                    <div className="pt-1.5">
-                                        <p className={`text-sm font-bold ${isActive ? 'text-white' : 'text-white/70'}`}>{s.step_title}</p>
-                                    </div>
+                {/* 上部：ステップインジケーター（モバイル対応のシンプルバー） */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    {steps.map((s, idx) => {
+                        const isActive = idx === currentStep
+                        const isPast = idx < currentStep
+                        return (
+                            <div key={s.id} style={{
+                                flex: 1, padding: '16px 8px', textAlign: 'center',
+                                borderBottom: isActive ? '3px solid #818cf8' : isPast ? '3px solid rgba(129,140,248,0.3)' : '3px solid transparent',
+                                transition: 'all 0.3s',
+                            }}>
+                                <div style={{
+                                    width: '28px', height: '28px', borderRadius: '50%', margin: '0 auto 6px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '12px', fontWeight: 700,
+                                    background: isActive ? '#818cf8' : isPast ? 'rgba(129,140,248,0.2)' : 'rgba(255,255,255,0.08)',
+                                    color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.4)',
+                                    border: isActive ? 'none' : isPast ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                                }}>
+                                    {isPast ? '✓' : idx + 1}
                                 </div>
-                            )
-                        })}
-
-                        {/* お客様情報ステップ (最後) */}
-                        <div className={`flex items-start gap-4 transition-all duration-300 mt-5 ${currentStep === steps.length ? 'opacity-100 scale-105' : 'opacity-40'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${currentStep === steps.length ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-white/20 bg-black text-white/50'
-                                }`}>
-                                <span className="text-xs font-bold text-white">✓</span>
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: isActive ? '#fff' : isPast ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)' }}>{s.step_title}</span>
                             </div>
-                            <div className="pt-1.5">
-                                <p className={`text-sm font-bold ${currentStep === steps.length ? 'text-white' : 'text-white/70'}`}>お客様情報</p>
-                            </div>
+                        )
+                    })}
+                    {/* 結果ステップ */}
+                    <div style={{
+                        flex: 1, padding: '16px 8px', textAlign: 'center',
+                        borderBottom: currentStep >= RESULT_STEP ? '3px solid #818cf8' : '3px solid transparent',
+                    }}>
+                        <div style={{
+                            width: '28px', height: '28px', borderRadius: '50%', margin: '0 auto 6px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '12px', fontWeight: 700,
+                            background: currentStep >= RESULT_STEP ? '#818cf8' : 'rgba(255,255,255,0.08)',
+                            color: currentStep >= RESULT_STEP ? '#fff' : 'rgba(255,255,255,0.4)',
+                            border: currentStep >= RESULT_STEP ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                        }}>
+                            💰
                         </div>
-                    </div>
-
-                    {/* 右下: 現在の金額表示 */}
-                    <div className="mt-6 md:mt-0 pt-6 border-t border-white/10 md:bg-black/20 md:-mx-8 md:-mb-8 md:p-8 md:border-t-0 bg-transparent flex justify-between items-center md:flex-col md:items-start md:gap-2">
-                        <span className="text-sm font-medium text-white/60">現在のお見積り</span>
-                        <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)] tracking-tight">
-                            ¥{estimatedPrice.toLocaleString()}〜
-                        </span>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: currentStep >= RESULT_STEP ? '#fff' : 'rgba(255,255,255,0.4)' }}>お見積り</span>
                     </div>
                 </div>
 
-                {/* 右側：メインフォーム領域 */}
-                <div className="w-full md:w-2/3 p-6 md:p-10 relative overflow-hidden flex flex-col">
+
+                {/* 見積もりバー（質問ステップのみ表示） */}
+                {currentStep < RESULT_STEP && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '12px 24px',
+                        background: 'rgba(99,102,241,0.08)',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    }}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り</span>
+                        <span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            ¥{estimatedPrice.toLocaleString()}〜
+                        </span>
+                    </div>
+                )}
+
+                {/* メインフォーム領域 */}
+                <div style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px' }}>
 
                     <AnimatePresence mode="wait" initial={false}>
-                        {/* ====== 通常のステップ ====== */}
+                        {/* ====== 通常の質問ステップ ====== */}
                         {currentStep < steps.length && (
                             <motion.div
                                 key={`step-${currentStep}`}
@@ -468,30 +526,29 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
                                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className="flex-1"
+                                style={{ flex: 1 }}
                             >
-                                <div className="mb-8">
-                                    <h2 className="text-2xl font-bold text-white mb-2">{steps[currentStep]?.step_title}</h2>
+                                <div style={{ marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{steps[currentStep]?.step_title}</h2>
                                     {steps[currentStep]?.step_description && (
-                                        <p className="text-sm text-[var(--color-text-muted)]">{steps[currentStep].step_description}</p>
+                                        <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{steps[currentStep].step_description}</p>
                                     )}
                                 </div>
 
-                                <div className="space-y-8">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                                     {steps[currentStep]?.questions
                                         .filter(q => isQuestionVisible(q))
                                         .map((q, idx) => (
-                                            <div key={q.id} className="relative z-10">
-                                                <h4 className="text-[15px] font-bold text-white/90 mb-1 flex items-center gap-2">
-                                                    <span className="w-5 h-5 rounded-full bg-white/10 text-white/50 text-[10px] flex items-center justify-center shrink-0">
+                                            <div key={q.id} style={{ position: 'relative', zIndex: 10 }}>
+                                                <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                         {idx + 1}
                                                     </span>
                                                     {q.question_text}
-                                                    {q.is_required && <span className="text-red-400 text-xs px-1.5 py-0.5 rounded bg-red-400/10">必須</span>}
+                                                    {q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}
                                                 </h4>
-                                                {q.help_text && <p className="text-xs text-white/50 mt-1.5 ml-7">{q.help_text}</p>}
-
-                                                <div className="ml-7">
+                                                {q.help_text && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '6px', marginLeft: '30px' }}>{q.help_text}</p>}
+                                                <div style={{ marginLeft: '30px' }}>
                                                     {renderQuestionInput(q)}
                                                 </div>
                                             </div>
@@ -500,83 +557,130 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                             </motion.div>
                         )}
 
-                        {/* ====== 最終ステップ：お客様情報 ====== */}
-                        {currentStep === steps.length && (
+                        {/* ====== 見積もり結果画面 ====== */}
+                        {currentStep === RESULT_STEP && (
                             <motion.div
-                                key="step-final"
+                                key="step-result"
                                 initial={{ opacity: 0, x: 50 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -50 }}
                                 transition={{ duration: 0.3 }}
-                                className="flex-1"
+                                style={{ flex: 1 }}
                             >
-                                <div className="mb-8">
-                                    <h2 className="text-2xl font-bold text-white mb-2">お客様情報の入力</h2>
-                                    <p className="text-sm text-[var(--color-text-muted)]">最後にお客様のご連絡先を入力してください。</p>
+                                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                                    <div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お見積り結果</h2>
+                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご回答いただいた内容に基づく概算金額です</p>
                                 </div>
 
-                                <form className="space-y-5" onSubmit={handleSubmit}>
+                                {/* 金額表示 */}
+                                <div style={{
+                                    textAlign: 'center', padding: '32px', borderRadius: '16px',
+                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))',
+                                    border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px',
+                                }}>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', fontWeight: 500 }}>概算お見積り金額</div>
+                                    <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>
+                                        ¥{estimatedPrice.toLocaleString()}<span style={{ fontSize: '20px' }}>〜</span>
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>
+                                </div>
+
+                                {/* 選択内容サマリー */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '32px' }}>
+                                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '4px' }}>📋 ご回答内容</h3>
+                                    {steps.flatMap(s => s.questions).filter(q => isQuestionVisible(q) && answers[q.id]).map(q => {
+                                        const answer = answers[q.id]
+                                        let displayValue = ''
+                                        if (typeof answer === 'object' && !Array.isArray(answer) && answer.selected) {
+                                            const opt = q.options.find((o: any) => o.id === answer.selected)
+                                            displayValue = opt ? opt.label : answer.selected
+                                            if (answer.extra) displayValue += ` (${answer.extra})`
+                                        } else if (Array.isArray(answer)) {
+                                            displayValue = answer.map((id: string) => q.options.find((o: any) => o.id === id)?.label || id).join(', ')
+                                        } else {
+                                            const opt = q.options.find((o: any) => o.id === answer)
+                                            displayValue = opt ? opt.label : String(answer)
+                                        }
+                                        return (
+                                            <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{q.question_text}</span>
+                                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', textAlign: 'right', maxWidth: '50%' }}>{displayValue}</span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                {/* 仮申込ボタン */}
+                                <div style={{ textAlign: 'center' }}>
+                                    <button
+                                        onClick={handleApply}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '12px',
+                                            padding: '16px 48px', borderRadius: '9999px',
+                                            fontSize: '16px', fontWeight: 700,
+                                            background: 'linear-gradient(135deg, #22c55e, #10b981)',
+                                            color: '#fff', border: 'none', cursor: 'pointer',
+                                            boxShadow: '0 8px 32px rgba(34,197,94,0.3)',
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        🚀 この内容で仮申込する
+                                    </button>
+                                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '12px' }}>
+                                        仮申込後にお客様情報をご入力いただきます
+                                    </p>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* ====== お客様情報入力（仮申込後のみ） ====== */}
+                        {currentStep === CONTACT_STEP && (
+                            <motion.div
+                                key="step-contact"
+                                initial={{ opacity: 0, x: 50 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -50 }}
+                                transition={{ duration: 0.3 }}
+                                style={{ flex: 1 }}
+                            >
+                                <div style={{ marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お客様情報の入力</h2>
+                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>お見積り内容をお送りするため、ご連絡先をご入力ください。</p>
+                                    <div style={{ display: 'inline-block', marginTop: '12px', padding: '8px 16px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>お見積り金額: </span>
+                                        <span style={{ fontSize: '16px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</span>
+                                    </div>
+                                </div>
+
+                                <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}>
                                     {errorData && (
-                                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-                                            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                                            <p className="text-sm text-red-400">{errorData}</p>
+                                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                            <AlertCircle style={{ width: '20px', height: '20px', color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
+                                            <p style={{ fontSize: '14px', color: '#f87171' }}>{errorData}</p>
                                         </div>
                                     )}
-
                                     <div>
-                                        <label className="block text-sm font-medium text-white/80 mb-2">貴社名 / 屋号 <span className="text-red-400 ml-1">*</span></label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={contactInfo.companyName}
-                                            onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-all"
-                                            placeholder="株式会社〇〇"
-                                        />
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>貴社名 / 屋号 <span style={{ color: '#f87171', marginLeft: '4px' }}>*</span></label>
+                                        <input required type="text" value={contactInfo.companyName} onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="株式会社〇〇" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-white/80 mb-2">ご担当者名 <span className="text-red-400 ml-1">*</span></label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={contactInfo.contactName}
-                                            onChange={e => setContactInfo({ ...contactInfo, contactName: e.target.value })}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-all"
-                                            placeholder="山田 太郎"
-                                        />
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>ご担当者名 <span style={{ color: '#f87171', marginLeft: '4px' }}>*</span></label>
+                                        <input required type="text" value={contactInfo.contactName} onChange={e => setContactInfo({ ...contactInfo, contactName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="山田 太郎" />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div>
-                                            <label className="block text-sm font-medium text-white/80 mb-2">メールアドレス <span className="text-red-400 ml-1">*</span></label>
-                                            <input
-                                                required
-                                                type="email"
-                                                value={contactInfo.email}
-                                                onChange={e => setContactInfo({ ...contactInfo, email: e.target.value })}
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-all"
-                                                placeholder="info@example.com"
-                                            />
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>メールアドレス <span style={{ color: '#f87171', marginLeft: '4px' }}>*</span></label>
+                                            <input required type="email" value={contactInfo.email} onChange={e => setContactInfo({ ...contactInfo, email: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="info@example.com" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-white/80 mb-2">電話番号</label>
-                                            <input
-                                                type="tel"
-                                                value={contactInfo.phone}
-                                                onChange={e => setContactInfo({ ...contactInfo, phone: e.target.value })}
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-all"
-                                                placeholder="03-0000-0000"
-                                            />
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>電話番号</label>
+                                            <input type="tel" value={contactInfo.phone} onChange={e => setContactInfo({ ...contactInfo, phone: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="03-0000-0000" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-white/80 mb-2">その他ご要望・備考事項</label>
-                                        <textarea
-                                            rows={3}
-                                            value={contactInfo.notes}
-                                            onChange={e => setContactInfo({ ...contactInfo, notes: e.target.value })}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-all resize-none"
-                                            placeholder="ご不明点や特記事項があればご記入ください"
-                                        />
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>その他ご要望・備考事項</label>
+                                        <textarea rows={3} value={contactInfo.notes} onChange={e => setContactInfo({ ...contactInfo, notes: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', resize: 'none', fontSize: '15px' }} placeholder="ご不明点や特記事項があればご記入ください" />
                                     </div>
                                 </form>
                             </motion.div>
@@ -584,35 +688,58 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                     </AnimatePresence>
 
                     {/* フッターのアクションボタン群 */}
-                    <div className="mt-10 pt-6 border-t border-white/10 flex items-center justify-between">
+                    <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <button
                             onClick={handlePrev}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors ${currentStep === 0 ? 'invisible' : ''}`}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px',
+                                fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.5)',
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                visibility: currentStep === 0 ? 'hidden' : 'visible',
+                            }}
                         >
-                            <ChevronLeft className="w-4 h-4" /> 戻る
+                            <ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る
                         </button>
 
                         {currentStep < steps.length ? (
                             <button
                                 onClick={handleNext}
                                 disabled={!isCurrentStepValid()}
-                                className="flex items-center gap-3 px-8 py-3 rounded-full text-sm font-bold bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)] text-white hover:scale-105 transition-transform disabled:opacity-30 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-lg shadow-[var(--color-primary)]/20"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px',
+                                    borderRadius: '9999px', fontSize: '14px', fontWeight: 700,
+                                    background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)',
+                                    color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed',
+                                    opacity: isCurrentStepValid() ? 1 : 0.4,
+                                    boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none',
+                                    transition: 'all 0.2s',
+                                }}
                             >
-                                次のステップへ <ChevronRight className="w-4 h-4" />
+                                次のステップへ <ChevronRight style={{ width: '16px', height: '16px' }} />
                             </button>
-                        ) : (
+                        ) : currentStep === CONTACT_STEP ? (
                             <button
                                 onClick={handleSubmit}
                                 disabled={!isContactInfoValid() || isSubmitting}
-                                className="flex items-center gap-3 px-8 py-3 rounded-full text-sm font-bold bg-gradient-to-r from-green-500 to-emerald-400 text-white hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-lg shadow-green-500/20"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px',
+                                    borderRadius: '9999px', fontSize: '14px', fontWeight: 700,
+                                    background: isContactInfoValid() ? 'linear-gradient(135deg, #22c55e, #10b981)' : 'rgba(255,255,255,0.1)',
+                                    color: '#fff', border: 'none', cursor: isContactInfoValid() ? 'pointer' : 'not-allowed',
+                                    opacity: isContactInfoValid() && !isSubmitting ? 1 : 0.5,
+                                    boxShadow: isContactInfoValid() ? '0 8px 24px rgba(34,197,94,0.3)' : 'none',
+                                    transition: 'all 0.2s',
+                                }}
                             >
                                 {isSubmitting ? (
-                                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                                 ) : (
-                                    <CheckCircle2 className="w-5 h-5" />
+                                    <CheckCircle2 style={{ width: '20px', height: '20px' }} />
                                 )}
                                 {isSubmitting ? '送信中...' : 'この内容で送信する'}
                             </button>
+                        ) : (
+                            <div />
                         )}
                     </div>
 
