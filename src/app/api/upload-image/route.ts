@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
-import { existsSync } from 'fs'
+import { put } from '@vercel/blob'
 
-// 画像をpublic/images/form/に保存するAPIルート
-// ローカル開発時: ファイルシステムに直接保存
-// 本番デプロイ: git pushで同期される
+// 画像をVercel Blob StorageにアップロードするAPIルート
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData()
@@ -24,32 +20,26 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'ファイルサイズは5MB以下にしてください' }, { status: 400 })
         }
 
-        // ファイル名を安全な形式に変換（タイムスタンプ + 元のファイル名）
+        // ファイル名を安全な形式に変換
         const timestamp = Date.now()
-        const ext = path.extname(file.name) || '.jpg'
+        const ext = file.name.split('.').pop() || 'jpg'
         const safeName = file.name
-            .replace(ext, '')
+            .replace(/\.[^.]+$/, '')
             .replace(/[^a-zA-Z0-9_-]/g, '_')
             .substring(0, 50)
-        const fileName = `${timestamp}_${safeName}${ext}`
+        const fileName = `form/${timestamp}_${safeName}.${ext}`
 
-        // 保存先ディレクトリ
-        const uploadDir = path.join(process.cwd(), 'public', 'images', 'form')
-        if (!existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true })
-        }
+        // Vercel Blob にアップロード
+        const blob = await put(fileName, file, {
+            access: 'public',
+        })
 
-        // ファイルをバッファに変換して書き込み
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        const filePath = path.join(uploadDir, fileName)
-        await writeFile(filePath, buffer)
-
-        // 公開URLパスを返す
-        const publicUrl = `/images/form/${fileName}`
-        return NextResponse.json({ url: publicUrl, fileName })
-    } catch (error) {
+        return NextResponse.json({ url: blob.url, fileName })
+    } catch (error: any) {
         console.error('Upload error:', error)
-        return NextResponse.json({ error: 'アップロードに失敗しました' }, { status: 500 })
+        return NextResponse.json(
+            { error: error.message || 'アップロードに失敗しました' },
+            { status: 500 }
+        )
     }
 }
