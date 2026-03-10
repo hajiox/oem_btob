@@ -239,10 +239,10 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                             onChange={() => handleAnswerChange(q.id, opt.id, 'radio')}
                                             style={{ display: hasImages ? 'none' : 'block', width: '16px', height: '16px', accentColor: '#818cf8' }}
                                         />
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: hasImages ? 'center' : 'flex-start' }}>
-                                            <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '14px' : '15px', textAlign: hasImages ? 'center' : 'left' } as React.CSSProperties}>{opt.label}</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: hasImages ? 'center' : 'flex-start', padding: hasImages ? '0 4px' : '0' }}>
+                                            <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '15px' : '16px', textAlign: hasImages ? 'center' : 'left', lineHeight: 1.3 } as React.CSSProperties}>{opt.label}</span>
                                             {opt.description && (
-                                                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', textAlign: hasImages ? 'center' : 'left', marginTop: '2px', lineHeight: 1.4, whiteSpace: 'pre-line' } as React.CSSProperties}>
+                                                <span style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.7)', textAlign: hasImages ? 'center' : 'left', marginTop: '6px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-line' } as React.CSSProperties}>
                                                     {opt.description}
                                                 </span>
                                             )}
@@ -283,9 +283,9 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                             onChange={() => handleAnswerChange(q.id, opt.id, 'checkbox')}
                                             className="w-4 h-4 accent-[var(--color-primary)] rounded"
                                         />
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-white">{opt.label}</span>
-                                            {opt.description && <span className="text-xs text-white/50 mt-1 whitespace-pre-line">{opt.description}</span>}
+                                        <div className="flex flex-col py-1">
+                                            <span className="font-semibold text-white text-[15px]">{opt.label}</span>
+                                            {opt.description && <span className="text-[11.5px] text-white/70 mt-1.5 leading-relaxed whitespace-pre-line break-words">{opt.description}</span>}
                                         </div>
                                     </div>
                                     {opt.price_modifier > 0 && (
