@@ -13,11 +13,13 @@ export async function saveFormEditorData(data: any) {
             return { success: false, error: '認証エラー：権限がありません' }
         }
 
-        const { steps } = data
+        const { steps, pageId } = data
+        if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
 
         // 1. 各項目の組み立て
         const dbSteps = steps.map((s: any) => ({
             id: s.id,
+            page_id: pageId,
             order_index: s.order_index,
             step_title: s.step_title,
             step_description: s.step_description,

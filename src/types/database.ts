@@ -2,9 +2,23 @@
 // データベーステーブルの型定義
 // ============================================
 
+// [P] ページ (LP管理の親)
+export interface Page {
+    id: string
+    slug: string
+    title: string
+    description: string | null
+    created_at: string
+    updated_at: string
+}
+
+export type PageInsert = Omit<Page, 'id' | 'created_at' | 'updated_at'>
+export type PageUpdate = Partial<PageInsert>
+
 // [A] LPセクション
 export interface LpSection {
     id: string
+    page_id: string
     order_index: number
     section_type: 'hero' | 'content' | 'feature' | 'cta' | 'testimonial' | 'faq'
     image_url: string | null
@@ -21,6 +35,7 @@ export type LpSectionUpdate = Partial<LpSectionInsert>
 // [B] フォームステップ
 export interface FormStep {
     id: string
+    page_id: string
     order_index: number
     step_title: string
     step_description: string | null

@@ -5,11 +5,13 @@ import { revalidatePath } from 'next/cache'
 import type { LpSection } from '@/types/database'
 
 // LP画像一覧を取得
-export async function getLpSections(): Promise<LpSection[]> {
+export async function getLpSections(pageId: string): Promise<LpSection[]> {
+    if (!pageId) return []
     const supabase = await createClient()
     const { data, error } = await supabase
         .from('lp_sections')
         .select('*')
+        .eq('page_id', pageId)
         .order('order_index', { ascending: true })
 
     if (error) throw error
@@ -17,7 +19,8 @@ export async function getLpSections(): Promise<LpSection[]> {
 }
 
 // LP画像を追加
-export async function addLpSection(imageUrl: string, title: string = '') {
+export async function addLpSection(pageId: string, imageUrl: string, title: string = '') {
+    if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: '認証エラー' }
@@ -26,6 +29,7 @@ export async function addLpSection(imageUrl: string, title: string = '') {
     const { data: existing } = await supabase
         .from('lp_sections')
         .select('order_index')
+        .eq('page_id', pageId)
         .order('order_index', { ascending: false })
         .limit(1)
 
@@ -34,6 +38,7 @@ export async function addLpSection(imageUrl: string, title: string = '') {
     const { error } = await supabase
         .from('lp_sections')
         .insert({
+            page_id: pageId,
             image_url: imageUrl,
             title: title || null,
             order_index: nextOrder,
@@ -42,13 +47,14 @@ export async function addLpSection(imageUrl: string, title: string = '') {
         })
 
     if (error) return { success: false, error: error.message }
-    revalidatePath('/')
-    revalidatePath('/admin/lp-editor')
+    // ルーティングに合わせて再検証を柔軟にする
+    revalidatePath('/', 'layout')
     return { success: true }
 }
 
 // LP画像を削除
-export async function deleteLpSection(id: string) {
+export async function deleteLpSection(pageId: string, id: string) {
+    if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: '認証エラー' }
@@ -57,36 +63,37 @@ export async function deleteLpSection(id: string) {
         .from('lp_sections')
         .delete()
         .eq('id', id)
+        .eq('page_id', pageId)
 
     if (error) return { success: false, error: error.message }
-    revalidatePath('/')
-    revalidatePath('/admin/lp-editor')
+    revalidatePath('/', 'layout')
     return { success: true }
 }
 
 // LP画像の並び順を更新
-export async function reorderLpSections(orderedIds: string[]) {
+export async function reorderLpSections(pageId: string, orderedIds: string[]) {
+    if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: '認証エラー' }
 
-    // 各IDにorder_indexを設定
     for (let i = 0; i < orderedIds.length; i++) {
         const { error } = await supabase
             .from('lp_sections')
             .update({ order_index: i })
             .eq('id', orderedIds[i])
+            .eq('page_id', pageId)
 
         if (error) return { success: false, error: error.message }
     }
 
-    revalidatePath('/')
-    revalidatePath('/admin/lp-editor')
+    revalidatePath('/', 'layout')
     return { success: true }
 }
 
 // LP画像のalt/titleを更新
-export async function updateLpSectionTitle(id: string, title: string) {
+export async function updateLpSectionTitle(pageId: string, id: string, title: string) {
+    if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: '認証エラー' }
@@ -95,25 +102,26 @@ export async function updateLpSectionTitle(id: string, title: string) {
         .from('lp_sections')
         .update({ title })
         .eq('id', id)
+        .eq('page_id', pageId)
 
     if (error) return { success: false, error: error.message }
-    revalidatePath('/')
-    revalidatePath('/admin/lp-editor')
+    revalidatePath('/', 'layout')
     return { success: true }
 }
 
 // デフォルト画像をDBに初期登録（シード）する
-export async function seedInitialLpSections() {
+export async function seedInitialLpSections(pageId: string) {
+    if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
 
     // すでに画像がある場合は何もしない
     const { count } = await supabase
         .from('lp_sections')
         .select('*', { count: 'exact', head: true })
+        .eq('page_id', pageId)
 
     if (count && count > 0) return { success: true }
 
-    // デフォルト画像リスト
     const initialImages = [
         { src: '/images/lp-hero.jpg', alt: '福島の食材を楽天1位の味で。小ロット400個からの地元食材OEM' },
         { src: '/images/lp-problems.jpg', alt: 'OEMは地獄？福島の食材で小ロット・低コスト・簡単フロー' },
@@ -122,12 +130,12 @@ export async function seedInitialLpSections() {
         { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
     ]
 
-    // 順番にINSERT
     for (let i = 0; i < initialImages.length; i++) {
         const img = initialImages[i]
         await supabase
             .from('lp_sections')
             .insert({
+                page_id: pageId,
                 image_url: img.src,
                 title: img.alt,
                 order_index: i,
@@ -136,7 +144,6 @@ export async function seedInitialLpSections() {
             })
     }
 
-    revalidatePath('/')
-    revalidatePath('/admin/lp-editor')
+    revalidatePath('/', 'layout')
     return { success: true }
 }

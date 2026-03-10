@@ -18,10 +18,12 @@ export default function FormEditorClient({
     initialSteps,
     initialQuestions,
     initialOptions,
+    pageId,
 }: {
     initialSteps: FormStep[]
     initialQuestions: FormQuestion[]
     initialOptions: FormOption[]
+    pageId: string
 }) {
     const [steps, setSteps] = useState<StepWithItems[]>(() => {
         return initialSteps.map(step => ({
@@ -81,7 +83,8 @@ export default function FormEditorClient({
             })),
             deletedStepIds,
             deletedQuestionIds,
-            deletedOptionIds
+            deletedOptionIds,
+            pageId
         }
         const result = await saveFormEditorData(dataToSave)
         if (!result.success) {
@@ -99,6 +102,7 @@ export default function FormEditorClient({
     const addStep = () => {
         const newStep: StepWithItems = {
             id: generateId(),
+            page_id: pageId,
             order_index: steps.length,
             step_title: '新しいステップ',
             step_description: '',

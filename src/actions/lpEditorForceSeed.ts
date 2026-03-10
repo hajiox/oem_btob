@@ -3,13 +3,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function forceSeedInitialLpSections() {
+export async function forceSeedInitialLpSections(pageId: string) {
+    if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: '認証エラー' }
 
-    // まず既存のデータをすべて削除
-    await supabase.from('lp_sections').delete().neq('id', '00000000-0000-0000-0000-000000000000') // 全件削除のためのハック
+    // 現在のページのLPを全削除
+    await supabase.from('lp_sections').delete().eq('page_id', pageId)
 
     // デフォルト画像リスト
     const initialImages = [
@@ -20,12 +21,12 @@ export async function forceSeedInitialLpSections() {
         { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
     ]
 
-    // 順番にINSERT
     for (let i = 0; i < initialImages.length; i++) {
         const img = initialImages[i]
         await supabase
             .from('lp_sections')
             .insert({
+                page_id: pageId,
                 image_url: img.src,
                 title: img.alt,
                 order_index: i,
@@ -35,6 +36,5 @@ export async function forceSeedInitialLpSections() {
     }
 
     revalidatePath('/')
-    revalidatePath('/admin/lp-editor')
     return { success: true }
 }

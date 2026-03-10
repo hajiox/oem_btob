@@ -9,15 +9,21 @@ export type FormStepWithItems = FormStep & {
     })[]
 }
 
-export async function getActiveForm(): Promise<FormStepWithItems[]> {
+export async function getActiveForm(pageId?: string): Promise<FormStepWithItems[]> {
     const supabase = await createClient()
 
     // 表示設定(is_visible=true)のステップを取得
-    const { data: stepsData } = await supabase
+    let query = supabase
         .from('form_steps')
         .select('*')
         .eq('is_visible', true)
         .order('order_index')
+
+    if (pageId) {
+        query = query.eq('page_id', pageId)
+    }
+
+    const { data: stepsData } = await query
 
     if (!stepsData || stepsData.length === 0) return []
 

@@ -12,10 +12,12 @@ import type { FormStepWithItems } from '@/actions/publicForm'
 
 export default function LpEditorClient({
     initialSections,
-    initialFormSteps
+    initialFormSteps,
+    pageId
 }: {
     initialSections: LpSection[]
     initialFormSteps: FormStepWithItems[]
+    pageId: string
 }) {
     const [sections, setSections] = useState<LpSection[]>(initialSections)
     const [isUploading, setIsUploading] = useState(false)
@@ -66,7 +68,7 @@ export default function LpEditorClient({
 
                 const finalTitle = aiGeneratedTitle || file.name.replace(/\.[^.]+$/, '')
 
-                const result = await addLpSection(url, finalTitle)
+                const result = await addLpSection(pageId, url, finalTitle)
                 if (!result.success) {
                     alert(`保存失敗: ${result.error}`)
                     continue
@@ -86,7 +88,7 @@ export default function LpEditorClient({
     const handleDelete = async (id: string) => {
         if (!confirm('この画像を削除しますか？')) return
         setIsSaving(true)
-        const result = await deleteLpSection(id)
+        const result = await deleteLpSection(pageId, id)
         if (result.success) {
             setSections(prev => prev.filter(s => s.id !== id))
         } else {
@@ -105,7 +107,7 @@ export default function LpEditorClient({
         setSections(newSections)
 
         setIsSaving(true)
-        const result = await reorderLpSections(newSections.map(s => s.id))
+        const result = await reorderLpSections(pageId, newSections.map(s => s.id))
         if (!result.success) {
             alert(`並び替え失敗: ${result.error}`)
             setSections(sections) // 元に戻す
@@ -139,7 +141,7 @@ export default function LpEditorClient({
         setDragOverIndex(null)
 
         setIsSaving(true)
-        const result = await reorderLpSections(newSections.map(s => s.id))
+        const result = await reorderLpSections(pageId, newSections.map(s => s.id))
         if (!result.success) {
             alert(`並び替え失敗: ${result.error}`)
             setSections(sections)
@@ -153,14 +155,14 @@ export default function LpEditorClient({
     }
 
     const handleTitleBlur = async (id: string, title: string) => {
-        await updateLpSectionTitle(id, title)
+        await updateLpSectionTitle(pageId, id, title)
     }
 
     // 初期画像（デフォルト状態）の強制立ち上げ
     const handleForceSeed = async () => {
         if (!confirm('現在の画像をすべて削除し、初期状態の5枚の画像を復元しますか？\n（※一度消えた画像は元に戻せません）')) return
         setIsSaving(true)
-        const result = await forceSeedInitialLpSections()
+        const result = await forceSeedInitialLpSections(pageId)
         if (result.success) {
             window.location.reload()
         } else {
