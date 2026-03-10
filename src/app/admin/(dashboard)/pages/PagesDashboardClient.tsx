@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Copy, Trash2, Edit, LayoutTemplate, Settings } from 'lucide-react'
+import { Plus, Copy, Trash2, Edit, LayoutTemplate, Settings, Search, Wand2, X, Save } from 'lucide-react'
 import Link from 'next/link'
-import { getPages, createPage, deletePage, duplicateLpFromPage, duplicateFormFromPage } from '@/actions/pages'
+import { getPages, createPage, deletePage, duplicateLpFromPage, duplicateFormFromPage, updatePageSeo } from '@/actions/pages'
+import { generateSeoFromPageContent } from '@/actions/seoGenerator'
 import type { Page } from '@/types/database'
 
 export default function PagesDashboardClient() {
@@ -16,6 +17,19 @@ export default function PagesDashboardClient() {
     // 複製モーダル用
     const [duplicating, setDuplicating] = useState<{ type: 'lp' | 'form' | null, targetPageId: string }>({ type: null, targetPageId: '' })
     const [sourcePageId, setSourcePageId] = useState('')
+
+    // SEOモーダル用
+    const [seoModalPage, setSeoModalPage] = useState<Page | null>(null)
+    const [seoForm, setSeoForm] = useState<{
+        seo_title: string;
+        seo_description: string;
+        og_title: string;
+        og_description: string;
+        og_image_url: string;
+        favicon_url: string;
+    }>({ seo_title: '', seo_description: '', og_title: '', og_description: '', og_image_url: '', favicon_url: '' })
+    const [isGeneratingSeo, setIsGeneratingSeo] = useState(false)
+    const [isSavingSeo, setIsSavingSeo] = useState(false)
 
     useEffect(() => {
         loadPages()
@@ -31,13 +45,10 @@ export default function PagesDashboardClient() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!newSlug || !newTitle) return
-
-        // 簡易バリデーション (英数字ハイフンのみ)
         if (!/^[a-zA-Z0-9-]+$/.test(newSlug)) {
             alert('スラッグは半角英数字とハイフンのみ使用可能です')
             return
         }
-
         const res = await createPage(newSlug, newTitle)
         if (res.success) {
             setNewSlug('')
@@ -78,6 +89,52 @@ export default function PagesDashboardClient() {
         }
     }
 
+    const openSeoModal = (page: Page) => {
+        setSeoModalPage(page)
+        setSeoForm({
+            seo_title: page.seo_title || '',
+            seo_description: page.seo_description || '',
+            og_title: page.og_title || '',
+            og_description: page.og_description || '',
+            og_image_url: page.og_image_url || '',
+            favicon_url: page.favicon_url || '',
+        })
+    }
+
+    const handleGenerateSeo = async () => {
+        if (!seoModalPage) return
+        setIsGeneratingSeo(true)
+        const res = await generateSeoFromPageContent(seoModalPage.id)
+        if (res.success && res.data) {
+            setSeoForm(prev => ({
+                ...prev,
+                seo_title: res.data.seo_title || prev.seo_title,
+                seo_description: res.data.seo_description || prev.seo_description,
+                og_title: res.data.og_title || prev.og_title,
+                og_description: res.data.og_description || prev.og_description,
+                og_image_url: res.data.og_image_url || prev.og_image_url,
+            }))
+            alert('SEO情報を自動生成しました！必要に応じて手動で調整して保存してください。')
+        } else {
+            alert(res.error)
+        }
+        setIsGeneratingSeo(false)
+    }
+
+    const handleSaveSeo = async () => {
+        if (!seoModalPage) return
+        setIsSavingSeo(true)
+        const res = await updatePageSeo(seoModalPage.id, seoForm)
+        if (res.success) {
+            alert('SEO設定を保存しました')
+            setSeoModalPage(null)
+            loadPages() // 反映のためリロード
+        } else {
+            alert(res.error)
+        }
+        setIsSavingSeo(false)
+    }
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', color: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
@@ -95,13 +152,13 @@ export default function PagesDashboardClient() {
                 </button>
             </div>
 
-            {/* 作成フォーム（簡易インライン） */}
+            {/* 作成フォーム */}
             {isCreating && (
                 <form onSubmit={handleCreate} style={{ background: 'var(--admin-card)', border: '1px solid var(--admin-border)', padding: '24px', borderRadius: '12px', marginBottom: '24px' }}>
                     <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px' }}>新規ページを作成</h3>
                     <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>スラッグ (URL) ※英数字の例: oem-2</label>
+                            <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>スラッグ (URL)</label>
                             <input required value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="例: summer-campaign" style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
                         </div>
                         <div style={{ flex: 2 }}>
@@ -140,6 +197,74 @@ export default function PagesDashboardClient() {
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                             <button onClick={() => setDuplicating({ type: null, targetPageId: '' })} style={{ background: 'transparent', border: '1px solid var(--admin-border)', color: 'var(--color-text-muted)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>キャンセル</button>
                             <button onClick={handleDuplicate} disabled={!sourcePageId} style={{ background: 'var(--admin-accent)', padding: '8px 16px', borderRadius: '8px', color: '#fff', border: 'none', cursor: sourcePageId ? 'pointer' : 'not-allowed', opacity: sourcePageId ? 1 : 0.5 }}>コピー実行</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SEO設定モーダル */}
+            {seoModalPage && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div style={{ background: 'var(--admin-sidebar)', padding: '24px', borderRadius: '12px', border: '1px solid var(--admin-border)', width: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>SEO・OGP設定: {seoModalPage.title}</h3>
+                            <button onClick={() => setSeoModalPage(null)} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+
+                        <div style={{ background: 'rgba(129, 140, 248, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
+                            <p style={{ fontSize: '13px', color: '#a5b4fc', marginBottom: '12px' }}>
+                                プロンプトAIがLPの画像テキストやフォームの内容から、検索エンジンやSNSシェアに最適なメタタグを自動生成します。
+                            </p>
+                            <button
+                                onClick={handleGenerateSeo}
+                                disabled={isGeneratingSeo}
+                                style={{ background: 'var(--admin-accent)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: isGeneratingSeo ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center' }}
+                            >
+                                {isGeneratingSeo ? <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span> : <Wand2 size={16} />}
+                                {isGeneratingSeo ? 'AIが考え中...' : 'LPから自動生成する'}
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {/* SEO Title */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>SEO タイトル (検索エンジン用)</label>
+                                <input value={seoForm.seo_title} onChange={e => setSeoForm({ ...seoForm, seo_title: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
+                            </div>
+                            {/* SEO Description */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>SEO スニペット (検索一覧の表示説明)</label>
+                                <textarea value={seoForm.seo_description} onChange={e => setSeoForm({ ...seoForm, seo_description: e.target.value })} rows={3} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
+                            </div>
+                            <hr style={{ borderColor: 'var(--admin-border)', margin: '8px 0' }} />
+                            {/* OGP Title */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>OGP タイトル (Twitter/SNSシェア用)</label>
+                                <input value={seoForm.og_title} onChange={e => setSeoForm({ ...seoForm, og_title: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
+                            </div>
+                            {/* OGP Description */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>OGP 説明文</label>
+                                <textarea value={seoForm.og_description} onChange={e => setSeoForm({ ...seoForm, og_description: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
+                            </div>
+                            {/* OGP Image URL */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>OGP 画像URL (推奨サイズ 1200x630)</label>
+                                <input value={seoForm.og_image_url} onChange={e => setSeoForm({ ...seoForm, og_image_url: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
+                            </div>
+                            <hr style={{ borderColor: 'var(--admin-border)', margin: '8px 0' }} />
+                            {/* Favicon */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>ファビコンURL (ブラウザタブ用アイコン)</label>
+                                <input value={seoForm.favicon_url} onChange={e => setSeoForm({ ...seoForm, favicon_url: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                            <button onClick={() => setSeoModalPage(null)} style={{ background: 'transparent', border: '1px solid var(--admin-border)', color: 'var(--color-text-muted)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>キャンセル</button>
+                            <button onClick={handleSaveSeo} disabled={isSavingSeo} style={{ background: '#10b981', padding: '8px 16px', borderRadius: '8px', color: '#fff', border: 'none', cursor: isSavingSeo ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Save size={16} /> 保存する
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -197,6 +322,20 @@ export default function PagesDashboardClient() {
                                         </Link>
                                         <button onClick={() => setDuplicating({ type: 'form', targetPageId: page.id })} style={{ background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--admin-border)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }} title="他からコピー">
                                             <Copy size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* SEO管理エリア */}
+                                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fcd34d', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Search size={14} /> SEO・OGP
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => openSeoModal(page)} style={{ flex: 1, textAlign: 'center', background: '#f59e0b', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                            <Wand2 size={14} /> AI自動生成 / 編集
                                         </button>
                                     </div>
                                 </div>

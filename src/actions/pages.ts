@@ -33,6 +33,25 @@ export async function updatePage(id: string, slug: string, title: string, descri
     return { success: true }
 }
 
+export async function updatePageSeo(
+    id: string,
+    data: {
+        seo_title?: string | null
+        seo_description?: string | null
+        og_title?: string | null
+        og_description?: string | null
+        og_image_url?: string | null
+        favicon_url?: string | null
+    }
+) {
+    const supabase = await createClient()
+    const { error } = await supabase.from('pages').update(data).eq('id', id)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/')
+    revalidatePath('/', 'layout')
+    return { success: true }
+}
+
 export async function deletePage(id: string) {
     const supabase = await createClient()
     const { error } = await supabase.from('pages').delete().eq('id', id)

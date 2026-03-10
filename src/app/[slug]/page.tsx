@@ -50,6 +50,44 @@ function Footer() {
 }
 
 import { notFound } from 'next/navigation'
+import { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const { slug } = await params
+
+  try {
+    const supabase = await createClient()
+    const { data: pageData } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('slug', slug)
+      .single()
+
+    if (!pageData) return {}
+
+    return {
+      title: pageData.seo_title || pageData.title || 'フォームLP作成ツール',
+      description: pageData.seo_description || pageData.description || 'LP・フォーム',
+      openGraph: {
+        title: pageData.og_title || pageData.seo_title || pageData.title,
+        description: pageData.og_description || pageData.seo_description || pageData.description || '',
+        images: pageData.og_image_url ? [pageData.og_image_url] : [],
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: pageData.og_title || pageData.seo_title || pageData.title,
+        description: pageData.og_description || pageData.seo_description || pageData.description || '',
+        images: pageData.og_image_url ? [pageData.og_image_url] : [],
+      },
+      icons: pageData.favicon_url ? {
+        icon: pageData.favicon_url,
+      } : undefined,
+    }
+  } catch {
+    return {}
+  }
+}
 
 // メインページ
 export default async function HomePage({ params }: { params: { slug: string } }) {
