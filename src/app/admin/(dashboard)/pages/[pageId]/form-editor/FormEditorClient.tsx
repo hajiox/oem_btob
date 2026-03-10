@@ -5,6 +5,7 @@ import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, Arr
 import type { FormStep, FormQuestion, FormOption } from '@/types/database'
 import { saveFormEditorData } from '@/actions/formEditor'
 import Image from 'next/image'
+import { compressImage } from '@/lib/imageCompressor'
 
 type StepWithItems = FormStep & {
     questions: (FormQuestion & {
@@ -221,12 +222,14 @@ export default function FormEditorClient({
         }))
     }
 
-    // 画像アップロード
     const handleImageUpload = async (stepId: string, questionId: string, optionId: string, file: File) => {
         setUploadingOptionId(optionId)
         try {
+            // 画像を200-300KB (今回は250KB目標) に自動圧縮
+            const compressedFile = await compressImage(file, 250)
+
             const formData = new FormData()
-            formData.append('file', file)
+            formData.append('file', compressedFile)
             const res = await fetch('/api/upload-image', { method: 'POST', body: formData })
             const result = await res.json()
             if (!res.ok) {
@@ -520,8 +523,9 @@ function OptionRow({
                 </label>
 
                 {/* 画像アップロード */}
-                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) onImageUpload(e.target.files[0]) }} />
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) { onImageUpload(e.target.files[0]); e.target.value = ''; } }} />
                 <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                     style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold', color: '#a78bfa', cursor: 'pointer', background: 'rgba(167,139,250,0.1)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.2)', whiteSpace: 'nowrap' }}

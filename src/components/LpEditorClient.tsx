@@ -7,6 +7,7 @@ import type { LpSection } from '@/types/database'
 import { addLpSection, deleteLpSection, reorderLpSections, updateLpSectionTitle } from '@/actions/lpEditor'
 import { forceSeedInitialLpSections } from '@/actions/lpEditorForceSeed'
 import { generateImageMetadata } from '@/actions/imageMetadata'
+import { compressImage } from '@/lib/imageCompressor'
 import InteractiveForm from '@/components/InteractiveForm'
 import type { FormStepWithItems } from '@/actions/publicForm'
 
@@ -34,9 +35,10 @@ export default function LpEditorClient({
         setIsUploading(true)
         try {
             for (let i = 0; i < files.length; i++) {
-                const file = files[i]
+                const originalFile = files[i]
+                const compressedFile = await compressImage(originalFile, 250)
                 const formData = new FormData()
-                formData.append('file', file)
+                formData.append('file', compressedFile)
 
                 const res = await fetch('/api/upload-image', {
                     method: 'POST',
@@ -66,7 +68,7 @@ export default function LpEditorClient({
                     alert(`【警告】AI呼び出しエラー: ${aiErr.message}`)
                 }
 
-                const finalTitle = aiGeneratedTitle || file.name.replace(/\.[^.]+$/, '')
+                const finalTitle = aiGeneratedTitle || originalFile.name.replace(/\.[^.]+$/, '')
 
                 const result = await addLpSection(pageId, url, finalTitle)
                 if (!result.success) {
