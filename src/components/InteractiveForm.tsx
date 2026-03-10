@@ -239,7 +239,14 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                             onChange={() => handleAnswerChange(q.id, opt.id, 'radio')}
                                             style={{ display: hasImages ? 'none' : 'block', width: '16px', height: '16px', accentColor: '#818cf8' }}
                                         />
-                                        <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '14px' : '15px', textAlign: hasImages ? 'center' : 'left' } as React.CSSProperties}>{opt.label}</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: hasImages ? 'center' : 'flex-start' }}>
+                                            <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '14px' : '15px', textAlign: hasImages ? 'center' : 'left' } as React.CSSProperties}>{opt.label}</span>
+                                            {opt.description && (
+                                                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', textAlign: hasImages ? 'center' : 'left', marginTop: '2px', lineHeight: 1.4, whiteSpace: 'pre-line' } as React.CSSProperties}>
+                                                    {opt.description}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     {opt.price_modifier > 0 && (
                                         <div style={{ padding: hasImages ? '0 12px 12px' : '0', textAlign: hasImages ? 'center' : 'right' } as React.CSSProperties}>
@@ -276,7 +283,10 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                             onChange={() => handleAnswerChange(q.id, opt.id, 'checkbox')}
                                             className="w-4 h-4 accent-[var(--color-primary)] rounded"
                                         />
-                                        <span className="font-medium text-white">{opt.label}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-white">{opt.label}</span>
+                                            {opt.description && <span className="text-xs text-white/50 mt-1 whitespace-pre-line">{opt.description}</span>}
+                                        </div>
                                     </div>
                                     {opt.price_modifier > 0 && (
                                         <span className="text-sm font-bold text-[var(--color-primary)]">

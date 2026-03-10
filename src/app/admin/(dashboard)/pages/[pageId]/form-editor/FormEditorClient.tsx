@@ -430,6 +430,7 @@ export default function FormEditorClient({
                                                                 questionId={question.id}
                                                                 isUploading={uploadingOptionId === option.id}
                                                                 onLabelChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, label: val } : o) } : q) } : s))}
+                                                                onDescriptionChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, description: val } : o) } : q) } : s))}
                                                                 onPriceChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, price_modifier: val } : o) } : q) } : s))}
                                                                 onBasePriceChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, is_base_price: val } : o) } : q) } : s))}
                                                                 onImageUpload={(file) => handleImageUpload(step.id, question.id, option.id, file)}
@@ -474,6 +475,7 @@ function OptionRow({
     questionId,
     isUploading,
     onLabelChange,
+    onDescriptionChange,
     onPriceChange,
     onBasePriceChange,
     onImageUpload,
@@ -485,6 +487,7 @@ function OptionRow({
     questionId: string
     isUploading: boolean
     onLabelChange: (val: string) => void
+    onDescriptionChange: (val: string) => void
     onPriceChange: (val: number) => void
     onBasePriceChange: (val: boolean) => void
     onImageUpload: (file: File) => void
@@ -502,6 +505,14 @@ function OptionRow({
                     onChange={(e) => onLabelChange(e.target.value)}
                     placeholder="選択肢の表示名"
                     style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '13px', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none' }}
+                />
+
+                {/* 説明文 */}
+                <input
+                    value={option.description || ''}
+                    onChange={(e) => onDescriptionChange(e.target.value)}
+                    placeholder="説明文 (任意)"
+                    style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.2)', color: 'var(--color-text-muted)', fontSize: '12px', border: '1px dashed rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none' }}
                 />
 
                 {/* 金額 */}
