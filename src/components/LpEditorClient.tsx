@@ -7,8 +7,16 @@ import type { LpSection } from '@/types/database'
 import { addLpSection, deleteLpSection, reorderLpSections, updateLpSectionTitle } from '@/actions/lpEditor'
 import { forceSeedInitialLpSections } from '@/actions/lpEditorForceSeed'
 import { generateImageMetadata } from '@/actions/imageMetadata'
+import InteractiveForm from '@/components/InteractiveForm'
+import type { FormStepWithItems } from '@/actions/publicForm'
 
-export default function LpEditorClient({ initialSections }: { initialSections: LpSection[] }) {
+export default function LpEditorClient({
+    initialSections,
+    initialFormSteps
+}: {
+    initialSections: LpSection[]
+    initialFormSteps: FormStepWithItems[]
+}) {
     const [sections, setSections] = useState<LpSection[]>(initialSections)
     const [isUploading, setIsUploading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -382,15 +390,17 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
                     <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>スマートフォン表示のイメージ</p>
                 </div>
                 {/* プレビュー本体 (スクロール領域) */}
-                <div style={{ flex: 1, overflowY: 'auto', background: '#fff', position: 'relative' }}>
-                    {sections.length === 0 ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999', fontSize: '14px' }}>
-                            画像がありません
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                            {sections.map((section, i) => (
-                                <div key={`preview-${section.id}`} style={{ width: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, overflowY: 'auto', background: '#f3f4f6', position: 'relative' }}>
+
+                    {/* 画像エリア (実際のLPと同じマージンや角丸を適用) */}
+                    <div style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
+                        {sections.length === 0 ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', width: '100%', color: '#999', fontSize: '14px', border: '2px dashed #ccc', borderRadius: '16px' }}>
+                                画像がありません
+                            </div>
+                        ) : (
+                            sections.map((section, i) => (
+                                <div key={`preview-${section.id}`} style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)' }}>
                                     {section.image_url ? (
                                         /* eslint-disable-next-line @next/next/no-img-element */
                                         <img
@@ -399,14 +409,45 @@ export default function LpEditorClient({ initialSections }: { initialSections: L
                                             style={{ width: '100%', height: 'auto', display: 'block' }}
                                         />
                                     ) : (
-                                        <div style={{ width: '100%', padding: '40px 0', background: '#eee', textAlign: 'center', color: '#999' }}>
+                                        <div style={{ width: '100%', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e5e7eb', color: '#9ca3af' }}>
                                             No Image
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                            ))
+                        )}
+                    </div>
+
+                    {/* フォームセクションのプレビュー */}
+                    <section style={{
+                        width: '100%',
+                        padding: '64px 16px',
+                        position: 'relative',
+                        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #1e1b4b 100%)',
+                        overflow: 'hidden',
+                    }}>
+                        {/* 背景装飾 */}
+                        <div style={{
+                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(236,72,153,0.1) 0%, transparent 50%)',
+                            pointerEvents: 'none',
+                        }} />
+
+                        <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative', zIndex: 1 }}>
+                            <div style={{ display: 'inline-block', padding: '6px 16px', borderRadius: '9999px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#a5b4fc', letterSpacing: '0.05em' }}>✨ 簡単3ステップ</span>
+                            </div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#fff', marginBottom: '8px', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
+                                今すぐ無料で<br />
+                                <span style={{ background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>自動お見積もり</span>
+                            </h2>
                         </div>
-                    )}
+
+                        {/* モバイル幅向けに少しスケールさせるなど */}
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <InteractiveForm steps={initialFormSteps} />
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>

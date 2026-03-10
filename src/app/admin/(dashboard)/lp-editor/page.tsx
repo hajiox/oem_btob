@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getLpSections, seedInitialLpSections } from '@/actions/lpEditor'
+import { getActiveForm } from '@/actions/publicForm'
 import LpEditorClient from '@/components/LpEditorClient'
 
 export const metadata: Metadata = {
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
 
 export default async function LpEditorPage() {
     let sections = await getLpSections()
+    let formSteps = await getActiveForm()
 
     // DBが空の場合、自動的に現在ハードコードされている初期画像をDBにシードする
     if (sections.length === 0) {
@@ -18,5 +20,5 @@ export default async function LpEditorPage() {
         }
     }
 
-    return <LpEditorClient initialSections={sections} />
+    return <LpEditorClient initialSections={sections} initialFormSteps={formSteps || []} />
 }
