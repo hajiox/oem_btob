@@ -219,7 +219,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     }}
                                 >
                                     {hasImages && opt.image_url && (
-                                        <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
+                                        <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
                                             <img
                                                 src={opt.image_url}
                                                 alt={opt.label}
