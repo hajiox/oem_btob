@@ -508,11 +508,12 @@ function OptionRow({
                 />
 
                 {/* 説明文 */}
-                <input
+                <textarea
                     value={option.description || ''}
                     onChange={(e) => onDescriptionChange(e.target.value)}
-                    placeholder="説明文 (任意)"
-                    style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.2)', color: 'var(--color-text-muted)', fontSize: '12px', border: '1px dashed rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none' }}
+                    placeholder="説明文 (任意)&#13;&#10;改行して入力できます"
+                    rows={2}
+                    style={{ flex: 1, minWidth: '150px', minHeight: '40px', background: 'rgba(0,0,0,0.2)', color: 'var(--color-text-muted)', fontSize: '12px', border: '1px dashed rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none', resize: 'vertical', lineHeight: 1.4 }}
                 />
 
                 {/* 金額 */}
