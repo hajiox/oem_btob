@@ -44,9 +44,8 @@ function StatCard({
     )
 }
 
-// ステータスバッジ (表示専用、今回はLeadStatusSelectに置き換えるため不要になりますが、念のため残すか削除します)
-// ここでは削除して LeadStatusSelect をインポートします。
-import { LeadStatusSelect } from '@/components/admin/LeadStatusSelect'
+// ここでは LeadRow をインポートします。（LeadStatusSelectはLeadRow内で呼ばれます）
+import { LeadRow } from '@/components/admin/LeadRow'
 
 export default async function DashboardPage() {
     let leads: Lead[] = []
@@ -156,30 +155,17 @@ export default async function DashboardPage() {
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
-                                    <th className="px-6 py-3 font-medium">会社名</th>
-                                    <th className="px-6 py-3 font-medium">担当者</th>
-                                    <th className="px-6 py-3 font-medium">メール</th>
-                                    <th className="px-6 py-3 font-medium">見積額</th>
-                                    <th className="px-6 py-3 font-medium">ステータス</th>
-                                    <th className="px-6 py-3 font-medium">日時</th>
+                                    <th className="px-6 py-4 font-medium">会社名</th>
+                                    <th className="px-6 py-4 font-medium">担当者</th>
+                                    <th className="px-6 py-4 font-medium">メール</th>
+                                    <th className="px-6 py-4 font-medium">見積額</th>
+                                    <th className="px-6 py-4 font-medium">ステータス</th>
+                                    <th className="px-6 py-4 font-medium">日時</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y" style={{ borderColor: 'var(--admin-border)' }}>
                                 {leads.map((lead) => (
-                                    <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-6 py-4 text-sm font-medium text-white">{lead.company_name}</td>
-                                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{lead.contact_name}</td>
-                                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{lead.email}</td>
-                                        <td className="px-6 py-4 text-sm font-medium text-white">
-                                            ¥{(lead.estimated_total_price || 0).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} />
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
-                                            {new Date(lead.created_at).toLocaleDateString('ja-JP')}
-                                        </td>
-                                    </tr>
+                                    <LeadRow key={lead.id} lead={lead} />
                                 ))}
                             </tbody>
                         </table>
