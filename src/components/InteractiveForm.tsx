@@ -347,8 +347,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                         value={val}
                         onChange={(e) => handleAnswerChange(q.id, e.target.value, 'textarea')}
                         rows={4}
-                        className="w-full mt-4 bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors resize-none"
-                        placeholder={q.question_text + "を入力"}
+                        className="w-full mt-4 bg-[rgba(15,23,42,0.4)] border border-white/20 rounded-xl px-5 py-4 text-[15px] text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors resize-none shadow-inner"
                         required={q.is_required}
                     />
                 )
@@ -462,8 +461,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                         type="text"
                         value={val}
                         onChange={(e) => handleAnswerChange(q.id, e.target.value, 'text')}
-                        className="w-full mt-4 bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
-                        placeholder={q.question_text + "を入力"}
+                        className="w-full mt-4 bg-[rgba(15,23,42,0.4)] border border-white/20 rounded-xl px-5 py-4 text-[15px] text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors shadow-inner"
                         required={q.is_required}
                     />
                 )
