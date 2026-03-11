@@ -774,25 +774,47 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px', fontWeight: 600 }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
                                     <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします。すべて税込表記です。</div>
 
-                                    {/* 単価・販売シミュレーション */}
+                                    {/* 単価・販売プランシミュレーション */}
                                     <div style={{
                                         marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)',
-                                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left'
+                                        display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left'
                                     }}>
-                                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
                                                 <span>📦</span> 1個あたり仕入原価
                                             </div>
                                             <div style={{ fontSize: '28px', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
                                                 ¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}
                                             </div>
                                         </div>
-                                        <div style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(217,119,6,0.1))', padding: '20px', borderRadius: '16px', border: '1px solid rgba(234,179,8,0.3)' }}>
-                                            <div style={{ fontSize: '13px', color: '#fcd34d', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <span>💡</span> 想定売価 <span style={{ fontSize: '11px', opacity: 0.8, fontWeight: 500 }}>(利益率30%)</span>
+
+                                        <div style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(217,119,6,0.1))', padding: '24px', borderRadius: '16px', border: '1px solid rgba(234,179,8,0.3)' }}>
+                                            <div style={{ fontSize: '15px', color: '#fcd34d', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                                                <span>💡</span> 販売プランシミュレーション
                                             </div>
-                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.02em' }}>
-                                                ¥{Math.ceil((estimatedPrice / (oemQuantity || 1)) / 0.7).toLocaleString()}
+                                            
+                                            <div style={{ display: 'grid', gap: '12px' }}>
+                                                {[30, 40, 50].map(margin => {
+                                                    const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
+                                                    const sellingPrice = Math.ceil(unitCost / (1 - margin / 100))
+                                                    const profit = sellingPrice - unitCost
+                                                    
+                                                    return (
+                                                        <div key={margin} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', alignItems: 'center', gap: '16px', padding: '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.15)', padding: '6px 0', borderRadius: '6px', textAlign: 'center' }}>
+                                                                利益 {margin}%
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>想定売価</div>
+                                                                <div style={{ fontSize: '20px', fontWeight: 700, color: '#fff' }}>¥{sellingPrice.toLocaleString()}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>1個あたり利益</div>
+                                                                <div style={{ fontSize: '20px', fontWeight: 700, color: '#4ade80' }}>+¥{profit.toLocaleString()}</div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     </div>
