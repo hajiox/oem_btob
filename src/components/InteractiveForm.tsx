@@ -12,9 +12,11 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [errorData, setErrorData] = useState<string | null>(null)
-    // steps.length = 結果画面, steps.length + 1 = お客様情報
-    const RESULT_STEP = steps.length
-    const CONTACT_STEP = steps.length + 1
+    const [oemQuantity, setOemQuantity] = useState<number>(400)
+
+    // 0 = OEM数量, 1 ~ steps.length = フォーム, steps.length + 1 = 結果画面, steps.length + 2 = お客様情報
+    const RESULT_STEP = steps.length + 1
+    const CONTACT_STEP = steps.length + 2
 
     // ユーザーの入力状態
     const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -27,7 +29,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     })
 
     // === 金額計算ロジック ===
-    const estimatedPrice = useMemo(() => {
+    const unitPrice = useMemo(() => {
         let total = 0
         let hasBasePrice = false
 
@@ -62,6 +64,9 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
         return total
     }, [answers, steps])
 
+    const estimatedPrice = unitPrice * oemQuantity
+    const estimatedTax = Math.round(estimatedPrice * 10 / 110)
+
     // === 条件分岐：質問が表示されるかどうか ===
     const isQuestionVisible = (q: any) => {
         if (!q.depends_on_option_id) return true // 条件なし → 常に表示
@@ -80,8 +85,11 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
     // === バリデーション ===
     const isCurrentStepValid = () => {
-        if (currentStep >= steps.length) return false
-        const currentQuestions = steps[currentStep].questions
+        if (currentStep === 0) {
+            return oemQuantity >= 400 && oemQuantity <= 800
+        }
+        if (currentStep > steps.length) return false
+        const currentQuestions = steps[currentStep - 1].questions
 
         for (const q of currentQuestions) {
             // 非表示の質問はスキップ
@@ -109,7 +117,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
     // === 操作ハンドラ ===
     const handleNext = () => {
-        if (currentStep < steps.length && isCurrentStepValid()) {
+        if (currentStep <= steps.length && isCurrentStepValid()) {
             setDirection(1)
             setCurrentStep(prev => prev + 1) // 結果画面(RESULT_STEP)まで進む
         }
@@ -154,14 +162,17 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
         setErrorData(null)
 
         // 送信用のデータ構造を作成
-        const selectedOptionsDetails = Object.entries(answers).map(([qId, val]) => {
-            const q = steps.flatMap(s => s.questions).find(q => q.id === qId)
-            return {
-                question: q?.question_text || qId,
-                answer: val,
-                type: q?.input_type
-            }
-        })
+        const selectedOptionsDetails = [
+            { question: 'OEM製造数', answer: `${oemQuantity}個`, type: 'number' },
+            ...Object.entries(answers).map(([qId, val]) => {
+                const q = steps.flatMap(s => s.questions).find(q => q.id === qId)
+                return {
+                    question: q?.question_text || qId,
+                    answer: val,
+                    type: q?.input_type
+                }
+            })
+        ]
 
         const res = await submitLead({
             companyName: contactInfo.companyName,
@@ -182,7 +193,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     }
 
     // プログレスバー
-    const progressPercent = Math.round((currentStep / (steps.length || 1)) * 100)
+    const progressPercent = Math.round((currentStep / (steps.length + 1 || 1)) * 100)
 
     // === レンダリング部品 ===
     const renderQuestionInput = (q: any) => {
@@ -441,8 +452,9 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                         担当者より【3営業日以内】に折り返しご連絡させていただきます。
                     </p>
                     <div className="inline-block bg-white/5 border border-white/10 rounded-2xl px-6 py-4">
-                        <div className="text-sm text-white/50 mb-1">概算お見積り金額</div>
+                        <div className="text-sm text-white/50 mb-1">概算お見積り金額 ({oemQuantity}個)</div>
                         <div className="text-2xl font-bold text-[var(--color-primary)]">¥{estimatedPrice.toLocaleString()}〜</div>
+                        <div className="text-xs text-white/40 mt-1">(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
                     </div>
                 </div>
             </div>
@@ -466,9 +478,28 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
                 {/* 上部：ステップインジケーター（モバイル対応のシンプルバー） */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{
+                        flex: 1, padding: '16px 8px', textAlign: 'center',
+                        borderBottom: currentStep === 0 ? '3px solid #818cf8' : currentStep > 0 ? '3px solid rgba(129,140,248,0.3)' : '3px solid transparent',
+                        transition: 'all 0.3s',
+                    }}>
+                        <div style={{
+                            width: '28px', height: '28px', borderRadius: '50%', margin: '0 auto 6px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '12px', fontWeight: 700,
+                            background: currentStep === 0 ? '#818cf8' : currentStep > 0 ? 'rgba(129,140,248,0.2)' : 'rgba(255,255,255,0.08)',
+                            color: currentStep === 0 ? '#fff' : currentStep > 0 ? '#818cf8' : 'rgba(255,255,255,0.4)',
+                            border: currentStep === 0 ? 'none' : currentStep > 0 ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                        }}>
+                            {currentStep > 0 ? '✓' : '1'}
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: currentStep === 0 ? '#fff' : currentStep > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)' }}>製造数</span>
+                    </div>
+
                     {steps.map((s, idx) => {
-                        const isActive = idx === currentStep
-                        const isPast = idx < currentStep
+                        const stepIndex = idx + 1
+                        const isActive = stepIndex === currentStep
+                        const isPast = stepIndex < currentStep
                         return (
                             <div key={s.id} style={{
                                 flex: 1, padding: '16px 8px', textAlign: 'center',
@@ -483,7 +514,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.4)',
                                     border: isActive ? 'none' : isPast ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)',
                                 }}>
-                                    {isPast ? '✓' : idx + 1}
+                                    {isPast ? '✓' : stepIndex + 1}
                                 </div>
                                 <span style={{ fontSize: '11px', fontWeight: 600, color: isActive ? '#fff' : isPast ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)' }}>{s.step_title}</span>
                             </div>
@@ -517,10 +548,15 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                         background: 'rgba(99,102,241,0.08)',
                         borderBottom: '1px solid rgba(255,255,255,0.05)',
                     }}>
-                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り</span>
-                        <span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                            ¥{estimatedPrice.toLocaleString()}〜
-                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({oemQuantity}個)</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                            <span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                ¥{estimatedPrice.toLocaleString()}〜
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                                (うち消費税 ¥{estimatedTax.toLocaleString()})
+                            </span>
+                        </div>
                     </div>
                 )}
 
@@ -528,8 +564,47 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                 <div style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px' }}>
 
                     <AnimatePresence mode="wait" initial={false}>
+                        {/* ====== OEM数量ステップ ====== */}
+                        {currentStep === 0 && (
+                            <motion.div
+                                key="step-oem-quantity"
+                                initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
+                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                style={{ flex: 1 }}
+                            >
+                                <div style={{ marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2>
+                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>まずはご希望の製造数をご入力ください（400個〜800個）</p>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                                    <div style={{ position: 'relative', zIndex: 10 }}>
+                                        <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            製造予定数量
+                                            <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>
+                                        </h4>
+                                        <div className="flex items-center gap-2 max-w-xs">
+                                            <input
+                                                type="number"
+                                                value={oemQuantity}
+                                                onChange={(e) => setOemQuantity(Number(e.target.value))}
+                                                min={400}
+                                                max={800}
+                                                className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors text-right text-lg font-bold"
+                                            />
+                                            <span className="text-[var(--color-text-muted)] font-medium">個</span>
+                                        </div>
+                                        {(oemQuantity < 400 || oemQuantity > 800) && (
+                                            <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
                         {/* ====== 通常の質問ステップ ====== */}
-                        {currentStep < steps.length && (
+                        {currentStep > 0 && currentStep <= steps.length && (
                             <motion.div
                                 key={`step-${currentStep}`}
                                 initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
@@ -539,14 +614,14 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 style={{ flex: 1 }}
                             >
                                 <div style={{ marginBottom: '32px' }}>
-                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{steps[currentStep]?.step_title}</h2>
-                                    {steps[currentStep]?.step_description && (
-                                        <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{steps[currentStep].step_description}</p>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{steps[currentStep - 1]?.step_title}</h2>
+                                    {steps[currentStep - 1]?.step_description && (
+                                        <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{steps[currentStep - 1].step_description}</p>
                                     )}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                                    {steps[currentStep]?.questions
+                                    {steps[currentStep - 1]?.questions
                                         .filter(q => isQuestionVisible(q))
                                         .map((q, idx) => (
                                             <div key={q.id} style={{ position: 'relative', zIndex: 10 }}>
@@ -589,11 +664,12 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))',
                                     border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px',
                                 }}>
-                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', fontWeight: 500 }}>概算お見積り金額</div>
-                                    <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em' }}>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', fontWeight: 500 }}>概算お見積り金額 ({oemQuantity}個)</div>
+                                    <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '8px' }}>
                                         ¥{estimatedPrice.toLocaleString()}<span style={{ fontSize: '20px' }}>〜</span>
                                     </div>
-                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>
+                                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px', fontWeight: 600 }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
+                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします。すべて税込表記です。</div>
                                 </div>
 
                                 {/* 選択内容サマリー */}
