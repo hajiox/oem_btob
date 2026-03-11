@@ -199,13 +199,14 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
         // 送信用のデータ構造を作成
         const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
-        const simulatedSalesPrice = Math.ceil(unitCost / 0.7)
 
         const selectedOptionsDetails = [
             { question: 'OEM製造数', answer: `${oemQuantity}個`, type: 'number' },
             { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
             { question: '1個あたり仕入原価(税抜)', answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
-            { question: '想定売価 (利益率30%)', answer: `¥${simulatedSalesPrice.toLocaleString()}`, type: 'number' },
+            { question: '想定売価シミュレーション', answer: `利益率30%: ¥${Math.ceil(unitCost / 0.7).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.7) - unitCost).toLocaleString()})
+利益率40%: ¥${Math.ceil(unitCost / 0.6).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.6) - unitCost).toLocaleString()})
+利益率50%: ¥${Math.ceil(unitCost / 0.5).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.5) - unitCost).toLocaleString()})`, type: 'text' },
             ...Object.entries(answers)
                 .map(([qId, val]) => {
                     const q = steps.flatMap(s => s.questions).find(q => q.id === qId)
