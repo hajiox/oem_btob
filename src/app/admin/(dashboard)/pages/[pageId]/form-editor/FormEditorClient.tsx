@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, Link2, X } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, Link2, X, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import type { FormStep, FormQuestion, FormOption } from '@/types/database'
 import { saveFormEditorData } from '@/actions/formEditor'
 import Image from 'next/image'
@@ -20,11 +21,13 @@ export default function FormEditorClient({
     initialQuestions,
     initialOptions,
     pageId,
+    slug,
 }: {
     initialSteps: FormStep[]
     initialQuestions: FormQuestion[]
     initialOptions: FormOption[]
     pageId: string
+    slug: string
 }) {
     const [steps, setSteps] = useState<StepWithItems[]>(() => {
         return initialSteps.map(step => ({
@@ -281,18 +284,28 @@ export default function FormEditorClient({
                         BTO見積もりフォームのステップ・質問・金額ロジックを設定します
                     </p>
                 </div>
-                <button
-                    onClick={handleSave}
-                    style={{ ...S.btn, background: 'var(--admin-accent)', color: '#fff', padding: '12px 24px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(99,102,241,0.3)', minWidth: '160px', justifyContent: 'center' }}
-                    disabled={isSaving}
-                >
-                    {isSaving ? (
-                        <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                    ) : (
-                        <Save style={{ width: '20px', height: '20px' }} />
-                    )}
-                    {isSaving ? '保存中...' : '変更を保存'}
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <Link
+                        href={`/${slug}`}
+                        target="_blank"
+                        style={{ ...S.btn, background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '12px 24px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.2)', textDecoration: 'none' }}
+                    >
+                        <ExternalLink style={{ width: '20px', height: '20px' }} />
+                        完成ページを見る
+                    </Link>
+                    <button
+                        onClick={handleSave}
+                        style={{ ...S.btn, background: 'var(--admin-accent)', color: '#fff', padding: '12px 24px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(99,102,241,0.3)', minWidth: '160px', justifyContent: 'center' }}
+                        disabled={isSaving}
+                    >
+                        {isSaving ? (
+                            <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                        ) : (
+                            <Save style={{ width: '20px', height: '20px' }} />
+                        )}
+                        {isSaving ? '保存中...' : '変更を保存'}
+                    </button>
+                </div>
             </div>
 
             {steps.length === 0 ? (

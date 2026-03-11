@@ -11,6 +11,14 @@ export default async function FormEditorPage({ params }: { params: { pageId: str
     const { pageId } = await params
     const supabase = await createClient()
 
+    // ページからslugを取得
+    const { data: pageData } = await supabase
+        .from('pages')
+        .select('slug')
+        .eq('id', pageId)
+        .single()
+    const slug = pageData?.slug || ''
+
     // 1. ステップを取得
     const { data: stepsData } = await supabase
         .from('form_steps')
@@ -42,6 +50,7 @@ export default async function FormEditorPage({ params }: { params: { pageId: str
             initialQuestions={questions}
             initialOptions={options}
             pageId={pageId}
+            slug={slug}
         />
     )
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getLpSections, seedInitialLpSections } from '@/actions/lpEditor'
 import { getActiveForm } from '@/actions/publicForm'
 import LpEditorClient from '@/components/LpEditorClient'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
     title: 'LPエディタ',
@@ -12,6 +13,14 @@ export default async function LpEditorPage({ params }: { params: { pageId: strin
     let sections = await getLpSections(pageId)
     let formSteps = await getActiveForm(pageId)
 
+    const supabase = await createClient()
+    const { data: pageData } = await supabase
+        .from('pages')
+        .select('slug')
+        .eq('id', pageId)
+        .single()
+    const slug = pageData?.slug || ''
+
     // DBが空の場合、自動的に現在ハードコードされている初期画像をDBにシードする
     if (sections.length === 0) {
         const result = await seedInitialLpSections(pageId)
@@ -21,5 +30,5 @@ export default async function LpEditorPage({ params }: { params: { pageId: strin
         }
     }
 
-    return <LpEditorClient initialSections={sections} initialFormSteps={formSteps || []} pageId={pageId} />
+    return <LpEditorClient initialSections={sections} formSteps={formSteps || []} pageId={pageId} slug={slug} />
 }

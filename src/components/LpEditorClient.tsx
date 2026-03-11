@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Loader2, ImageIcon } from 'lucide-react'
+import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Loader2, ImageIcon, ExternalLink } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import type { LpSection } from '@/types/database'
 import { addLpSection, deleteLpSection, reorderLpSections, updateLpSectionTitle } from '@/actions/lpEditor'
 import { forceSeedInitialLpSections } from '@/actions/lpEditorForceSeed'
@@ -13,12 +14,14 @@ import type { FormStepWithItems } from '@/actions/publicForm'
 
 export default function LpEditorClient({
     initialSections,
-    initialFormSteps,
-    pageId
+    formSteps,
+    pageId,
+    slug
 }: {
     initialSections: LpSection[]
-    initialFormSteps: FormStepWithItems[]
+    formSteps: FormStepWithItems[]
     pageId: string
+    slug: string
 }) {
     const [sections, setSections] = useState<LpSection[]>(initialSections)
     const [isUploading, setIsUploading] = useState(false)
@@ -194,6 +197,19 @@ export default function LpEditorClient({
                                 保存中...
                             </span>
                         )}
+                        <Link
+                            href={`/${slug}`}
+                            target="_blank"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                padding: '10px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)',
+                                background: 'rgba(255,255,255,0.1)', color: '#fff', textDecoration: 'none',
+                                fontSize: '13px', fontWeight: 600,
+                            }}
+                        >
+                            <ExternalLink size={14} />
+                            完成ページを見る
+                        </Link>
                         <button
                             onClick={handleForceSeed}
                             disabled={isSaving || isUploading}
@@ -449,7 +465,7 @@ export default function LpEditorClient({
 
                         {/* モバイル幅向けに少しスケールさせるなど */}
                         <div style={{ position: 'relative', zIndex: 1 }}>
-                            <InteractiveForm steps={initialFormSteps} />
+                            <InteractiveForm steps={formSteps} />
                         </div>
                     </section>
                 </div>
