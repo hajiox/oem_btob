@@ -3,11 +3,26 @@
 import React, { useState } from 'react'
 import type { Lead } from '@/types/database'
 import { LeadStatusSelect } from './LeadStatusSelect'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { deleteLead } from '@/actions/dashboard'
 
 export function LeadRow({ lead }: { lead: Lead }) {
     const [isExpanded, setIsExpanded] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
     const options = lead.selected_options as any[] | null
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation() // 行の展開を防ぐ
+        if (!window.confirm('本当にこのリードを削除しますか？\n（この操作は取り消せません）')) return
+
+        setIsDeleting(true)
+        const res = await deleteLead(lead.id)
+        if (!res.success) {
+            alert(res.error || '削除に失敗しました')
+            setIsDeleting(false)
+        }
+        // 成功した場合は revalidatePath により自動で画面が更新されます
+    }
 
     return (
         <React.Fragment>
@@ -20,7 +35,9 @@ export function LeadRow({ lead }: { lead: Lead }) {
                         <button className="text-[var(--color-primary)] opacity-70 hover:opacity-100 transition-opacity">
                             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         </button>
-                        {lead.company_name}
+                        <span className={isDeleting ? 'opacity-50 line-through' : ''}>
+                            {lead.company_name}
+                        </span>
                     </div>
                 </td>
                 <td className="px-6 py-6 text-sm text-[var(--color-text-muted)]">{lead.contact_name}</td>
@@ -32,7 +49,17 @@ export function LeadRow({ lead }: { lead: Lead }) {
                     <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} />
                 </td>
                 <td className="px-6 py-6 text-sm text-[var(--color-text-muted)]">
-                    {new Date(lead.created_at).toLocaleDateString('ja-JP')}
+                    <div className="flex items-center justify-between">
+                        {new Date(lead.created_at).toLocaleDateString('ja-JP')}
+                        <button
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="p-2 text-red-400/70 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors ml-4"
+                            title="このリードを削除"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
                 </td>
             </tr>
             {isExpanded && (
