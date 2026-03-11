@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 
@@ -310,22 +310,36 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                     </div>
                 )
 
-            case 'select':
+            case 'select': {
+                const selectedOpt = q.options.find((o: any) => o.id === val)
                 return (
-                    <select
-                        value={val}
-                        onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select')}
-                        className="w-full mt-4 bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none"
-                        required={q.is_required}
-                    >
-                        <option value="" disabled className="text-black">選択してください</option>
-                        {q.options.map((opt: any) => (
-                            <option value={opt.id} key={opt.id} className="text-black">
-                                {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier}円)` : ''}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="mt-4 space-y-3">
+                        <div className="relative">
+                            <select
+                                value={val}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select')}
+                                className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none cursor-pointer"
+                                required={q.is_required}
+                            >
+                                <option value="" disabled className="text-black">選択してください</option>
+                                {q.options.map((opt: any) => (
+                                    <option value={opt.id} key={opt.id} className="text-black">
+                                        {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+                        </div>
+                        {selectedOpt?.description && (
+                            <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-xl p-4 relative overflow-hidden">
+                                <p className="text-[13px] text-white/90 leading-relaxed whitespace-pre-line break-words relative z-10">
+                                    {selectedOpt.description}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 )
+            }
 
             case 'textarea':
                 return (
@@ -355,61 +369,91 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                     </div>
                 )
 
-            case 'select_text':
+            case 'select_text': {
+                const selectedOptText = q.options.find((o: any) => o.id === val?.selected)
                 return (
-                    <div className="mt-4 space-y-3">
-                        <select
-                            value={val?.selected || ''}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_selected')}
-                            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none"
-                            required={q.is_required}
-                        >
-                            <option value="" disabled className="text-black">選択してください</option>
-                            {q.options.map((opt: any) => (
-                                <option value={opt.id} key={opt.id} className="text-black">
-                                    {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
-                                </option>
-                            ))}
-                        </select>
-                        <input
-                            type="text"
-                            value={val?.extra || ''}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_extra')}
-                            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
-                            placeholder="詳細をご入力ください"
-                        />
+                    <div className="mt-4 space-y-4 bg-white/5 border border-white/10 p-5 rounded-2xl">
+                        <div className="relative">
+                            <select
+                                value={val?.selected || ''}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_selected')}
+                                className="w-full bg-[rgba(15,23,42,0.6)] border border-white/20 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none cursor-pointer font-medium"
+                                required={q.is_required}
+                            >
+                                <option value="" disabled className="text-black">項目を選択してください</option>
+                                {q.options.map((opt: any) => (
+                                    <option value={opt.id} key={opt.id} className="text-black">
+                                        {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+                        </div>
+
+                        {selectedOptText?.description && (
+                            <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-xl p-4">
+                                <p className="text-[13.5px] text-white/90 leading-relaxed whitespace-pre-line break-words">
+                                    {selectedOptText.description}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="pt-1">
+                            <input
+                                type="text"
+                                value={val?.extra || ''}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_extra')}
+                                className="w-full bg-[rgba(15,23,42,0.6)] border border-white/20 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                                placeholder="上記に関する詳細テキストをご入力ください"
+                            />
+                        </div>
                     </div>
                 )
+            }
 
-            case 'select_number':
+            case 'select_number': {
+                const selectedOptNum = q.options.find((o: any) => o.id === val?.selected)
                 return (
-                    <div className="mt-4 space-y-3">
-                        <select
-                            value={val?.selected || ''}
-                            onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_number_selected')}
-                            className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none"
-                            required={q.is_required}
-                        >
-                            <option value="" disabled className="text-black">選択してください</option>
-                            {q.options.map((opt: any) => (
-                                <option value={opt.id} key={opt.id} className="text-black">
-                                    {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="flex items-center gap-2 max-w-xs">
+                    <div className="mt-4 space-y-4 bg-white/5 border border-white/10 p-5 rounded-2xl">
+                        <div className="relative">
+                            <select
+                                value={val?.selected || ''}
+                                onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_number_selected')}
+                                className="w-full bg-[rgba(15,23,42,0.6)] border border-white/20 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none cursor-pointer font-medium"
+                                required={q.is_required}
+                            >
+                                <option value="" disabled className="text-black">項目を選択してください</option>
+                                {q.options.map((opt: any) => (
+                                    <option value={opt.id} key={opt.id} className="text-black">
+                                        {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 pointer-events-none" />
+                        </div>
+
+                        {selectedOptNum?.description && (
+                            <div className="bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-xl p-4">
+                                <p className="text-[13.5px] text-white/90 leading-relaxed whitespace-pre-line break-words">
+                                    {selectedOptNum.description}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-3 pt-1">
                             <input
                                 type="number"
                                 value={val?.extra || ''}
                                 onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_number_extra')}
-                                className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors text-right"
+                                className="w-2/3 max-w-[160px] bg-[rgba(15,23,42,0.6)] border border-white/20 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors text-right font-medium text-lg"
                                 placeholder="0"
                                 min="0"
                             />
-                            <span className="text-[var(--color-text-muted)] font-medium">個</span>
+                            <span className="text-[15px] text-white/70 font-medium">個</span>
                         </div>
                     </div>
                 )
+            }
 
             case 'text':
             default:
