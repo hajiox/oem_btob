@@ -71,10 +71,10 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     const isQuestionVisible = (q: any) => {
         if (!q.depends_on_option_id) return true // 条件なし → 常に表示
         // 全回答の中に、依存先optionが選択されているか確認
-        for (const [, answer] of Object.entries(answers)) {
+        for (const [qId, answer] of Object.entries(answers)) {
             // 複合入力タイプ（select_text/select_number）の場合はselectedを参照
             if (answer && typeof answer === 'object' && !Array.isArray(answer) && answer.selected) {
-                if (answer.selected === q.depends_on_option_id) return true
+                 if (answer.selected === q.depends_on_option_id) return true
             } else {
                 const selectedIds = Array.isArray(answer) ? answer : [answer]
                 if (selectedIds.includes(q.depends_on_option_id)) return true
@@ -89,7 +89,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
             return oemQuantity >= 400 && oemQuantity <= 800
         }
         if (currentStep > steps.length) return false
-        const currentQuestions = steps[currentStep - 1].questions
+        const currentQuestions = steps[currentStep - 1]?.questions || []
 
         for (const q of currentQuestions) {
             // 非表示の質問はスキップ
@@ -116,16 +116,52 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     }
 
     // === 操作ハンドラ ===
+    const getVisibleQuestionsOfStep = (stepIndex: number) => {
+        if (stepIndex === 0) return [] // step 0 is OEM quantity
+        if (stepIndex > steps.length) return []
+        return steps[stepIndex - 1].questions.filter(q => isQuestionVisible(q))
+    }
+
     const handleNext = () => {
         if (currentStep <= steps.length && isCurrentStepValid()) {
             setDirection(1)
-            setCurrentStep(prev => prev + 1) // 結果画面(RESULT_STEP)まで進む
+            let nextStep = currentStep + 1
+            while (nextStep <= steps.length) {
+                if (getVisibleQuestionsOfStep(nextStep).length > 0) {
+                    break
+                }
+                nextStep++
+            }
+            setCurrentStep(nextStep)
         }
     }
 
     const handlePrev = () => {
         setDirection(-1)
-        setCurrentStep(prev => Math.max(prev - 1, 0))
+        if (currentStep === CONTACT_STEP) {
+            setCurrentStep(RESULT_STEP)
+            return
+        }
+        if (currentStep === RESULT_STEP) {
+            let prevStep = steps.length
+            while (prevStep > 0) {
+                if (getVisibleQuestionsOfStep(prevStep).length > 0) {
+                    break
+                }
+                prevStep--
+            }
+            setCurrentStep(Math.max(prevStep, 0))
+            return
+        }
+        
+        let prevStep = currentStep - 1
+        while (prevStep > 0) {
+            if (getVisibleQuestionsOfStep(prevStep).length > 0) {
+                break
+            }
+            prevStep--
+        }
+        setCurrentStep(Math.max(prevStep, 0))
     }
 
     // 仮申込ボタン → お客様情報へ
@@ -162,16 +198,41 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
         setErrorData(null)
 
         // 送信用のデータ構造を作成
+        const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
+        const simulatedSalesPrice = Math.ceil(unitCost / 0.7)
+
         const selectedOptionsDetails = [
             { question: 'OEM製造数', answer: `${oemQuantity}個`, type: 'number' },
-            ...Object.entries(answers).map(([qId, val]) => {
-                const q = steps.flatMap(s => s.questions).find(q => q.id === qId)
-                return {
-                    question: q?.question_text || qId,
-                    answer: val,
-                    type: q?.input_type
-                }
-            })
+            { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
+            { question: '1個あたり仕入原価(税抜)', answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
+            { question: '想定売価 (利益率30%)', answer: `¥${simulatedSalesPrice.toLocaleString()}`, type: 'number' },
+            ...Object.entries(answers)
+                .map(([qId, val]) => {
+                    const q = steps.flatMap(s => s.questions).find(q => q.id === qId)
+                    if (!q || !isQuestionVisible(q)) return null
+
+                    let displayValue = String(val)
+                    if (q.input_type === 'text' || q.input_type === 'textarea' || q.input_type === 'number') {
+                        displayValue = String(val)
+                    } else if (typeof val === 'object' && !Array.isArray(val) && val.selected) {
+                        const opt = q.options.find((o: any) => o.id === val.selected)
+                        displayValue = opt ? opt.label : val.selected
+                        if (val.extra) displayValue += ` (${val.extra})`
+                    } else if (Array.isArray(val)) {
+                        displayValue = val.map((id: string) => q.options.find((o: any) => o.id === id)?.label || id).join(', ')
+                    } else {
+                        const opt = q.options.find((o: any) => o.id === val)
+                        displayValue = opt ? opt.label : String(val)
+                    }
+
+                    return {
+                        question: q.question_text || qId,
+                        answer: displayValue,
+                        raw_answer: val,
+                        type: q.input_type
+                    }
+                })
+                .filter(Boolean)
         ]
 
         const res = await submitLead({
@@ -311,18 +372,18 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                 )
 
             case 'select': {
-                const selectedOpt = q.options.find((o: any) => o.id === val)
+                const selectedOpt = q.options?.find((o: any) => o.id === val)
                 return (
                     <div className="mt-4 space-y-3">
                         <div className="relative">
                             <select
-                                value={val}
+                                value={val || ''}
                                 onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select')}
                                 className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors appearance-none cursor-pointer"
                                 required={q.is_required}
                             >
                                 <option value="" disabled className="text-black">選択してください</option>
-                                {q.options.map((opt: any) => (
+                                {q.options?.map((opt: any) => (
                                     <option value={opt.id} key={opt.id} className="text-black">
                                         {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
                                     </option>
@@ -344,7 +405,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
             case 'textarea':
                 return (
                     <textarea
-                        value={val}
+                        value={val || ''}
                         onChange={(e) => handleAnswerChange(q.id, e.target.value, 'textarea')}
                         rows={4}
                         className="w-full mt-4 bg-[rgba(15,23,42,0.4)] border border-white/20 rounded-xl px-5 py-4 text-[15px] text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors resize-none shadow-inner"
@@ -357,7 +418,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                     <div className="flex items-center gap-2 mt-4 max-w-xs">
                         <input
                             type="number"
-                            value={val}
+                            value={val || ''}
                             onChange={(e) => handleAnswerChange(q.id, e.target.value, 'number')}
                             className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors text-right"
                             placeholder="0"
@@ -369,7 +430,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                 )
 
             case 'select_text': {
-                const selectedOptText = q.options.find((o: any) => o.id === val?.selected)
+                const selectedOptText = q.options?.find((o: any) => o.id === val?.selected)
                 return (
                     <div className="mt-4 space-y-4 bg-white/5 border border-white/10 p-5 rounded-2xl">
                         <div className="relative">
@@ -380,7 +441,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 required={q.is_required}
                             >
                                 <option value="" disabled className="text-black">項目を選択してください</option>
-                                {q.options.map((opt: any) => (
+                                {q.options?.map((opt: any) => (
                                     <option value={opt.id} key={opt.id} className="text-black">
                                         {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
                                     </option>
@@ -411,7 +472,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
             }
 
             case 'select_number': {
-                const selectedOptNum = q.options.find((o: any) => o.id === val?.selected)
+                const selectedOptNum = q.options?.find((o: any) => o.id === val?.selected)
                 return (
                     <div className="mt-4 space-y-4 bg-white/5 border border-white/10 p-5 rounded-2xl">
                         <div className="relative">
@@ -422,7 +483,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 required={q.is_required}
                             >
                                 <option value="" disabled className="text-black">項目を選択してください</option>
-                                {q.options.map((opt: any) => (
+                                {q.options?.map((opt: any) => (
                                     <option value={opt.id} key={opt.id} className="text-black">
                                         {opt.label} {opt.price_modifier > 0 ? `(+${opt.price_modifier.toLocaleString()}円)` : ''}
                                     </option>
@@ -459,7 +520,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                 return (
                     <input
                         type="text"
-                        value={val}
+                        value={val || ''}
                         onChange={(e) => handleAnswerChange(q.id, e.target.value, 'text')}
                         className="w-full mt-4 bg-[rgba(15,23,42,0.4)] border border-white/20 rounded-xl px-5 py-4 text-[15px] text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors shadow-inner"
                         required={q.is_required}
@@ -664,7 +725,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                                     {steps[currentStep - 1]?.questions
-                                        .filter(q => isQuestionVisible(q))
+                                        ?.filter(q => isQuestionVisible(q))
                                         .map((q, idx) => (
                                             <div key={q.id} style={{ position: 'relative', zIndex: 10 }}>
                                                 <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -703,7 +764,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                 {/* 金額表示 */}
                                 <div style={{
                                     textAlign: 'center', padding: '32px', borderRadius: '16px',
-                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))',
+                                     background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))',
                                     border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px',
                                 }}>
                                     <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', fontWeight: 500 }}>概算お見積り金額 ({oemQuantity}個)</div>
@@ -712,6 +773,29 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     </div>
                                     <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px', fontWeight: 600 }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
                                     <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします。すべて税込表記です。</div>
+
+                                    {/* 単価・販売シミュレーション */}
+                                    <div style={{
+                                        marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)',
+                                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left'
+                                    }}>
+                                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span>📦</span> 1個あたり仕入原価
+                                            </div>
+                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+                                                ¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(217,119,6,0.1))', padding: '20px', borderRadius: '16px', border: '1px solid rgba(234,179,8,0.3)' }}>
+                                            <div style={{ fontSize: '13px', color: '#fcd34d', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span>💡</span> 想定売価 <span style={{ fontSize: '11px', opacity: 0.8, fontWeight: 500 }}>(利益率30%)</span>
+                                            </div>
+                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.02em' }}>
+                                                ¥{Math.ceil((estimatedPrice / (oemQuantity || 1)) / 0.7).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* 選択内容サマリー */}
@@ -720,7 +804,10 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     {steps.flatMap(s => s.questions).filter(q => isQuestionVisible(q) && answers[q.id]).map(q => {
                                         const answer = answers[q.id]
                                         let displayValue = ''
-                                        if (typeof answer === 'object' && !Array.isArray(answer) && answer.selected) {
+
+                                        if (q.input_type === 'text' || q.input_type === 'textarea' || q.input_type === 'number') {
+                                            displayValue = String(answer)
+                                        } else if (typeof answer === 'object' && !Array.isArray(answer) && answer.selected) {
                                             const opt = q.options.find((o: any) => o.id === answer.selected)
                                             displayValue = opt ? opt.label : answer.selected
                                             if (answer.extra) displayValue += ` (${answer.extra})`
@@ -730,6 +817,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                             const opt = q.options.find((o: any) => o.id === answer)
                                             displayValue = opt ? opt.label : String(answer)
                                         }
+
                                         return (
                                             <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                                 <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{q.question_text}</span>
@@ -829,7 +917,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                             <ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る
                         </button>
 
-                        {currentStep < steps.length ? (
+                        {currentStep <= steps.length ? (
                             <button
                                 onClick={handleNext}
                                 disabled={!isCurrentStepValid()}
@@ -843,7 +931,7 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
                                     transition: 'all 0.2s',
                                 }}
                             >
-                                次のステップへ <ChevronRight style={{ width: '16px', height: '16px' }} />
+                                {currentStep === steps.length ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} />
                             </button>
                         ) : currentStep === CONTACT_STEP ? (
                             <button
