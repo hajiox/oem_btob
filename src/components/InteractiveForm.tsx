@@ -541,23 +541,34 @@ export default function InteractiveForm({ steps }: { steps: FormStepWithItems[] 
     // 完了画面
     if (isSuccess) {
         return (
-            <div className="w-full max-w-3xl mx-auto">
-                <div className="glass rounded-3xl p-10 md:p-16 text-center shadow-lg border border-[var(--color-border)]">
-                    <div className="w-20 h-20 mx-auto bg-green-500/10 rounded-full flex items-center justify-center mb-6">
-                        <CheckCircle2 className="w-12 h-12 text-green-500" />
+            <div style={{ width: '100%', maxWidth: '768px', marginLeft: 'auto', marginRight: 'auto', position: 'relative', zIndex: 1 }}>
+                <div style={{
+                    borderRadius: '24px',
+                    boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'rgba(15,23,42,0.8)',
+                    backdropFilter: 'blur(20px)',
+                    padding: '64px 32px',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ width: '80px', height: '80px', margin: '0 auto', background: 'rgba(34,197,94,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
+                        <CheckCircle2 style={{ width: '48px', height: '48px', color: '#22c55e' }} />
                     </div>
-                    <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+                    <h2 style={{ fontSize: '30px', fontWeight: 800, color: '#fff', marginBottom: '16px', letterSpacing: '-0.02em' }}>
                         お問い合わせが完了しました
                     </h2>
-                    <p className="text-[var(--color-text-muted)] leading-relaxed mb-8">
+                    <p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, marginBottom: '32px' }}>
                         お見積もりのご依頼、誠にありがとうございます。<br />
                         ご入力いただいた内容は正常に送信されました。<br />
                         担当者より【3営業日以内】に折り返しご連絡させていただきます。
                     </p>
-                    <div className="inline-block bg-white/5 border border-white/10 rounded-2xl px-6 py-4">
-                        <div className="text-sm text-white/50 mb-1">概算お見積り金額 ({oemQuantity}個)</div>
-                        <div className="text-2xl font-bold text-[var(--color-primary)]">¥{estimatedPrice.toLocaleString()}〜</div>
-                        <div className="text-xs text-white/40 mt-1">(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
+                    <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px' }}>
+                        <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>概算お見積り金額 ({oemQuantity}個)</div>
+                        <div style={{ fontSize: '30px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</div>
+                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
                     </div>
                 </div>
             </div>
