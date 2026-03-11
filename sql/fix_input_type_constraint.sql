@@ -1,0 +1,1 @@
+ALTER TABLE form_questions DROP CONSTRAINT IF EXISTS form_questions_input_type_check; ALTER TABLE form_questions ADD CONSTRAINT form_questions_input_type_check CHECK (input_type IN ('radio', 'checkbox', 'text', 'textarea', 'number', 'select', 'select_text', 'select_number'));
