@@ -117,7 +117,7 @@ export async function submitLead(formData: {
         // 2. 管理者への通知 (Aizu TV様)
         await resend.emails.send({
             from: 'OEM System Notification <onboarding@resend.dev>',
-            to: 'hajixo@gmail.com', // ユーザーの受信テスト用アドレス
+            to: 'staff@aizu-tv.com', // 管理者通知先を更新
             subject: '【新規リード獲得】新しいお見積り依頼が届きました',
             html: `
                 <div style="font-family: sans-serif; color: #333;">
