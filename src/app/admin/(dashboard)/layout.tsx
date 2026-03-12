@@ -9,7 +9,7 @@ export default function AdminLayout({
         <div style={{ minHeight: '100vh', background: 'var(--admin-bg)' }}>
             <AdminSidebar />
             <main style={{ marginLeft: '256px', minHeight: '100vh' }}>
-                <div style={{ padding: '32px' }}>
+                <div style={{ padding: '40px' }}>
                     {children}
                 </div>
             </main>

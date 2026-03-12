@@ -58,7 +58,31 @@ body {
   font-family: var(--font-body);
   background-color: var(--color-primary);
   color: var(--color-text);
-  line-height: 1.7;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 日本語テキスト用ユーティリティ */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+
+p {
+  line-height: 1.9;
+}
+
+button, a {
+  letter-spacing: 0.05em;
+}
+
+label {
+  letter-spacing: 0.04em;
+}
+
+input, textarea, select {
+  letter-spacing: 0.03em;
 }
 
 /* ============================================

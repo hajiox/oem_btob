@@ -16,27 +16,56 @@ export default function LoginPage() {
 
             <div className="relative w-full max-w-md">
                 {/* ロゴ */}
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--admin-accent)] to-[var(--color-accent)] mb-4 shadow-lg">
-                        <span className="text-2xl">🍽️</span>
+                <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+                    <div
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '16px',
+                            background: 'linear-gradient(135deg, var(--admin-accent), var(--color-accent))',
+                            marginBottom: '24px',
+                            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
+                        }}
+                    >
+                        <span style={{ fontSize: '32px' }}>🍽️</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                    <h1
+                        style={{
+                            fontFamily: 'var(--font-heading)',
+                            fontSize: '28px',
+                            fontWeight: 700,
+                            color: 'white',
+                            letterSpacing: '0.08em',
+                            marginBottom: '12px',
+                        }}
+                    >
                         管理者ログイン
                     </h1>
-                    <p className="text-sm text-[var(--color-text-muted)] mt-2">
+                    <p
+                        style={{
+                            fontSize: '14px',
+                            color: 'var(--color-text-muted)',
+                            letterSpacing: '0.06em',
+                        }}
+                    >
                         食品OEM管理システムにサインイン
                     </p>
                 </div>
 
                 {/* ログインフォーム */}
                 <div
-                    className="rounded-2xl p-8 border"
+                    className="rounded-2xl border"
                     style={{
                         background: 'var(--admin-card)',
                         borderColor: 'var(--admin-border)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 60px rgba(99, 102, 241, 0.06)',
+                        padding: '44px 40px',
                     }}
                 >
-                    <form action={formAction} className="space-y-6">
+                    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                         {/* エラー表示 */}
                         {state.error && (
                             <div className="p-4 rounded-xl text-sm font-medium" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--admin-danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
@@ -46,7 +75,7 @@ export default function LoginPage() {
 
                         {/* メールアドレス */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                            <label htmlFor="email" style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '10px', letterSpacing: '0.05em' }}>
                                 メールアドレス
                             </label>
                             <input
@@ -55,10 +84,14 @@ export default function LoginPage() {
                                 type="email"
                                 required
                                 autoComplete="email"
-                                className="w-full px-4 py-3 rounded-xl text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)] transition-all"
+                                className="w-full rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)] transition-all"
                                 style={{
                                     background: 'var(--admin-bg)',
                                     border: '1px solid var(--admin-border)',
+                                    padding: '15px 20px',
+                                    fontSize: '15px',
+                                    color: 'white',
+                                    letterSpacing: '0.03em',
                                 }}
                                 placeholder="admin@example.com"
                             />
@@ -66,7 +99,7 @@ export default function LoginPage() {
 
                         {/* パスワード */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                            <label htmlFor="password" style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: '10px', letterSpacing: '0.05em' }}>
                                 パスワード
                             </label>
                             <input
@@ -75,10 +108,14 @@ export default function LoginPage() {
                                 type="password"
                                 required
                                 autoComplete="current-password"
-                                className="w-full px-4 py-3 rounded-xl text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)] transition-all"
+                                className="w-full rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent)] transition-all"
                                 style={{
                                     background: 'var(--admin-bg)',
                                     border: '1px solid var(--admin-border)',
+                                    padding: '15px 20px',
+                                    fontSize: '15px',
+                                    color: 'white',
+                                    letterSpacing: '0.03em',
                                 }}
                                 placeholder="••••••••"
                             />
@@ -88,9 +125,14 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="w-full py-3.5 rounded-xl font-bold text-white transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 shadow-lg"
+                            className="w-full rounded-xl font-bold text-white transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                             style={{
                                 background: `linear-gradient(135deg, var(--admin-accent), var(--color-accent))`,
+                                padding: '16px',
+                                fontSize: '16px',
+                                letterSpacing: '0.1em',
+                                marginTop: '12px',
+                                boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
                             }}
                         >
                             {isPending ? (
@@ -108,7 +150,7 @@ export default function LoginPage() {
                     </form>
                 </div>
 
-                <p className="text-center text-xs text-[var(--color-text-muted)] mt-6">
+                <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '32px', letterSpacing: '0.05em' }}>
                     &copy; {new Date().getFullYear()} 食品OEM パートナー
                 </p>
             </div>

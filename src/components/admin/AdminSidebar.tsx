@@ -44,21 +44,21 @@ export function AdminSidebar() {
             }}
         >
             {/* ロゴ */}
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--admin-border)' }}>
+            <div style={{ padding: '24px 24px', borderBottom: '1px solid var(--admin-border)' }}>
                 <Link href="/admin/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--admin-accent), var(--color-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
                         <span style={{ fontSize: '14px' }}>🍽️</span>
                     </div>
                     <div>
-                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', display: 'block', lineHeight: '1.2' }}>フォームLPシステム</span>
-                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Admin Panel</span>
+                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', display: 'block', lineHeight: '1.2', letterSpacing: '0.06em' }}>フォームLPシステム</span>
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>Admin Panel</span>
                     </div>
                 </Link>
             </div>
 
             {/* ナビゲーション */}
-            <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <nav style={{ flex: 1, padding: '20px 12px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {navItems.map((item) => {
                         const isActive = pathname === item.href
                         return (
@@ -69,12 +69,13 @@ export function AdminSidebar() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '12px',
-                                    padding: '10px 16px',
+                                    padding: '12px 16px',
                                     borderRadius: '12px',
                                     fontSize: '14px',
                                     fontWeight: 500,
                                     textDecoration: 'none',
                                     transition: 'all 0.2s',
+                                    letterSpacing: '0.05em',
                                     color: isActive ? '#fff' : 'var(--color-text-muted)',
                                     background: isActive ? 'var(--admin-accent)' : 'transparent',
                                     boxShadow: isActive ? '0 4px 6px rgba(0,0,0,0.2)' : 'none',
@@ -91,7 +92,7 @@ export function AdminSidebar() {
             </nav>
 
             {/* ログアウト */}
-            <div style={{ padding: '16px 12px', borderTop: '1px solid var(--admin-border)' }}>
+            <div style={{ padding: '20px 12px', borderTop: '1px solid var(--admin-border)' }}>
                 <form action={signOut}>
                     <button
                         type="submit"
@@ -99,10 +100,11 @@ export function AdminSidebar() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '12px',
-                            padding: '10px 16px',
+                            padding: '12px 16px',
                             borderRadius: '12px',
                             fontSize: '14px',
                             fontWeight: 500,
+                            letterSpacing: '0.05em',
                             color: 'var(--color-text-muted)',
                             background: 'transparent',
                             border: 'none',

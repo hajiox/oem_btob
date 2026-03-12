@@ -30,17 +30,17 @@ function SectionSkeleton() {
 function Footer() {
   return (
     <footer style={{ width: '100%', borderTop: '1px solid #e5e7eb', backgroundColor: '#fff' }}>
-      <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '32px 16px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+      <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '48px 24px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
           <div>
-            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>
+            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', letterSpacing: '0.08em' }}>
               食品OEM パートナー
             </span>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px', letterSpacing: '0.05em' }}>
               あなたのアイデアを美味しい商品に
             </p>
           </div>
-          <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+          <p style={{ fontSize: '14px', color: '#9ca3af', letterSpacing: '0.03em' }}>
             &copy; {new Date().getFullYear()} Food OEM Partner. All rights reserved.
           </p>
         </div>
@@ -132,7 +132,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
     <main style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
       {/* LP画像セクション */}
       <Suspense fallback={<SectionSkeleton />}>
-        <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '48px 16px', display: 'flex', flexDirection: 'column', gap: '64px', alignItems: 'center' }}>
+        <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '40px 20px 56px', display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
           {/* DB画像があればDB優先、なければフォールバック */}
           {sections.length > 0 ? (
             sections.filter(s => s.image_url).map((section, i) => (
@@ -171,7 +171,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
       {/* フォームセクション（BTO見積もり） */}
       <section id="bto-form" style={{
         width: '100%',
-        padding: '96px 16px',
+        padding: '80px 20px 96px',
         position: 'relative',
         background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #1e1b4b 100%)',
         overflow: 'hidden',
@@ -189,15 +189,15 @@ export default async function HomePage({ params }: { params: { slug: string } })
         }} />
 
         {/* セクション見出し */}
-        <div style={{ textAlign: 'center', marginBottom: '48px', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'inline-block', padding: '8px 20px', borderRadius: '9999px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', marginBottom: '16px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#a5b4fc', letterSpacing: '0.05em' }}>✨ 簡単3ステップ</span>
+        <div style={{ textAlign: 'center', marginBottom: '56px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'inline-block', padding: '10px 24px', borderRadius: '9999px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', marginBottom: '24px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: '#a5b4fc', letterSpacing: '0.1em' }}>✨ 簡単3ステップ</span>
           </div>
-          <h2 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 800, color: '#fff', marginBottom: '12px', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
+          <h2 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 800, color: '#fff', marginBottom: '20px', letterSpacing: '0.04em', lineHeight: 1.4 }}>
             今すぐ無料で<br />
             <span style={{ background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>自動お見積もり</span>
           </h2>
-          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto', lineHeight: 1.7 }}>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto', lineHeight: 1.9, letterSpacing: '0.05em' }}>
             質問に回答するだけで、概算のお見積りが即座に算出されます。お気軽にお試しください。
           </p>
         </div>
@@ -211,7 +211,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
       {/* フローティング見積もりボタン */}
       <a
         href="#bto-form"
-        style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 50, padding: '16px 24px', backgroundColor: '#ea580c', color: '#fff', fontWeight: 'bold', fontSize: '18px', borderRadius: '9999px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', textDecoration: 'none', transition: 'all 0.3s' }}
+        style={{ position: 'fixed', bottom: '24px', right: '20px', zIndex: 50, padding: '14px 22px', backgroundColor: '#ea580c', color: '#fff', fontWeight: 'bold', fontSize: '16px', borderRadius: '9999px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)', textDecoration: 'none', transition: 'all 0.3s', letterSpacing: '0.08em' }}
       >
         🚀 今すぐ自動見積もり
       </a>
