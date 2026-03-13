@@ -220,22 +220,22 @@ export default function FormEditorClient({
     // 削除ロジック
     const removeStep = (stepId: string) => {
         if (!confirm('このステップと中の質問・選択肢を全て削除しますか？')) return
-        setDeletedStepIds([...deletedStepIds, stepId])
-        setSteps(steps.filter(s => s.id !== stepId))
+        setDeletedStepIds(prev => [...prev, stepId])
+        setSteps(prev => prev.filter(s => s.id !== stepId))
     }
 
     const removeQuestion = (stepId: string, questionId: string) => {
         if (!confirm('この質問と中の選択肢を削除しますか？')) return
-        setDeletedQuestionIds([...deletedQuestionIds, questionId])
-        setSteps(steps.map(s => s.id === stepId ? {
+        setDeletedQuestionIds(prev => [...prev, questionId])
+        setSteps(prev => prev.map(s => s.id === stepId ? {
             ...s,
             questions: s.questions.filter(q => q.id !== questionId)
         } : s))
     }
 
     const removeOption = (stepId: string, questionId: string, optionId: string) => {
-        setDeletedOptionIds([...deletedOptionIds, optionId])
-        setSteps(steps.map(s => s.id === stepId ? {
+        setDeletedOptionIds(prev => [...prev, optionId])
+        setSteps(prev => prev.map(s => s.id === stepId ? {
             ...s,
             questions: s.questions.map(q => q.id === questionId ? {
                 ...q,
