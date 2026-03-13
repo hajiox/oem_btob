@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, Link2, X, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, X, ExternalLink, Package } from 'lucide-react'
 import Link from 'next/link'
-import type { FormStep, FormQuestion, FormOption } from '@/types/database'
-import { saveFormEditorData } from '@/actions/formEditor'
+import type { FormStep, FormQuestion, FormOption, Product } from '@/types/database'
+import { saveFormEditorData, saveProduct, deleteProduct } from '@/actions/formEditor'
 import Image from 'next/image'
 import { compressImage } from '@/lib/imageCompressor'
 
@@ -20,15 +20,21 @@ export default function FormEditorClient({
     initialSteps,
     initialQuestions,
     initialOptions,
+    initialProducts,
     pageId,
     slug,
 }: {
     initialSteps: FormStep[]
     initialQuestions: FormQuestion[]
     initialOptions: FormOption[]
+    initialProducts: Product[]
     pageId: string
     slug: string
 }) {
+    const [products, setProducts] = useState<Product[]>(initialProducts)
+    // 現在選択中のタブ: null=共通, string=商品ID
+    const [activeTab, setActiveTab] = useState<string | null>(null)
+
     const [steps, setSteps] = useState<StepWithItems[]>(() => {
         return initialSteps.map(step => ({
             ...step,
@@ -49,25 +55,12 @@ export default function FormEditorClient({
     const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({})
     const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null)
 
-    // 全ステップ横断で全選択肢を取得（条件分岐選択用）
-    const getAllOptions = (): { label: string; id: string; stepTitle: string; questionText: string }[] => {
-        const result: { label: string; id: string; stepTitle: string; questionText: string }[] = []
-        steps.forEach(s => {
-            s.questions.forEach(q => {
-                q.options.forEach(o => {
-                    if (o.label) {
-                        result.push({
-                            id: o.id,
-                            label: o.label,
-                            stepTitle: s.step_title,
-                            questionText: q.question_text,
-                        })
-                    }
-                })
-            })
-        })
-        return result
-    }
+    // アクティブタブに応じたステップをフィルタリング
+    const filteredSteps = steps.filter(s =>
+        activeTab === null
+            ? s.product_id === null || s.product_id === undefined
+            : s.product_id === activeTab
+    )
 
     // 保存処理
     const handleSave = async () => {
@@ -102,18 +95,67 @@ export default function FormEditorClient({
         setIsSaving(false)
     }
 
-    // 追加ロジック
-    const addStep = () => {
-        const newStep: StepWithItems = {
+    // 商品追加
+    const handleAddProduct = async () => {
+        const name = prompt('新しい商品名を入力してください:')
+        if (!name) return
+        const newProduct: any = {
             id: generateId(),
             page_id: pageId,
+            name,
+            description: '',
+            image_url: null,
+            order_index: products.length,
+            is_visible: true,
+        }
+        const result = await saveProduct(newProduct)
+        if (result.success) {
+            setProducts([...products, { ...newProduct, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }])
+            setActiveTab(newProduct.id)
+        } else {
+            alert(result.error || '商品の追加に失敗しました')
+        }
+    }
+
+    // 商品削除
+    const handleDeleteProduct = async (productId: string) => {
+        if (!confirm('この商品を削除しますか？紐づくステップは共通に移動されます。')) return
+        const result = await deleteProduct(productId)
+        if (result.success) {
+            setProducts(products.filter(p => p.id !== productId))
+            setSteps(steps.map(s => s.product_id === productId ? { ...s, product_id: null } : s))
+            setActiveTab(null)
+        } else {
+            alert(result.error || '削除に失敗しました')
+        }
+    }
+
+    // ステップ追加（1ステップ1質問）
+    const addStep = () => {
+        const stepId = generateId()
+        const newStep: StepWithItems = {
+            id: stepId,
+            page_id: pageId,
+            product_id: activeTab,
             order_index: steps.length,
-            step_title: '新しいステップ',
+            step_title: '新しい質問',
             step_description: '',
             is_visible: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            questions: []
+            questions: [{
+                id: generateId(),
+                step_id: stepId,
+                order_index: 0,
+                question_text: '新しい質問',
+                input_type: 'radio' as const,
+                is_required: true,
+                help_text: '',
+                depends_on_option_id: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                options: []
+            }]
         }
         setSteps([...steps, newStep])
         setExpandedSteps({ ...expandedSteps, [newStep.id]: true })
@@ -158,6 +200,7 @@ export default function FormEditorClient({
                                     order_index: q.options.length,
                                     label: '',
                                     price_modifier: 0,
+                                    price_modifier_type: 'fixed' as const,
                                     is_base_price: false,
                                     description: '',
                                     image_url: '',
@@ -203,12 +246,17 @@ export default function FormEditorClient({
 
     // 並び替え
     const moveStep = (index: number, direction: 'up' | 'down') => {
-        if ((direction === 'up' && index === 0) || (direction === 'down' && index === steps.length - 1)) return
+        const currentFilteredSteps = filteredSteps
+        if ((direction === 'up' && index === 0) || (direction === 'down' && index === currentFilteredSteps.length - 1)) return
+        // filteredSteps内の実際のIDを使ってsteps配列で入れ替え
+        const stepA = currentFilteredSteps[index]
+        const stepB = currentFilteredSteps[direction === 'up' ? index - 1 : index + 1]
+        const idxA = steps.findIndex(s => s.id === stepA.id)
+        const idxB = steps.findIndex(s => s.id === stepB.id)
         const newSteps = [...steps]
-        const dest = direction === 'up' ? index - 1 : index + 1
-        const temp = newSteps[index]
-        newSteps[index] = newSteps[dest]
-        newSteps[dest] = temp
+        const temp = newSteps[idxA]
+        newSteps[idxA] = newSteps[idxB]
+        newSteps[idxB] = temp
         setSteps(newSteps)
     }
 
@@ -228,9 +276,7 @@ export default function FormEditorClient({
     const handleImageUpload = async (stepId: string, questionId: string, optionId: string, file: File) => {
         setUploadingOptionId(optionId)
         try {
-            // 画像を200-300KB (今回は250KB目標) に自動圧縮
             const compressedFile = await compressImage(file, 250)
-
             const formData = new FormData()
             formData.append('file', compressedFile)
             const res = await fetch('/api/upload-image', { method: 'POST', body: formData })
@@ -239,7 +285,6 @@ export default function FormEditorClient({
                 alert(result.error || 'アップロードに失敗しました')
                 return
             }
-            // アップロード成功 → image_urlを更新
             setSteps(steps.map(s => s.id === stepId ? {
                 ...s,
                 questions: s.questions.map(q => q.id === questionId ? {
@@ -252,17 +297,6 @@ export default function FormEditorClient({
         } finally {
             setUploadingOptionId(null)
         }
-    }
-
-    // 条件分岐設定変更
-    const setDependsOn = (stepId: string, questionId: string, optionId: string | null) => {
-        setSteps(steps.map(s => s.id === stepId ? {
-            ...s,
-            questions: s.questions.map(q => q.id === questionId ? {
-                ...q,
-                depends_on_option_id: optionId
-            } : q)
-        } : s))
     }
 
     // スタイル定数
@@ -281,7 +315,7 @@ export default function FormEditorClient({
                 <div>
                     <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff' }}>フォームエディタ</h1>
                     <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                        BTO見積もりフォームのステップ・質問・金額ロジックを設定します
+                        商品別にフォームのステップ・質問・金額ロジックを設定します
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -308,14 +342,85 @@ export default function FormEditorClient({
                 </div>
             </div>
 
-            {steps.length === 0 ? (
+            {/* 商品タブ */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px', padding: '4px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '1px solid var(--admin-border)' }}>
+                <button
+                    onClick={() => setActiveTab(null)}
+                    style={{
+                        ...S.btn,
+                        background: activeTab === null ? 'var(--admin-accent)' : 'transparent',
+                        color: activeTab === null ? '#fff' : 'var(--color-text-muted)',
+                        padding: '10px 20px',
+                        fontWeight: activeTab === null ? 700 : 500,
+                        border: activeTab === null ? 'none' : '1px solid transparent',
+                    }}
+                >
+                    📋 共通ステップ
+                </button>
+                {products.map(p => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+                        <button
+                            onClick={() => setActiveTab(p.id)}
+                            style={{
+                                ...S.btn,
+                                background: activeTab === p.id ? 'var(--admin-accent)' : 'transparent',
+                                color: activeTab === p.id ? '#fff' : 'var(--color-text-muted)',
+                                padding: '10px 20px',
+                                fontWeight: activeTab === p.id ? 700 : 500,
+                                border: activeTab === p.id ? 'none' : '1px solid transparent',
+                                borderRadius: '12px 0 0 12px',
+                            }}
+                        >
+                            <Package style={{ width: '16px', height: '16px' }} />
+                            {p.name}
+                        </button>
+                        <button
+                            onClick={() => handleDeleteProduct(p.id)}
+                            style={{
+                                padding: '10px 8px',
+                                color: 'rgba(248,113,113,0.6)',
+                                background: activeTab === p.id ? 'rgba(99,102,241,0.7)' : 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                borderRadius: '0 12px 12px 0',
+                                fontSize: '12px',
+                            }}
+                            title="商品を削除"
+                        >
+                            <Trash2 style={{ width: '14px', height: '14px' }} />
+                        </button>
+                    </div>
+                ))}
+                <button
+                    onClick={handleAddProduct}
+                    style={{ ...S.btn, color: 'var(--admin-accent)', background: 'transparent', border: '1px dashed rgba(99,102,241,0.4)', padding: '10px 16px', fontSize: '13px' }}
+                >
+                    <Plus style={{ width: '16px', height: '16px' }} />
+                    商品を追加
+                </button>
+            </div>
+
+            {/* タブの説明 */}
+            <div style={{ marginBottom: '24px', padding: '12px 16px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                    {activeTab === null
+                        ? '📋 共通ステップ: すべての商品で共通して表示されるステップです（原料供給など）'
+                        : `📦 ${products.find(p => p.id === activeTab)?.name || ''}: この商品を選んだときだけ表示されるステップです`
+                    }
+                </p>
+            </div>
+
+            {filteredSteps.length === 0 ? (
                 <div style={{ ...S.card, padding: '48px', textAlign: 'center' as const, borderStyle: 'dashed' }}>
                     <div style={{ width: '64px', height: '64px', margin: '0 auto 16px', borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--admin-accent)' }}>
                         <HelpCircle style={{ width: '32px', height: '32px' }} />
                     </div>
                     <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>ステップがありません</h3>
                     <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '24px', maxWidth: '360px', margin: '0 auto 24px' }}>
-                        最初の入力ステップを追加して、見積もりフォームの作成を始めましょう。
+                        {activeTab === null
+                            ? '共通ステップを追加しましょう。'
+                            : `${products.find(p => p.id === activeTab)?.name}専用のステップを追加しましょう。`
+                        }
                     </p>
                     <button onClick={addStep} style={{ ...S.btn, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <Plus style={{ width: '20px', height: '20px' }} /> 最初のステップを追加
@@ -323,17 +428,15 @@ export default function FormEditorClient({
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {steps.map((step, stepIndex) => (
+                    {filteredSteps.map((step, stepIndex) => (
                         <div key={step.id} style={S.card}>
                             {/* ステップヘッダー */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', gap: '16px' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1 }}>
-                                    {/* 上下ボタン */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '6px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         <button disabled={stepIndex === 0} onClick={() => moveStep(stepIndex, 'up')} style={{ padding: '4px', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', opacity: stepIndex === 0 ? 0.2 : 1 }}><ArrowUp style={{ width: '16px', height: '16px' }} /></button>
-                                        <button disabled={stepIndex === steps.length - 1} onClick={() => moveStep(stepIndex, 'down')} style={{ padding: '4px', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', opacity: stepIndex === steps.length - 1 ? 0.2 : 1 }}><ArrowDown style={{ width: '16px', height: '16px' }} /></button>
+                                        <button disabled={stepIndex === filteredSteps.length - 1} onClick={() => moveStep(stepIndex, 'down')} style={{ padding: '4px', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', opacity: stepIndex === filteredSteps.length - 1 ? 0.2 : 1 }}><ArrowDown style={{ width: '16px', height: '16px' }} /></button>
                                     </div>
-                                    {/* タイトル・説明 */}
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         <input
                                             value={step.step_title}
@@ -350,7 +453,6 @@ export default function FormEditorClient({
                                     </div>
                                 </div>
 
-                                {/* コントロール */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--color-text-muted)', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         公開
@@ -371,15 +473,12 @@ export default function FormEditorClient({
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '24px' }}>
                                         {step.questions.map((question, qIndex) => (
                                             <div key={question.id} style={{ border: '1px solid var(--admin-border)', borderRadius: '16px', padding: '16px 20px', background: 'rgba(255,255,255,0.02)' }}>
-                                                {/* 質問ヘッダー */}
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '12px', marginBottom: '16px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
-                                                        {/* 質問上下移動 */}
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', background: 'rgba(0,0,0,0.4)', padding: '4px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '4px' }}>
                                                             <button disabled={qIndex === 0} onClick={() => moveQuestion(step.id, qIndex, 'up')} style={{ color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', opacity: qIndex === 0 ? 0.2 : 1 }}><ArrowUp style={{ width: '12px', height: '12px' }} /></button>
                                                             <button disabled={qIndex === step.questions.length - 1} onClick={() => moveQuestion(step.id, qIndex, 'down')} style={{ color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', opacity: qIndex === step.questions.length - 1 ? 0.2 : 1 }}><ArrowDown style={{ width: '12px', height: '12px' }} /></button>
                                                         </div>
-                                                        {/* 質問テキスト・タイプ */}
                                                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                             <input
                                                                 value={question.question_text}
@@ -407,24 +506,6 @@ export default function FormEditorClient({
                                                                     必須回答
                                                                 </label>
                                                             </div>
-
-                                                            {/* 条件分岐設定 */}
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                                <Link2 style={{ width: '14px', height: '14px', color: '#f59e0b' }} />
-                                                                <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>条件分岐:</span>
-                                                                <select
-                                                                    value={question.depends_on_option_id || ''}
-                                                                    onChange={(e) => setDependsOn(step.id, question.id, e.target.value || null)}
-                                                                    style={{ ...S.inputSm, width: 'auto', minWidth: '200px', fontSize: '12px', color: question.depends_on_option_id ? '#f59e0b' : 'var(--color-text-muted)' }}
-                                                                >
-                                                                    <option value="">常に表示（条件なし）</option>
-                                                                    {getAllOptions().map(opt => (
-                                                                        <option key={opt.id} value={opt.id}>
-                                                                            [{opt.stepTitle}] {opt.questionText} → {opt.label}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                     <button onClick={() => removeQuestion(step.id, question.id)} style={{ padding: '8px', borderRadius: '8px', color: '#f87171', background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(239,68,68,0.1)', cursor: 'pointer', alignSelf: 'flex-start' }}>
@@ -445,6 +526,7 @@ export default function FormEditorClient({
                                                                 onLabelChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, label: val } : o) } : q) } : s))}
                                                                 onDescriptionChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, description: val } : o) } : q) } : s))}
                                                                 onPriceChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, price_modifier: val } : o) } : q) } : s))}
+                                                                onPriceTypeChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, price_modifier_type: val } : o) } : q) } : s))}
                                                                 onBasePriceChange={(val) => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, is_base_price: val } : o) } : q) } : s))}
                                                                 onImageUpload={(file) => handleImageUpload(step.id, question.id, option.id, file)}
                                                                 onImageRemove={() => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, image_url: '' } : o) } : q) } : s))}
@@ -481,7 +563,7 @@ export default function FormEditorClient({
     )
 }
 
-// 選択肢の行コンポーネント（画像アップロード付き）
+// 選択肢の行コンポーネント
 function OptionRow({
     option,
     stepId,
@@ -490,6 +572,7 @@ function OptionRow({
     onLabelChange,
     onDescriptionChange,
     onPriceChange,
+    onPriceTypeChange,
     onBasePriceChange,
     onImageUpload,
     onImageRemove,
@@ -502,17 +585,18 @@ function OptionRow({
     onLabelChange: (val: string) => void
     onDescriptionChange: (val: string) => void
     onPriceChange: (val: number) => void
+    onPriceTypeChange: (val: 'fixed' | 'percentage') => void
     onBasePriceChange: (val: boolean) => void
     onImageUpload: (file: File) => void
     onImageRemove: () => void
     onRemove: () => void
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const isPercentage = option.price_modifier_type === 'percentage'
 
     return (
         <div style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', transition: 'all 0.2s' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
-                {/* ラベル */}
                 <input
                     value={option.label}
                     onChange={(e) => onLabelChange(e.target.value)}
@@ -520,34 +604,37 @@ function OptionRow({
                     style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '13px', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none' }}
                 />
 
-                {/* 説明文 */}
                 <textarea
                     value={option.description || ''}
                     onChange={(e) => onDescriptionChange(e.target.value)}
-                    placeholder="説明文 (任意)&#13;&#10;改行して入力できます"
+                    placeholder={"説明文 (任意)\r\n改行して入力できます"}
                     rows={2}
                     style={{ flex: 1, minWidth: '150px', minHeight: '40px', background: 'rgba(0,0,0,0.2)', color: 'var(--color-text-muted)', fontSize: '12px', border: '1px dashed rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none', resize: 'vertical', lineHeight: 1.4 }}
                 />
 
-                {/* 金額 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>金額</span>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>¥</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '6px 10px', borderRadius: '8px', border: `1px solid ${isPercentage ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.05)'}` }}>
+                    <button
+                        type="button"
+                        onClick={() => onPriceTypeChange(isPercentage ? 'fixed' : 'percentage')}
+                        style={{ fontSize: '13px', fontWeight: 'bold', color: isPercentage ? '#fbbf24' : 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', minWidth: '18px' }}
+                        title={isPercentage ? 'パーセント（クリックで¥に切替）' : '固定金額（クリックで%に切替）'}
+                    >
+                        {isPercentage ? '%' : '¥'}
+                    </button>
                     <input
                         type="number"
                         value={option.price_modifier}
-                        onChange={(e) => onPriceChange(parseInt(e.target.value) || 0)}
-                        style={{ width: '80px', background: 'transparent', color: 'var(--admin-success)', fontFamily: 'monospace', textAlign: 'right' as const, fontWeight: 'bold', fontSize: '13px', border: 'none', outline: 'none' }}
+                        onChange={(e) => onPriceChange(parseFloat(e.target.value) || 0)}
+                        style={{ width: '80px', background: 'transparent', color: isPercentage ? '#fbbf24' : 'var(--admin-success)', fontFamily: 'monospace', textAlign: 'right' as const, fontWeight: 'bold', fontSize: '13px', border: 'none', outline: 'none' }}
                     />
+                    <span style={{ fontSize: '10px', color: isPercentage ? '#fbbf24' : 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{isPercentage ? '%UP' : '円'}</span>
                 </div>
 
-                {/* 基本料金 */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 'bold', color: '#60a5fa', cursor: 'pointer', background: 'rgba(59,130,246,0.1)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)', whiteSpace: 'nowrap' }}>
                     <input type="checkbox" checked={option.is_base_price} onChange={(e) => onBasePriceChange(e.target.checked)} style={{ accentColor: '#3b82f6', width: '14px', height: '14px' }} />
                     基本料金
                 </label>
 
-                {/* 画像アップロード */}
                 <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) { onImageUpload(e.target.files[0]); e.target.value = ''; } }} />
                 <button
                     type="button"
@@ -564,13 +651,11 @@ function OptionRow({
                     画像
                 </button>
 
-                {/* 削除 */}
                 <button onClick={onRemove} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
                     <Trash2 style={{ width: '14px', height: '14px' }} />
                 </button>
             </div>
 
-            {/* 画像プレビュー */}
             {option.image_url && (
                 <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>

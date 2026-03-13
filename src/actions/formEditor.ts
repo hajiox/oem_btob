@@ -3,11 +3,47 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+// ========== 商品CRUD ==========
+export async function getProducts(pageId: string) {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('page_id', pageId)
+        .order('order_index')
+    if (error) return []
+    return data || []
+}
+
+export async function saveProduct(product: any) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: '認証エラー' }
+
+    const { error } = await supabase.from('products').upsert(product)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function deleteProduct(productId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: '認証エラー' }
+
+    // 商品に紐づくステップのproduct_idをNULLに (orphan防止)
+    await supabase.from('form_steps').update({ product_id: null }).eq('product_id', productId)
+    const { error } = await supabase.from('products').delete().eq('id', productId)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/')
+    return { success: true }
+}
+
+// ========== フォーム保存 ==========
 export async function saveFormEditorData(data: any) {
     const supabase = await createClient()
 
     try {
-        // 認証チェック
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
             return { success: false, error: '認証エラー：権限がありません' }
@@ -16,10 +52,11 @@ export async function saveFormEditorData(data: any) {
         const { steps, pageId } = data
         if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
 
-        // 1. 各項目の組み立て
+        // 1. 各項目の組み立て (product_id を含む)
         const dbSteps = steps.map((s: any) => ({
             id: s.id,
             page_id: pageId,
+            product_id: s.product_id || null,
             order_index: s.order_index,
             step_title: s.step_title,
             step_description: s.step_description,
@@ -49,6 +86,7 @@ export async function saveFormEditorData(data: any) {
                         order_index: o.order_index,
                         label: o.label,
                         price_modifier: o.price_modifier,
+                        price_modifier_type: o.price_modifier_type || 'fixed',
                         is_base_price: o.is_base_price,
                         description: o.description,
                         image_url: o.image_url
@@ -57,34 +95,18 @@ export async function saveFormEditorData(data: any) {
             })
         })
 
-        // ==========
-        // 保存順序（外部キー制約を考慮）:
-        //   form_questions.depends_on_option_id → form_options.id
-        //   form_options.question_id → form_questions.id
-        //   form_questions.step_id → form_steps.id
-        //
-        // 安全な順序:
-        //   1. 全questionsのdepends_on_option_idをnullにクリア (DB上の既存データがFK違反しないように)
-        //   2. 削除: options → questions → steps (参照される側を後に)
-        //   3. UPSERT: steps → questions(null) → options
-        //   4. depends_on_option_idを復元
-        // ==========
-
-        // Step 1: DB上の全questionsのdepends_on_option_idをnullにクリア
-        // これにより、削除やUPSERT時にFK制約違反が起きなくなる
+        // 保存順序（外部キー制約を考慮）
         const allQuestionIds = dbQuestions.map((q: any) => q.id)
         if (allQuestionIds.length > 0) {
             const { error: clearError } = await supabase
                 .from('form_questions')
                 .update({ depends_on_option_id: null })
                 .in('id', allQuestionIds)
-            // 新規questionはまだDB上に存在しないのでエラーを無視
             if (clearError && !clearError.message.includes('0 rows')) {
                 console.log('Clear depends_on_option_id (non-critical):', clearError.message)
             }
         }
 
-        // 削除予定のquestionのdepends_on_option_idもクリア
         if (data.deletedQuestionIds?.length > 0) {
             await supabase
                 .from('form_questions')
@@ -92,7 +114,6 @@ export async function saveFormEditorData(data: any) {
                 .in('id', data.deletedQuestionIds)
         }
 
-        // また、削除予定のoptionを参照しているquestionのdepends_on_option_idもクリア
         if (data.deletedOptionIds?.length > 0) {
             await supabase
                 .from('form_questions')
@@ -100,7 +121,7 @@ export async function saveFormEditorData(data: any) {
                 .in('depends_on_option_id', data.deletedOptionIds)
         }
 
-        // Step 2: 削除処理（参照する側を先に削除）
+        // 削除処理
         if (data.deletedOptionIds?.length > 0) {
             const { error } = await supabase.from('form_options').delete().in('id', data.deletedOptionIds)
             if (error) throw error
@@ -114,7 +135,7 @@ export async function saveFormEditorData(data: any) {
             if (error) throw error
         }
 
-        // Step 3: UPSERT (steps → questions(depends_on_option_id=null) → options)
+        // UPSERT
         if (dbSteps.length > 0) {
             const { error } = await supabase.from('form_steps').upsert(dbSteps)
             if (error) throw error
@@ -134,14 +155,13 @@ export async function saveFormEditorData(data: any) {
             if (error) throw error
         }
 
-        // Step 4: depends_on_option_idを復元（optionsがすべて存在する状態で安全に設定）
+        // depends_on_option_id復元
         const questionsWithDeps = dbQuestions.filter((q: any) => q.depends_on_option_id)
         if (questionsWithDeps.length > 0) {
             const { error } = await supabase.from('form_questions').upsert(questionsWithDeps)
             if (error) throw error
         }
 
-        // 保存完了後、キャッシュを再検証して即座に画面に反映させる
         revalidatePath('/admin/form-editor')
         revalidatePath('/')
 

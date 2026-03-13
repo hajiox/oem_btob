@@ -13,7 +13,6 @@ export type FormStepWithItems = FormStep & {
 export async function getActiveForm(pageId?: string): Promise<FormStepWithItems[]> {
     const supabase = await createClient()
 
-    // 表示設定(is_visible=true)のステップを取得
     let query = supabase
         .from('form_steps')
         .select('*')
@@ -30,7 +29,6 @@ export async function getActiveForm(pageId?: string): Promise<FormStepWithItems[
 
     const stepIds = stepsData.map(s => s.id)
 
-    // 関連する質問を取得
     const { data: questionsData } = await supabase
         .from('form_questions')
         .select('*')
@@ -40,14 +38,67 @@ export async function getActiveForm(pageId?: string): Promise<FormStepWithItems[
     const questions = questionsData || []
     const questionIds = questions.map(q => q.id)
 
-    // 関連する選択肢を取得
     const { data: optionsData } = await supabase
         .from('form_options')
         .select('*')
         .in('question_id', questionIds)
         .order('order_index')
 
-    // ツリー構造に組み立てる
+    return stepsData.map((step) => ({
+        ...step,
+        questions: questions
+            .filter((q) => q.step_id === step.id)
+            .map((q) => ({
+                ...q,
+                options: (optionsData || []).filter((o) => o.question_id === q.id)
+            }))
+    }))
+}
+
+// 商品一覧取得（公開用）
+export async function getPublicProducts(pageId: string) {
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('page_id', pageId)
+        .eq('is_visible', true)
+        .order('order_index')
+    return data || []
+}
+
+// 商品別フォームステップ取得
+export async function getFormStepsForProduct(pageId: string, productId: string): Promise<FormStepWithItems[]> {
+    const supabase = await createClient()
+
+    // 対象商品のステップ + 共通ステップ(product_id IS NULL) を取得
+    const { data: stepsData } = await supabase
+        .from('form_steps')
+        .select('*')
+        .eq('page_id', pageId)
+        .eq('is_visible', true)
+        .or(`product_id.eq.${productId},product_id.is.null`)
+        .order('order_index')
+
+    if (!stepsData || stepsData.length === 0) return []
+
+    const stepIds = stepsData.map(s => s.id)
+
+    const { data: questionsData } = await supabase
+        .from('form_questions')
+        .select('*')
+        .in('step_id', stepIds)
+        .order('order_index')
+
+    const questions = questionsData || []
+    const questionIds = questions.map(q => q.id)
+
+    const { data: optionsData } = await supabase
+        .from('form_options')
+        .select('*')
+        .in('question_id', questionIds)
+        .order('order_index')
+
     return stepsData.map((step) => ({
         ...step,
         questions: questions

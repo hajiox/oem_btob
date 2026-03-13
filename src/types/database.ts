@@ -21,6 +21,22 @@ export interface Page {
 export type PageInsert = Omit<Page, 'id' | 'created_at' | 'updated_at'>
 export type PageUpdate = Partial<PageInsert>
 
+// [PR] 商品（フォームを商品別に分離するための親テーブル）
+export interface Product {
+    id: string
+    page_id: string
+    name: string
+    description: string | null
+    image_url: string | null
+    order_index: number
+    is_visible: boolean
+    created_at: string
+    updated_at: string
+}
+
+export type ProductInsert = Omit<Product, 'id' | 'created_at' | 'updated_at'>
+export type ProductUpdate = Partial<ProductInsert>
+
 // [A] LPセクション
 export interface LpSection {
     id: string
@@ -42,6 +58,7 @@ export type LpSectionUpdate = Partial<LpSectionInsert>
 export interface FormStep {
     id: string
     page_id: string
+    product_id: string | null  // 所属する商品。NULLなら共通ステップ
     order_index: number
     step_title: string
     step_description: string | null
@@ -77,6 +94,7 @@ export interface FormOption {
     order_index: number
     label: string
     price_modifier: number
+    price_modifier_type: 'fixed' | 'percentage'  // fixed=固定金額, percentage=最終金額のN%アップ
     is_base_price: boolean
     description: string | null
     image_url: string | null

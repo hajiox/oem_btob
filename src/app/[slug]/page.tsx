@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import type { LpSection } from '@/types/database'
-import { getActiveForm } from '@/actions/publicForm'
+import type { LpSection, Product } from '@/types/database'
+import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
 import Image from 'next/image'
 
@@ -94,6 +94,8 @@ export default async function HomePage({ params }: { params: { slug: string } })
   const { slug } = await params
   let sections: LpSection[] = []
   let formSteps: any[] = []
+  let products: Product[] = []
+  let currentPageId = ''
 
   try {
     const supabase = await createClient()
@@ -110,6 +112,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
     }
 
     const pageId = pageData.id
+    currentPageId = pageId
 
     // 2. LPセクションの取得
     const { data: lpData } = await supabase
@@ -123,6 +126,9 @@ export default async function HomePage({ params }: { params: { slug: string } })
 
     // 3. 動的フォームデータの取得
     formSteps = await getActiveForm(pageId)
+
+    // 4. 商品一覧の取得
+    products = await getPublicProducts(pageId)
 
   } catch {
     // Supabase未設定時はデフォルト表示
@@ -202,7 +208,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
           </p>
         </div>
 
-        <InteractiveForm steps={formSteps} />
+        <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} />
       </section>
 
       {/* フッター */}
