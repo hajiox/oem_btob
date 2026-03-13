@@ -465,7 +465,7 @@ export default function LpEditorClient({
 
                         {/* モバイル幅向けに少しスケールさせるなど */}
                         <div style={{ position: 'relative', zIndex: 1 }}>
-                            <InteractiveForm steps={formSteps} />
+                            <InteractiveForm steps={formSteps} products={[]} pageId={pageId} />
                         </div>
                     </section>
                 </div>
