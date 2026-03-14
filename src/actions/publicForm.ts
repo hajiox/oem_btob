@@ -143,7 +143,7 @@ export async function submitLead(formData: {
         
         // 1. お客様への自動返信
         await resend.emails.send({
-            from: 'OEM自動見積り <onboarding@resend.dev>', // ドメイン認証後は info@yourdomain.com 等に変更可能
+            from: 'OEM自動見積り <staff@aizu-tv.com>', // ドメイン認証後は info@yourdomain.com 等に変更可能
             to: formData.email,
             subject: '【自動回答】お見積り依頼を承りました',
             html: `
@@ -167,7 +167,7 @@ export async function submitLead(formData: {
 
         // 2. 管理者への通知 (Aizu TV様)
         await resend.emails.send({
-            from: 'OEM System Notification <onboarding@resend.dev>',
+            from: 'OEM System Notification <staff@aizu-tv.com>',
             to: 'staff@aizu-tv.com', // 管理者通知先を更新
             subject: '【新規リード獲得】新しいお見積り依頼が届きました',
             html: `

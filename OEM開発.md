@@ -2,8 +2,8 @@
 
 ## 📌 プロジェクト概要
 - **ローカル開発パス**: `c:\作業用\oem_btob`
-- **GitHub**: `hajioxs-projects/oem_btob`
-- **本番用公開URL (Vercel)**: `https://v0-b2-b-food-oem-landing-page.vercel.app`
+- **GitHub**: `hajiox/oem_btob`
+- **本番用公開URL (Vercel)**: `https://oem.aizubrandhall.com` (Vercelプロジェクト名: `oem`)
 - **使用技術**: Next.js (App Router), React, Tailwind CSS, Framer Motion, Supabase (Auth, Database, RLS), Vercel, Vercel Blob, Google Gemini 2.0 Flash
 - **目的**: 小ロットから対応可能なB2B向け食品OEMのランディングページ(LP)と、顧客が要望に合わせた構成を組んで概算見積もりを出せる動的BTO(Build To Order)フォーム、およびその管理ダッシュボードの構築。
 
@@ -137,11 +137,20 @@
 
 ---
 
-## 🎯 次回の開発に向けて (ネクストステップ)
-- **【最優先】Resend ドメイン認証の確認**: Resendダッシュボード (https://resend.com/domains) で `aizu-tv.com` のステータスが「Verified」になっているか確認。認証完了していたら、`src/actions/publicForm.ts` 内の `from:` アドレスを `onboarding@resend.dev` → `staff@aizu-tv.com` (または `noreply@aizu-tv.com` 等) に書き換えてデプロイ。
-- **メール送信のテスト**: ドメイン認証完了後、フォームからテスト送信を行い、お客様宛・管理者宛の両方のメールが正常に届くことを確認。
-- **多言語対応やLPテキストの完全動的化**: ユーザーの要望に応じて、フォームの中身だけでなくLP上のキャッチコピーなども管理画面から変更できるように拡張を検討。
-- **SEO/OGP の詳細設定**: 各ページの SNS シェア時の見栄え（OGP画像自動生成など）を AI を活用してブラッシュアップ。
+**フェーズ 10: 本番運用に向けた最適化 (2026-03-14 更新)**
+- **Resendの送信元アドレス変更**: `src/actions/publicForm.ts` にて、お客様への自動送信・管理者通知の送信元メールアドレスを `staff@aizu-tv.com` に変更。
+- **SEO / OGP の高度化**:
+  - `src/app/layout.tsx` の `metadata` を更新し、Twitter Card 対応を含む詳細な OpenGraph タグを設定。
+  - `src/app/opengraph-image.tsx` を新設し、Next.js 組み込みの `next/og` を利用した動的 OGP 画像生成（ダークテーマ+グラスモーフィズムデザイン）を実装。SNS等でのシェア時の視認性を大幅に向上。
 
 ---
-*Updated by Antigravity Assistant (2026-03-12)*
+
+## 🎯 次回の開発に向けて (ネクストステップ)
+- **【最優先確認】本番環境でのメール送信テスト**:
+  - Resendダッシュボード (https://resend.com/domains) で `aizu-tv.com` が「Verified」であることを確認のうえ、Vercelへ最新版をデプロイする。
+  - お見積りフォームから実際にテスト送信を行い、`staff@aizu-tv.com` および顧客側アドレス（入力したメアド）両方にメールが正常に届くことを確認する。
+- **LPテキストの完全動的化**: ユーザーの要望に応じて、フォームの中身だけでなくLP上のキャッチコピーなども管理画面（`/admin/lp-editor`）から変更できるように拡張を検討。
+- **多言語対応の検討**: 必要に応じて `next-intl` などを導入し、フォームおよびLPの多言語化を行う。
+
+---
+*Updated by Antigravity Assistant (2026-03-14)*
