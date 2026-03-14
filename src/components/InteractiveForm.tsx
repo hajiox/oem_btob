@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, Package } from 'lucide-react'
+import Image from 'next/image'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { getFormStepsForProduct, submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
@@ -200,7 +201,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                 <label key={opt.id} style={{ display: 'flex', flexDirection: hasImages ? 'column' : 'row', alignItems: hasImages ? 'stretch' : 'center', justifyContent: hasImages ? 'flex-start' : 'space-between', padding: hasImages ? '0' : '16px', borderRadius: '16px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s ease', overflow: 'hidden', boxShadow: isSelected ? '0 0 20px rgba(99,102,241,0.2)' : 'none' }}>
                                     {hasImages && opt.image_url && (
                                         <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
-                                            <img src={opt.image_url} alt={opt.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <Image src={opt.image_url} alt={opt.label} width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>✓</div>}
                                         </div>
                                     )}

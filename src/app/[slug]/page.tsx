@@ -146,11 +146,13 @@ export default async function HomePage({ params }: { params: { slug: string } })
                 key={section.id}
                 style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
               >
-                <img
+                <Image
                   src={section.image_url!}
                   alt={section.title || ''}
+                  width={1200}
+                  height={1600}
                   style={{ width: '100%', height: 'auto', display: 'block' }}
-                  loading={i === 0 ? 'eager' : 'lazy'}
+                  priority={i === 0}
                 />
               </div>
             ))
