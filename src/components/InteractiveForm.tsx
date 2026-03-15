@@ -37,8 +37,32 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         return () => window.removeEventListener('resize', checkMobile)
     }, [])
 
-    // 現在のステップ群（商品選択後は商品専用ステップ）
-    const activeSteps = selectedProduct ? productSteps : []
+    const [answers, setAnswers] = useState<Record<string, any>>({})
+    const [contactInfo, setContactInfo] = useState({ companyName: '', contactName: '', email: '', phone: '', notes: '' })
+
+    // 現在のステップ群（商品選択後は商品専用ステップ、かつ依存関係によるフィルタリングを適用）
+    const filteredActiveSteps = useMemo(() => {
+        if (!selectedProduct) return []
+        
+        // 1. まず全ての質問について表示可否を判定
+        const isQuestionVisible = (q: any) => {
+            if (!q.depends_on_option_id) return true
+            // 全ての回答の中から、依存先のoption_idが選ばれているか探す
+            return Object.values(answers).some(val => {
+                if (Array.isArray(val)) return val.includes(q.depends_on_option_id)
+                if (typeof val === 'object' && val !== null && val.selected) return val.selected === q.depends_on_option_id
+                return val === q.depends_on_option_id
+            })
+        }
+
+        // 2. 表示対象の質問を含むステップのみを抽出
+        return productSteps.map(step => ({
+            ...step,
+            questions: step.questions.filter(isQuestionVisible)
+        })).filter(step => step.questions.length > 0)
+    }, [selectedProduct, productSteps, answers])
+
+    const activeSteps = filteredActiveSteps
 
     // 0=数量, 1=商品選択, 2~N+1=フォーム, N+2=結果, N+3=お客様情報
     const PRODUCT_STEP = 1
@@ -47,8 +71,21 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const RESULT_STEP = loadingSteps ? 999 : FORM_START + activeSteps.length
     const CONTACT_STEP = RESULT_STEP + 1
 
-    const [answers, setAnswers] = useState<Record<string, any>>({})
-    const [contactInfo, setContactInfo] = useState({ companyName: '', contactName: '', email: '', phone: '', notes: '' })
+    // 進捗インジケーターの計算（動的なステップ数に対応）
+    const visualSteps = useMemo(() => {
+        const labels = ['製造数', '商品']
+        activeSteps.forEach(s => labels.push(s.step_title))
+        labels.push('概算金額')
+        labels.push('お客様情報')
+        return labels
+    }, [activeSteps])
+
+    const currentVisualIdx = useMemo(() => {
+        if (currentStep <= PRODUCT_STEP) return currentStep
+        if (currentStep === RESULT_STEP) return visualSteps.length - 2
+        if (currentStep === CONTACT_STEP) return visualSteps.length - 1
+        return FORM_START + (currentStep - FORM_START) // フォーム内
+    }, [currentStep, visualSteps, RESULT_STEP, CONTACT_STEP])
 
     // 商品選択時にステップを取得
     useEffect(() => {
@@ -286,10 +323,6 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         return (<div style={{ width: '100%', maxWidth: '768px', margin: '0 auto', position: 'relative', zIndex: 1 }}><div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '64px 32px', textAlign: 'center' }}><div style={{ width: '80px', height: '80px', margin: '0 auto 24px', background: 'rgba(34,197,94,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle2 style={{ width: '48px', height: '48px', color: '#22c55e' }} /></div><h2 style={{ fontSize: '30px', fontWeight: 800, color: '#fff', marginBottom: '16px' }}>お問い合わせが完了しました</h2><p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, marginBottom: '32px' }}>お見積もりのご依頼ありがとうございます。<br />担当者より【3営業日以内】にご連絡させていただきます。</p><div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px' }}><div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>概算お見積り金額 ({oemQuantity}個)</div><div style={{ fontSize: '30px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</div></div></div></div>)
     }
 
-    // ステップインジケーターラベル
-    const stepLabels = ['製造数', '商品選択', ...activeSteps.map(s => s.step_title), 'お見積り']
-    const totalVisualSteps = stepLabels.length
-
     return (
         <div style={{ width: '100%', maxWidth: '960px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)' }}>
@@ -302,36 +335,26 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none'
                 }}>
-                    {stepLabels.map((label, idx) => {
-                        const isActive = idx === currentStep
-                        const isPast = idx < currentStep
-                        
-                        // モバイル時は全ステップを表示するが、ラベルは現在地のみ表示して他は点にするなどの調整も可能
-                        // ここでは、ラベルを小さくし、アクティブなものを目立たせる
+                    {visualSteps.map((label, idx) => {
+                        const isActive = idx === currentVisualIdx
+                        const isPast = idx < currentVisualIdx
                         return (
-                            <div key={idx} style={{ 
-                                flex: isMobile ? '0 0 auto' : 1, 
-                                padding: isMobile ? '12px 10px' : '16px 8px', 
-                                textAlign: 'center', 
-                                borderBottom: isActive ? '3px solid #818cf8' : isPast ? '3px solid rgba(129,140,248,0.3)' : '3px solid transparent', 
-                                transition: 'all 0.3s',
-                                minWidth: isMobile ? '48px' : '60px'
-                            }}>
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1, position: 'relative' }}>
                                 <div style={{ 
-                                    width: isMobile ? '22px' : '28px', 
-                                    height: isMobile ? '22px' : '28px', 
+                                    width: isMobile ? '28px' : '36px', 
+                                    height: isMobile ? '28px' : '36px', 
                                     borderRadius: '50%', 
-                                    margin: '0 auto 6px', 
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     justifyContent: 'center', 
-                                    fontSize: isMobile ? '10px' : '12px', 
+                                    fontSize: isMobile ? '12px' : '14px', 
                                     fontWeight: 700, 
+                                    zIndex: 2, 
                                     background: isActive ? '#818cf8' : isPast ? 'rgba(129,140,248,0.2)' : 'rgba(255,255,255,0.08)', 
                                     color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.4)', 
                                     border: isActive ? 'none' : isPast ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)' 
                                 }}>
-                                    {isPast ? '✓' : idx === totalVisualSteps - 1 ? '💰' : idx + 1}
+                                    {isPast ? '✓' : idx === visualSteps.length - 2 ? '💰' : idx + 1}
                                 </div>
                                 <span style={{ 
                                     fontSize: isMobile ? '9px' : '11px', 
