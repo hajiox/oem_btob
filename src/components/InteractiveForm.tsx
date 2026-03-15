@@ -71,6 +71,17 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const RESULT_STEP = loadingSteps ? 999 : FORM_START + activeSteps.length
     const CONTACT_STEP = RESULT_STEP + 1
 
+    // activeSteps が (回答変更により) 縮小した場合、currentStep が範囲外になるのを防ぐ
+    useEffect(() => {
+        if (currentStep >= FORM_START && currentStep < 999) {
+            const maxFormStep = FORM_START + activeSteps.length - 1
+            if (activeSteps.length > 0 && currentStep > maxFormStep) {
+                // 現在のステップが消えたので、最後のフォームステップまで戻す
+                setCurrentStep(maxFormStep)
+            }
+        }
+    }, [activeSteps.length, currentStep, FORM_START])
+
     // 進捗インジケーターの計算（動的なステップ数に対応）
     const visualSteps = useMemo(() => {
         const labels = ['製造数', '商品']
@@ -82,10 +93,14 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     const currentVisualIdx = useMemo(() => {
         if (currentStep <= PRODUCT_STEP) return currentStep
-        if (currentStep === RESULT_STEP) return visualSteps.length - 2
-        if (currentStep === CONTACT_STEP) return visualSteps.length - 1
-        return FORM_START + (currentStep - FORM_START) // フォーム内
-    }, [currentStep, visualSteps, RESULT_STEP, CONTACT_STEP])
+        if (currentStep >= RESULT_STEP) {
+            if (currentStep === RESULT_STEP) return visualSteps.length - 2
+            return visualSteps.length - 1 // CONTACT_STEP
+        }
+        // フォーム領域内: currentStep - FORM_START がフォーム内のインデックス
+        const formIdx = currentStep - FORM_START
+        return FORM_START + Math.min(formIdx, activeSteps.length - 1)
+    }, [currentStep, visualSteps, RESULT_STEP, PRODUCT_STEP, activeSteps.length])
 
     // 商品選択時にステップを取得
     useEffect(() => {
