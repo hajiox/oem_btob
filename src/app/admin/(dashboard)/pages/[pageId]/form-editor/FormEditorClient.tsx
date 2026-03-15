@@ -565,7 +565,7 @@ export default function FormEditorClient({
 }
 
 // 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
-const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'none', 'null', 'n/a']
+const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'いいえ', '否', 'none', 'null', 'n/a']
 
 const shouldShowExtraInput = (label: string | null | undefined) => {
     if (!label) return false
