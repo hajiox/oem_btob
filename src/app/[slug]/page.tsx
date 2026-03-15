@@ -141,19 +141,70 @@ export default async function HomePage({ params }: { params: { slug: string } })
         <div style={{ maxWidth: '896px', marginLeft: 'auto', marginRight: 'auto', padding: '40px 20px 56px', display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
           {/* DB画像があればDB優先、なければフォールバック */}
           {sections.length > 0 ? (
-            sections.filter(s => s.image_url).map((section, i) => (
+            sections.map((section, i) => (
               <div
                 key={section.id}
-                style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: section.section_type === 'hero' ? '32px' : '24px',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                }}
               >
-                <Image
-                  src={section.image_url!}
-                  alt={section.title || ''}
-                  width={1200}
-                  height={1600}
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
-                  priority={i === 0}
-                />
+                {/* 画像部分 */}
+                {section.image_url && (
+                  <div
+                    style={{
+                      width: '100%',
+                      borderRadius: section.section_type === 'hero' ? '32px' : '24px',
+                      overflow: 'hidden',
+                      boxShadow: section.section_type === 'hero' 
+                        ? '0 30px 60px -12px rgba(0,0,0,0.3)' 
+                        : '0 25px 50px -12px rgba(0,0,0,0.25)',
+                      transition: 'transform 0.3s ease',
+                    }}
+                  >
+                    <Image
+                      src={section.image_url}
+                      alt={section.title || ''}
+                      width={1200}
+                      height={1600}
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
+                      priority={i === 0 || section.section_type === 'hero'}
+                    />
+                  </div>
+                )}
+
+                {/* テキスト部分 (タイトルと説明文) */}
+                {(section.title || section.description) && (
+                  <div style={{ maxWidth: '720px', padding: '0 12px' }}>
+                    {section.title && (
+                      <h2 style={{
+                        fontSize: section.section_type === 'hero' ? 'clamp(28px, 6vw, 42px)' : 'clamp(22px, 5vw, 32px)',
+                        fontWeight: 800,
+                        color: '#1f2937',
+                        marginBottom: '16px',
+                        lineHeight: 1.3,
+                        letterSpacing: '-0.02em',
+                      }}>
+                        {section.title}
+                      </h2>
+                    )}
+                    {section.description && (
+                      <div style={{
+                        fontSize: '17px',
+                        lineHeight: 1.8,
+                        color: '#4b5563',
+                        letterSpacing: '0.04em',
+                        whiteSpace: 'pre-wrap',
+                      }}>
+                        {section.description}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           ) : (

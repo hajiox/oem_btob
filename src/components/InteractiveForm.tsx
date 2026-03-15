@@ -18,6 +18,15 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
     const [productSteps, setProductSteps] = useState<FormStepWithItems[]>([])
     const [loadingSteps, setLoadingSteps] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+
+    // モバイル判定
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        checkMobile() // 初期実行
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     // 現在のステップ群（商品選択後は商品専用ステップ）
     const activeSteps = selectedProduct ? productSteps : []
@@ -194,7 +203,12 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             case 'radio': {
                 const hasImages = q.options.some((o: any) => o.image_url)
                 return (
-                    <div style={{ display: 'grid', gridTemplateColumns: hasImages ? 'repeat(auto-fill, minmax(160px, 1fr))' : 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: isMobile ? '1fr' : (hasImages ? 'repeat(auto-fill, minmax(160px, 1fr))' : 'repeat(auto-fill, minmax(240px, 1fr))'), 
+                        gap: '12px', 
+                        marginTop: '16px' 
+                    }}>
                         {q.options.map((opt: any) => {
                             const isSelected = val === opt.id
                             return (
@@ -220,7 +234,12 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 )
             }
             case 'checkbox':
-                return (<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                return (<div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', 
+                    gap: '12px', 
+                    marginTop: '16px' 
+                }}>
                     {q.options.map((opt: any) => { const checked = Array.isArray(val) && val.includes(opt.id); return (<label key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '16px', border: checked ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: checked ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><input type="checkbox" value={opt.id} checked={checked} onChange={() => handleAnswerChange(q.id, opt.id, 'checkbox')} style={{ width: '16px', height: '16px', accentColor: '#818cf8' }} /><div><span style={{ fontWeight: 600, color: '#fff', fontSize: '15px' }}>{opt.label}</span>{opt.description && <span style={{ display: 'block', fontSize: '11.5px', color: 'rgba(255,255,255,0.7)', marginTop: '4px', whiteSpace: 'pre-line' }}>{opt.description}</span>}</div></div>{priceLabel(opt) && <span style={{ fontSize: '13px', fontWeight: 700, color: opt.price_modifier_type === 'percentage' ? '#fbbf24' : '#818cf8' }}>{priceLabel(opt)}</span>}</label>) })}
                 </div>)
             case 'select': {
@@ -259,11 +278,55 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             <div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)' }}>
 
                 {/* ステップインジケーター */}
-                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', overflowX: 'auto' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    borderBottom: '1px solid rgba(255,255,255,0.08)', 
+                    overflowX: isMobile ? 'auto' : 'visible',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                }}>
                     {stepLabels.map((label, idx) => {
                         const isActive = idx === currentStep
                         const isPast = idx < currentStep
-                        return (<div key={idx} style={{ flex: 1, padding: '16px 8px', textAlign: 'center', borderBottom: isActive ? '3px solid #818cf8' : isPast ? '3px solid rgba(129,140,248,0.3)' : '3px solid transparent', transition: 'all 0.3s', minWidth: '60px' }}><div style={{ width: '28px', height: '28px', borderRadius: '50%', margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: isActive ? '#818cf8' : isPast ? 'rgba(129,140,248,0.2)' : 'rgba(255,255,255,0.08)', color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.4)', border: isActive ? 'none' : isPast ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)' }}>{isPast ? '✓' : idx === totalVisualSteps - 1 ? '💰' : idx + 1}</div><span style={{ fontSize: '11px', fontWeight: 600, color: isActive ? '#fff' : isPast ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)' }}>{label}</span></div>)
+                        
+                        // モバイル時は全ステップを表示するが、ラベルは現在地のみ表示して他は点にするなどの調整も可能
+                        // ここでは、ラベルを小さくし、アクティブなものを目立たせる
+                        return (
+                            <div key={idx} style={{ 
+                                flex: isMobile ? '0 0 auto' : 1, 
+                                padding: isMobile ? '12px 10px' : '16px 8px', 
+                                textAlign: 'center', 
+                                borderBottom: isActive ? '3px solid #818cf8' : isPast ? '3px solid rgba(129,140,248,0.3)' : '3px solid transparent', 
+                                transition: 'all 0.3s',
+                                minWidth: isMobile ? '48px' : '60px'
+                            }}>
+                                <div style={{ 
+                                    width: isMobile ? '22px' : '28px', 
+                                    height: isMobile ? '22px' : '28px', 
+                                    borderRadius: '50%', 
+                                    margin: '0 auto 6px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    fontSize: isMobile ? '10px' : '12px', 
+                                    fontWeight: 700, 
+                                    background: isActive ? '#818cf8' : isPast ? 'rgba(129,140,248,0.2)' : 'rgba(255,255,255,0.08)', 
+                                    color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.4)', 
+                                    border: isActive ? 'none' : isPast ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)' 
+                                }}>
+                                    {isPast ? '✓' : idx === totalVisualSteps - 1 ? '💰' : idx + 1}
+                                </div>
+                                <span style={{ 
+                                    fontSize: isMobile ? '9px' : '11px', 
+                                    fontWeight: 600, 
+                                    color: isActive ? '#fff' : isPast ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)',
+                                    display: isMobile && !isActive ? 'none' : 'block', // モバイルでは非アクティブなラベルを隠してスッキリさせる
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    {label}
+                                </span>
+                            </div>
+                        )
                     })}
                 </div>
 
@@ -277,7 +340,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         {currentStep === 0 && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご希望の製造数をご入力ください（400個〜800個）</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>個</span></div>{(oemQuantity < 400 || oemQuantity > 800) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
 
                         {/* 商品選択 */}
-                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>商品に応じた見積もりフォームが表示されます</p></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>{products.map(p => { const isSelected = selectedProduct === p.id; return (<button key={p.id} onClick={() => setSelectedProduct(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px 24px', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none' }}><div style={{ width: '64px', height: '64px', borderRadius: '50%', background: isSelected ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package style={{ width: '32px', height: '32px', color: isSelected ? '#818cf8' : 'rgba(255,255,255,0.5)' }} /></div><span style={{ fontSize: '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)' }}>{p.name}</span>{p.description && <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>{p.description}</span>}</button>) })}</div></motion.div>)}
+                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>商品に応じた見積もりフォームが表示されます</p></div><div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', 
+                            gap: '16px' 
+                        }}>{products.map(p => { const isSelected = selectedProduct === p.id; return (<button key={p.id} onClick={() => setSelectedProduct(p.id)} style={{ display: 'flex', flexDirection: isSelected && isMobile ? 'row' : 'column', alignItems: 'center', gap: '16px', padding: isMobile ? '20px 16px' : '32px 24px', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%' }}><div style={{ width: isMobile ? '40px' : '64px', height: isMobile ? '40px' : '64px', borderRadius: '50%', background: isSelected ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Package style={{ width: isMobile ? '20px' : '32px', height: isMobile ? '20px' : '32px', color: isSelected ? '#818cf8' : 'rgba(255,255,255,0.5)' }} /></div><div style={{ textAlign: isSelected && isMobile ? 'left' : 'center' }}><span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>{p.description && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{p.description}</span>}</div></button>) })}</div></motion.div>)}
 
                         {/* フォームステップ（1ステップ1質問） */}
                         {currentStep >= FORM_START && currentStep < RESULT_STEP && (<motion.div key={`step-${currentStep}`} initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}>{loadingSteps ? <div style={{ textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.5)' }}>読み込み中...</div> : (() => { const stepData = activeSteps[currentStep - FORM_START]; if (!stepData) return null; const q = stepData.questions[0]; if (!q) return null; return (<><div style={{ marginBottom: '24px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>{stepData.step_title}{q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}</h2>{stepData.step_description && <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{stepData.step_description}</p>}{q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}</div><div>{renderQuestionInput(q)}</div></>)})()}</motion.div>)}
@@ -286,7 +353,56 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         {currentStep === RESULT_STEP && (<motion.div key="step-result" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}><div style={{ textAlign: 'center', marginBottom: '32px' }}><div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お見積り結果</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご回答内容に基づく概算金額です</p></div><div style={{ textAlign: 'center', padding: '32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))', border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px' }}><div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>概算お見積り金額 ({oemQuantity}個)</div><div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}〜</div><div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div><div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div><div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)' }}><div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>📦 1個あたり仕入原価</span><span style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}</span></div></div></div><div style={{ textAlign: 'center' }}><button onClick={handleApply} style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '16px 48px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700, background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 8px 32px rgba(34,197,94,0.3)' }}>🚀 この内容で仮申込する</button><p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '12px' }}>仮申込後にお客様情報をご入力いただきます</p></div></motion.div>)}
 
                         {/* お客様情報 */}
-                        {currentStep === CONTACT_STEP && (<motion.div key="step-contact" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お客様情報の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>お見積り内容をお送りするため、ご連絡先をご入力ください。</p><div style={{ display: 'inline-block', marginTop: '12px', padding: '8px 16px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}><span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>お見積り金額: </span><span style={{ fontSize: '16px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</span></div></div><form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}>{errorData && <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}><AlertCircle style={{ width: '20px', height: '20px', color: '#ef4444', flexShrink: 0, marginTop: '2px' }} /><p style={{ fontSize: '14px', color: '#f87171' }}>{errorData}</p></div>}<div><label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>貴社名 / 屋号 <span style={{ color: '#f87171' }}>*</span></label><input required type="text" value={contactInfo.companyName} onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="株式会社〇〇" /></div><div><label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>ご担当者名 <span style={{ color: '#f87171' }}>*</span></label><input required type="text" value={contactInfo.contactName} onChange={e => setContactInfo({ ...contactInfo, contactName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="山田 太郎" /></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}><div><label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>メールアドレス <span style={{ color: '#f87171' }}>*</span></label><input required type="email" value={contactInfo.email} onChange={e => setContactInfo({ ...contactInfo, email: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="info@example.com" /></div><div><label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>電話番号</label><input type="tel" value={contactInfo.phone} onChange={e => setContactInfo({ ...contactInfo, phone: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="03-0000-0000" /></div></div><div><label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>その他ご要望</label><textarea rows={3} value={contactInfo.notes} onChange={e => setContactInfo({ ...contactInfo, notes: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', resize: 'none', fontSize: '15px' }} placeholder="ご不明点や特記事項があればご記入ください" /></div></form></motion.div>)}
+                        {currentStep === CONTACT_STEP && (
+                            <motion.div key="step-contact" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                                <div style={{ marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お客様情報の入力</h2>
+                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>お見積り内容をお送りするため、ご連絡先をご入力ください。</p>
+                                    <div style={{ display: 'inline-block', marginTop: '12px', padding: '8px 16px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>お見積り金額: </span>
+                                        <span style={{ fontSize: '16px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</span>
+                                    </div>
+                                </div>
+                                <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}>
+                                    {errorData && (
+                                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                            <AlertCircle style={{ width: '20px', height: '20px', color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
+                                            <p style={{ fontSize: '14px', color: '#f87171' }}>{errorData}</p>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
+                                            貴社名 / 屋号 <span style={{ color: '#f87171' }}>*</span>
+                                        </label>
+                                        <input required type="text" value={contactInfo.companyName} onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="株式会社〇〇" />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
+                                            ご担当者名 <span style={{ color: '#f87171' }}>*</span>
+                                        </label>
+                                        <input required type="text" value={contactInfo.contactName} onChange={e => setContactInfo({ ...contactInfo, contactName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="山田 太郎" />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
+                                                メールアドレス <span style={{ color: '#f87171' }}>*</span>
+                                            </label>
+                                            <input required type="email" value={contactInfo.email} onChange={e => setContactInfo({ ...contactInfo, email: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="info@example.com" />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
+                                                電話番号
+                                            </label>
+                                            <input type="tel" value={contactInfo.phone} onChange={e => setContactInfo({ ...contactInfo, phone: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="03-0000-0000" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>その他ご要望</label>
+                                        <textarea rows={3} value={contactInfo.notes} onChange={e => setContactInfo({ ...contactInfo, notes: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', resize: 'none', fontSize: '15px' }} placeholder="ご不明点や特記事項があればご記入ください" />
+                                    </div>
+                                </form>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
 
                     {/* ナビゲーションボタン */}

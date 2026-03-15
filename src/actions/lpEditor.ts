@@ -91,8 +91,17 @@ export async function reorderLpSections(pageId: string, orderedIds: string[]) {
     return { success: true }
 }
 
-// LP画像のalt/titleを更新
-export async function updateLpSectionTitle(pageId: string, id: string, title: string) {
+// LPセクションの情報を更新
+export async function updateLpSection(
+    pageId: string,
+    id: string,
+    updates: {
+        title?: string | null
+        description?: string | null
+        section_type?: LpSection['section_type']
+        is_visible?: boolean
+    }
+) {
     if (!pageId) return { success: false, error: 'ページIDが指定されていません' }
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -100,13 +109,18 @@ export async function updateLpSectionTitle(pageId: string, id: string, title: st
 
     const { error } = await supabase
         .from('lp_sections')
-        .update({ title })
+        .update(updates)
         .eq('id', id)
         .eq('page_id', pageId)
 
     if (error) return { success: false, error: error.message }
     revalidatePath('/', 'layout')
     return { success: true }
+}
+
+/** @deprecated updateLpSection を使用してください */
+export async function updateLpSectionTitle(pageId: string, id: string, title: string) {
+    return updateLpSection(pageId, id, { title })
 }
 
 // デフォルト画像をDBに初期登録（シード）する
