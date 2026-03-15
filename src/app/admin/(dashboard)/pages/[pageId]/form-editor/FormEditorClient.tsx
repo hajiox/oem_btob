@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, X, ExternalLink, Package } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, X, ExternalLink, Package, MessageSquareCode, MessageSquareX } from 'lucide-react'
 import Link from 'next/link'
 import type { FormStep, FormQuestion, FormOption, Product } from '@/types/database'
 import { saveFormEditorData, saveProduct, deleteProduct } from '@/actions/formEditor'
@@ -531,6 +531,7 @@ export default function FormEditorClient({
                                                                 onImageUpload={(file) => handleImageUpload(step.id, question.id, option.id, file)}
                                                                 onImageRemove={() => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, image_url: '' } : o) } : q) } : s))}
                                                                 onRemove={() => removeOption(step.id, question.id, option.id)}
+                                                                questionType={question.input_type}
                                                             />
                                                         ))}
                                                         <button onClick={() => addOption(step.id, question.id)} style={{ ...S.btn, color: 'var(--admin-accent)', background: 'rgba(99,102,241,0.1)', marginTop: '4px', fontSize: '13px', fontWeight: 'bold' }}>
@@ -563,6 +564,15 @@ export default function FormEditorClient({
     )
 }
 
+// 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
+const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'none', 'null', 'n/a']
+
+const shouldShowExtraInput = (label: string | null | undefined) => {
+    if (!label) return false
+    const normalized = label.trim().toLowerCase()
+    return !EXTRA_EXCLUSION_KEYWORDS.some(k => normalized.includes(k))
+}
+
 // 選択肢の行コンポーネント
 function OptionRow({
     option,
@@ -577,6 +587,7 @@ function OptionRow({
     onImageUpload,
     onImageRemove,
     onRemove,
+    questionType
 }: {
     option: FormOption
     stepId: string
@@ -590,6 +601,7 @@ function OptionRow({
     onImageUpload: (file: File) => void
     onImageRemove: () => void
     onRemove: () => void
+    questionType: string
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const isPercentage = option.price_modifier_type === 'percentage'
@@ -603,6 +615,16 @@ function OptionRow({
                     placeholder="選択肢の表示名"
                     style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '13px', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none' }}
                 />
+
+                {(questionType === 'select_text' || questionType === 'select_number') && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: shouldShowExtraInput(option.label) ? 'rgba(34,197,94,0.1)' : 'rgba(248,113,113,0.1)', color: shouldShowExtraInput(option.label) ? '#4ade80' : '#f87171', border: `1px solid ${shouldShowExtraInput(option.label) ? 'rgba(34,197,94,0.2)' : 'rgba(248,113,113,0.2)'}` }} title={shouldShowExtraInput(option.label) ? 'この項目が選ばれた時、追加入力フォームを表示します' : '「なし」系のキーワードが含まれるため、入力フォームを表示しません'}>
+                        {shouldShowExtraInput(option.label) ? (
+                            <><MessageSquareCode style={{ width: '12px', height: '12px' }} /> 追加入力あり</>
+                        ) : (
+                            <><MessageSquareX style={{ width: '12px', height: '12px' }} /> 追加入力なし</>
+                        )}
+                    </div>
+                )}
 
                 <textarea
                     value={option.description || ''}

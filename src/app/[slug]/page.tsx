@@ -267,13 +267,6 @@ export default async function HomePage({ params }: { params: { slug: string } })
       {/* フッター */}
       <Footer />
 
-      {/* フローティング見積もりボタン */}
-      <a
-        href="#bto-form"
-        style={{ position: 'fixed', bottom: '24px', right: '20px', zIndex: 50, padding: '14px 22px', backgroundColor: '#ea580c', color: '#fff', fontWeight: 'bold', fontSize: '16px', borderRadius: '9999px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)', textDecoration: 'none', transition: 'all 0.3s', letterSpacing: '0.08em' }}
-      >
-        🚀 今すぐ自動見積もり
-      </a>
     </main>
   )
 }

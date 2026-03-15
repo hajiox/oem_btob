@@ -2,11 +2,20 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, Package } from 'lucide-react'
+import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, MessageSquareCode, MessageSquareX, Package } from 'lucide-react'
 import Image from 'next/image'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { getFormStepsForProduct, submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
+
+// 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
+const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'none', 'null', 'n/a']
+
+const shouldShowExtraInput = (label: string | null | undefined) => {
+    if (!label) return false
+    const normalized = label.trim().toLowerCase()
+    return !EXTRA_EXCLUSION_KEYWORDS.some(k => normalized.includes(k))
+}
 
 export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
     const [currentStep, setCurrentStep] = useState(0)
@@ -34,7 +43,8 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     // 0=数量, 1=商品選択, 2~N+1=フォーム, N+2=結果, N+3=お客様情報
     const PRODUCT_STEP = 1
     const FORM_START = 2
-    const RESULT_STEP = FORM_START + activeSteps.length
+    // ステップ読み込み中は RESULT_STEP を一時的に後ろにずらし、一瞬結果画面が出るのを防ぐ
+    const RESULT_STEP = loadingSteps ? 999 : FORM_START + activeSteps.length
     const CONTACT_STEP = RESULT_STEP + 1
 
     const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -159,11 +169,18 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         setErrorData(null)
         const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
         const selectedProd = products.find(p => p.id === selectedProduct)
+        
+        // 販売シミュレーション文字列の作成
+        const simulationText = `利益率30%: ¥${Math.ceil(unitCost / 0.7).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.7) - unitCost).toLocaleString()})
+利益率40%: ¥${Math.ceil(unitCost / 0.6).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.6) - unitCost).toLocaleString()})
+利益率50%: ¥${Math.ceil(unitCost / 0.5).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.5) - unitCost).toLocaleString()})`
+
         const selectedOptionsDetails = [
             { question: 'OEM製造数', answer: `${oemQuantity}個`, type: 'number' },
             { question: '商品', answer: selectedProd?.name || '', type: 'text' },
             { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
             { question: '1個あたり仕入原価(税抜)', answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
+            { question: '想定売価シミュレーション', answer: simulationText, type: 'text' },
             ...Object.entries(answers).map(([qId, val]) => {
                 const q = activeSteps.flatMap(s => s.questions).find(q => q.id === qId)
                 if (!q) return null
@@ -171,7 +188,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 if (typeof val === 'object' && !Array.isArray(val) && val.selected) {
                     const opt = q.options.find((o: any) => o.id === val.selected)
                     displayValue = opt ? opt.label : val.selected
-                    const expectsExtra = opt && !['ない', 'なし', '不要'].some(w => opt.label.includes(w))
+                    const expectsExtra = opt && shouldShowExtraInput(opt.label)
                     if (expectsExtra && val.extra) displayValue += ` (${val.extra})`
                 } else if (Array.isArray(val)) {
                     displayValue = val.map((id: string) => q.options.find((o: any) => o.id === id)?.label || id).join(', ')
@@ -249,7 +266,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             case 'select_text': case 'select_number': {
                 const isNum = q.input_type === 'select_number'
                 const selOpt = q.options?.find((o: any) => o.id === val?.selected)
-                const showExtra = selOpt && !['ない', 'なし', '不要'].some(w => selOpt.label.includes(w))
+                const showExtra = selOpt && shouldShowExtraInput(selOpt.label)
                 return (<div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '20px', borderRadius: '16px' }}><div style={{ position: 'relative' }}><select value={val?.selected || ''} onChange={(e) => handleAnswerChange(q.id, e.target.value, isNum ? 'select_number_selected' : 'select_text_selected')} style={{ width: '100%', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '14px 16px', color: '#fff', outline: 'none', appearance: 'none', cursor: 'pointer', fontWeight: 500 }}><option value="" disabled style={{ color: '#000' }}>項目を選択してください</option>{q.options?.map((opt: any) => (<option value={opt.id} key={opt.id} style={{ color: '#000' }}>{opt.label}{priceLabel(opt) ? ` (${priceLabel(opt)})` : ''}</option>))}</select><ChevronDown style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', color: 'rgba(255,255,255,0.5)', pointerEvents: 'none' }} /></div>{selOpt?.description && <div style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '12px', padding: '16px' }}><p style={{ fontSize: '13.5px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{selOpt.description}</p></div>}{showExtra && (isNum ? <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><input type="number" value={val?.extra || ''} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_number_extra')} style={{ width: '160px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '14px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontWeight: 500, fontSize: '18px' }} placeholder="0" min="0" /><span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>個</span></div> : <input type="text" value={val?.extra || ''} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'select_text_extra')} style={{ width: '100%', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '14px 16px', color: '#fff', outline: 'none' }} placeholder="詳細テキストをご入力ください" />)}</div>)
             }
             case 'textarea':
@@ -350,7 +367,66 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         {currentStep >= FORM_START && currentStep < RESULT_STEP && (<motion.div key={`step-${currentStep}`} initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}>{loadingSteps ? <div style={{ textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.5)' }}>読み込み中...</div> : (() => { const stepData = activeSteps[currentStep - FORM_START]; if (!stepData) return null; const q = stepData.questions[0]; if (!q) return null; return (<><div style={{ marginBottom: '24px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>{stepData.step_title}{q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}</h2>{stepData.step_description && <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{stepData.step_description}</p>}{q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}</div><div>{renderQuestionInput(q)}</div></>)})()}</motion.div>)}
 
                         {/* 見積もり結果 */}
-                        {currentStep === RESULT_STEP && (<motion.div key="step-result" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}><div style={{ textAlign: 'center', marginBottom: '32px' }}><div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お見積り結果</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご回答内容に基づく概算金額です</p></div><div style={{ textAlign: 'center', padding: '32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))', border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px' }}><div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>概算お見積り金額 ({oemQuantity}個)</div><div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}〜</div><div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div><div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div><div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)' }}><div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>📦 1個あたり仕入原価</span><span style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}</span></div></div></div><div style={{ textAlign: 'center' }}><button onClick={handleApply} style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '16px 48px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700, background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 8px 32px rgba(34,197,94,0.3)' }}>🚀 この内容で仮申込する</button><p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '12px' }}>仮申込後にお客様情報をご入力いただきます</p></div></motion.div>)}
+                        {currentStep === RESULT_STEP && (
+                            <motion.div key="step-result" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }}>
+                                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                                    <div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お見積り結果</h2>
+                                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご回答内容に基づく概算金額です</p>
+                                </div>
+                                <div style={{ textAlign: 'center', padding: '32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))', border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px' }}>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>概算お見積り金額 ({oemQuantity}個)</div>
+                                    <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}〜</div>
+                                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
+                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>
+                                    
+                                    <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+                                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
+                                                <span>📦</span> 1個あたり仕入原価
+                                            </div>
+                                            <div style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>
+                                                ¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(217,119,6,0.1))', padding: '24px', borderRadius: '16px', border: '1px solid rgba(234,179,8,0.3)' }}>
+                                            <div style={{ fontSize: '15px', color: '#fcd34d', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                                                <span>💡</span> 販売プランシミュレーション
+                                            </div>
+                                            
+                                            <div style={{ display: 'grid', gap: '12px' }}>
+                                                {[30, 40, 50].map(margin => {
+                                                    const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
+                                                    const sellingPrice = Math.ceil(unitCost / (1 - margin / 100))
+                                                    const profit = sellingPrice - unitCost
+                                                    
+                                                    return (
+                                                        <div key={margin} style={{ display: 'grid', gridTemplateColumns: isMobile ? '70px 1fr 1fr' : '80px 1fr 1fr', alignItems: 'center', gap: isMobile ? '8px' : '16px', padding: isMobile ? '12px' : '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.15)', padding: '4px 0', borderRadius: '6px', textAlign: 'center' }}>
+                                                                利益 {margin}%
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>想定売価</div>
+                                                                <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 700, color: '#fff' }}>¥{sellingPrice.toLocaleString()}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>1個あたり利益</div>
+                                                                <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 700, color: '#4ade80' }}>+¥{profit.toLocaleString()}</div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                    <button onClick={handleApply} style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '16px 48px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700, background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 8px 32px rgba(34,197,94,0.3)' }}>🚀 この内容で仮申込する</button>
+                                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '12px' }}>仮申込後にお客様情報をご入力いただきます</p>
+                                </div>
+                            </motion.div>
+                        )}
 
                         {/* お客様情報 */}
                         {currentStep === CONTACT_STEP && (
@@ -416,6 +492,22 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                     </div>
                 </div>
             </div>
+
+            {/* フローティング見積もりボタン（フォーム開始前のみ表示） */}
+            <AnimatePresence>
+                {currentStep === 0 && (
+                    <motion.a
+                        key="floating-cta"
+                        href="#bto-form"
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                        style={{ position: 'fixed', bottom: '24px', right: '20px', zIndex: 50, padding: '14px 22px', backgroundColor: '#ea580c', color: '#fff', fontWeight: 'bold', fontSize: '16px', borderRadius: '9999px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)', textDecoration: 'none', transition: 'all 0.3s', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                        🚀 今すぐ自動見積もり
+                    </motion.a>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
