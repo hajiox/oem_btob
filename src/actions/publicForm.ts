@@ -142,7 +142,7 @@ export async function submitLead(formData: {
         const resend = new Resend(process.env.RESEND_API_KEY)
         
         // 1. お客様への自動返信
-        await resend.emails.send({
+        const customerResult = await resend.emails.send({
             from: 'OEM自動見積り <staff@aizu-tv.com>', // ドメイン認証後は info@yourdomain.com 等に変更可能
             to: formData.email,
             subject: '【自動回答】お見積り依頼を承りました',
@@ -165,11 +165,15 @@ export async function submitLead(formData: {
             `
         })
 
+        if (customerResult.error) {
+            console.error('Customer email failed:', customerResult.error)
+        }
+
         // 2. 管理者への通知 (Aizu TV様)
-        await resend.emails.send({
+        const adminResult = await resend.emails.send({
             from: 'OEM System Notification <staff@aizu-tv.com>',
             to: 'staff@aizu-tv.com', // 管理者通知先を更新
-            subject: '【新規リード獲得】新しいお見積り依頼が届きました',
+            subject: '【新規リード獲得】新しいお見積り依頼が届きました（法人OEM）',
             html: `
                 <div style="font-family: sans-serif; color: #333;">
                     <h2>新しいリードを獲得しました</h2>
@@ -185,9 +189,13 @@ export async function submitLead(formData: {
             `
         })
 
+        if (adminResult.error) {
+            console.error('Admin notification email failed:', adminResult.error)
+        }
+
     } catch (mailError) {
-        // メール送信エラーは致命的ではないため、ログ出力のみして処理を続行
-        console.error('Email notification error:', mailError)
+        // 例外キャッチ
+        console.error('Email notification exception:', mailError)
     }
 
     return { success: true }

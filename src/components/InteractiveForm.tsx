@@ -73,7 +73,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     // activeSteps が (回答変更により) 縮小した場合、currentStep が範囲外になるのを防ぐ
     useEffect(() => {
-        if (currentStep >= FORM_START && currentStep < 999) {
+        const resultStepVal = FORM_START + activeSteps.length
+        // 結果画面やお客様情報画面にいる場合は補正不要
+        if (currentStep >= resultStepVal) return
+
+        if (currentStep >= FORM_START) {
             const maxFormStep = FORM_START + activeSteps.length - 1
             if (activeSteps.length > 0 && currentStep > maxFormStep) {
                 // 現在のステップが消えたので、最後のフォームステップまで戻す
@@ -222,17 +226,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
         const selectedProd = products.find(p => p.id === selectedProduct)
         
-        // 販売シミュレーション文字列の作成
-        const simulationText = `利益率30%: ¥${Math.ceil(unitCost / 0.7).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.7) - unitCost).toLocaleString()})
-利益率40%: ¥${Math.ceil(unitCost / 0.6).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.6) - unitCost).toLocaleString()})
-利益率50%: ¥${Math.ceil(unitCost / 0.5).toLocaleString()} (1個あたり利益: +¥${(Math.ceil(unitCost / 0.5) - unitCost).toLocaleString()})`
-
         const selectedOptionsDetails = [
             { question: 'OEM製造数', answer: `${oemQuantity}個`, type: 'number' },
             { question: '商品', answer: selectedProd?.name || '', type: 'text' },
             { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
             { question: '1個あたり仕入原価(税抜)', answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
-            { question: '想定売価シミュレーション', answer: simulationText, type: 'text' },
             ...Object.entries(answers).map(([qId, val]) => {
                 const q = activeSteps.flatMap(s => s.questions).find(q => q.id === qId)
                 if (!q) return null

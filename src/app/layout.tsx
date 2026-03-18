@@ -48,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ja" className={`${notoSansJP.variable} ${inter.variable}`}>
-      <body>
+    <html lang="ja" className={`${notoSansJP.variable} ${inter.variable}`} suppressHydrationWarning>
+      <body style={{ fontFamily: 'var(--font-noto-sans-jp), "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif' }} suppressHydrationWarning>
         {children}
       </body>
     </html>
