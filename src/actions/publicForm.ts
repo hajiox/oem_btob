@@ -184,7 +184,7 @@ export async function submitLead(formData: {
                         <tr><td style="padding: 8px; border: 1px solid #eee;">メール</td><td style="padding: 8px; border: 1px solid #eee;">${formData.email}</td></tr>
                         <tr><td style="padding: 8px; border: 1px solid #eee;">概算見積額</td><td style="padding: 8px; border: 1px solid #eee;">¥${formData.estimatedTotalPrice.toLocaleString()}</td></tr>
                     </table>
-                    <p><a href="${process.env.NEXT_PUBLIC_BASE_URL || ''}/admin/dashboard" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 20px;">管理画面で確認する</a></p>
+                    <p><a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://oem.aizubrandhall.com'}/admin/dashboard" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 20px;">管理画面で確認する</a></p>
                 </div>
             `
         })
