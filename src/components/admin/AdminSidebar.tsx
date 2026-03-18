@@ -18,8 +18,8 @@ const navItems = [
         href: '/admin/pages',
         label: 'ページ管理',
         icon: (
-            <svg style={{ width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+            <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
         ),
     }
@@ -35,7 +35,7 @@ export function AdminSidebar() {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                width: '256px',
+                width: '260px',
                 display: 'flex',
                 flexDirection: 'column',
                 borderRight: '1px solid var(--admin-border)',
@@ -46,18 +46,18 @@ export function AdminSidebar() {
             {/* ロゴ */}
             <div style={{ padding: '24px 24px', borderBottom: '1px solid var(--admin-border)' }}>
                 <Link href="/admin/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--admin-accent), var(--color-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
-                        <span style={{ fontSize: '14px' }}>🍽️</span>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--admin-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '14px', color: '#fff' }}>🍽️</span>
                     </div>
                     <div>
-                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', display: 'block', lineHeight: '1.2', letterSpacing: '0.06em' }}>フォームLPシステム</span>
-                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>Admin Panel</span>
+                        <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--admin-accent)', display: 'block', lineHeight: '1.2', letterSpacing: '0.02em' }}>OEM PLATFORM</span>
+                        <span style={{ fontSize: '10px', fontWeight: '500', color: 'var(--admin-text-muted)', letterSpacing: '0.02em' }}>会津ブランド館</span>
                     </div>
                 </Link>
             </div>
 
             {/* ナビゲーション */}
-            <nav style={{ flex: 1, padding: '20px 12px', overflowY: 'auto' }}>
+            <nav style={{ flex: 1, padding: '24px 16px', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {navItems.map((item) => {
                         const isActive = pathname === item.href
@@ -69,19 +69,19 @@ export function AdminSidebar() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '12px',
-                                    padding: '12px 16px',
-                                    borderRadius: '12px',
-                                    fontSize: '14px',
-                                    fontWeight: 500,
+                                    padding: '12px 20px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: isActive ? 700 : 500,
                                     textDecoration: 'none',
-                                    transition: 'all 0.2s',
-                                    letterSpacing: '0.05em',
-                                    color: isActive ? '#fff' : 'var(--color-text-muted)',
-                                    background: isActive ? 'var(--admin-accent)' : 'transparent',
-                                    boxShadow: isActive ? '0 4px 6px rgba(0,0,0,0.2)' : 'none',
+                                    transition: 'all 0.1s ease',
+                                    color: isActive ? '#fff' : 'var(--admin-text-muted)',
+                                    background: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                                    borderLeft: isActive ? '3px solid var(--admin-accent)' : '3px solid transparent',
+                                    marginLeft: '-1px', // Borderを少し外に出す
                                 }}
                             >
-                                <span style={{ color: isActive ? '#fff' : 'var(--color-text-muted)' }}>
+                                <span style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text-muted)', display: 'flex', alignItems: 'center' }}>
                                     {item.icon}
                                 </span>
                                 {item.label}
@@ -101,16 +101,16 @@ export function AdminSidebar() {
                             alignItems: 'center',
                             gap: '12px',
                             padding: '12px 16px',
-                            borderRadius: '12px',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            letterSpacing: '0.05em',
-                            color: 'var(--color-text-muted)',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            letterSpacing: '0.03em',
+                            color: 'var(--admin-text-muted)',
                             background: 'transparent',
                             border: 'none',
                             cursor: 'pointer',
                             width: '100%',
-                            transition: 'all 0.2s',
+                            transition: 'all 0.2s ease',
                         }}
                     >
                         <svg style={{ width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">

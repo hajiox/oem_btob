@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Lead } from '@/types/database'
 import type { Metadata } from 'next'
+import { LeadRow } from '@/components/admin/LeadRow'
 
 export const metadata: Metadata = {
-    title: 'ダッシュボード',
+    title: 'ダッシュボード | OEM開発',
 }
 
-// 統計カード
 function StatCard({
     title,
     value,
@@ -21,31 +21,48 @@ function StatCard({
     subtext?: string
 }) {
     return (
-        <div
-            className="rounded-2xl p-6 border transition-all duration-300 hover:scale-[1.02]"
-            style={{ background: 'var(--admin-card)', borderColor: 'var(--admin-border)' }}
-        >
-            <div className="flex items-start justify-between mb-4">
-                <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{ background: `${color}15` }}
-                >
-                    <span style={{ color }}>{icon}</span>
+        <div style={{
+            background: 'var(--admin-card)',
+            border: '1px solid var(--admin-border)',
+            borderRadius: '8px',
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: '135px',
+            transition: 'all 0.2s ease',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--admin-text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    {title}
+                </div>
+                <div style={{ 
+                    width: '32px', height: '32px', borderRadius: '6px',
+                    background: `${color}15`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                }}>
+                    <span style={{ color, display: 'flex' }}>{icon}</span>
                 </div>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">{value}</div>
-            <div className="text-sm text-[var(--color-text-muted)]">{title}</div>
-            {subtext && (
-                <div className="text-xs mt-2" style={{ color }}>
-                    {subtext}
+            
+            <div style={{ marginTop: 'auto' }}>
+                <div style={{ fontSize: '30px', fontWeight: '800', color: 'var(--admin-text)', lineHeight: '1' }}>
+                    {value}
                 </div>
-            )}
+                {/* サブテキスト用の高さを固定確保して、数字のラインを揃える */}
+                <div style={{ height: '16px', marginTop: '8px', display: 'flex', alignItems: 'center' }}>
+                    {subtext ? (
+                        <div style={{ color, fontSize: '11px', fontWeight: '700', opacity: 0.9 }}>
+                            {subtext}
+                        </div>
+                    ) : (
+                        <div style={{ visibility: 'hidden', height: '11px' }}>placeholder</div>
+                    )}
+                </div>
+            </div>
         </div>
     )
 }
-
-// ここでは LeadRow をインポートします。（LeadStatusSelectはLeadRow内で呼ばれます）
-import { LeadRow } from '@/components/admin/LeadRow'
 
 export default async function DashboardPage() {
     let leads: Lead[] = []
@@ -70,107 +87,143 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
             {/* ページヘッダー */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                    ダッシュボード
-                </h1>
-                <p className="text-sm text-[var(--color-text-muted)] mt-1">
-                    OEMリード管理の概要
-                </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+                <div>
+                    <h1 style={{ fontSize: '28px', fontWeight: '800', color: 'var(--admin-text)', marginBottom: '8px' }}>
+                        ダッシュボード
+                    </h1>
+                    <p style={{ color: 'var(--admin-text-muted)', fontSize: '14px' }}>
+                        OEM開発コンサルティング・製品管理システム
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    {/* docScanner風のボタンがあればここ */}
+                </div>
             </div>
 
-            {/* 統計カード */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* ステータスバー風 (docScannerにあるやつ) */}
+            <div style={{ 
+                background: 'rgba(6, 182, 212, 0.05)', 
+                border: '1px solid rgba(6, 182, 212, 0.2)', 
+                borderRadius: '4px', 
+                padding: '12px 20px', 
+                marginBottom: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+            }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px #10B981' }}></div>
+                <span style={{ color: 'var(--admin-text)', fontSize: '13px', fontWeight: '500' }}>
+                    システム稼働中
+                </span>
+                <span style={{ color: 'var(--admin-text-muted)', fontSize: '13px', marginLeft: 'auto' }}>
+                    最終更新: {new Date().toLocaleTimeString('ja-JP')}
+                </span>
+            </div>
+
+            {/* 統計カードグリッド */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(4, 1fr)', 
+                gap: '24px', 
+                marginBottom: '40px' 
+            }}>
                 <StatCard
                     title="総リード数"
                     value={totalLeads}
                     color="var(--admin-accent)"
                     icon={
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                           <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                         </svg>
                     }
                 />
                 <StatCard
                     title="新規リード"
                     value={newLeads}
-                    color="var(--admin-warning)"
+                    color="#10B981"
                     icon={
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
                         </svg>
                     }
-                    subtext="対応が必要です"
+                    subtext="未対応リード"
                 />
                 <StatCard
-                    title="受注リード"
-                    value={wonLeads}
-                    color="var(--admin-success)"
+                    title="受注待ち"
+                    value={leads.filter(l => l.status === 'negotiating').length}
+                    color="#F59E0B"
                     icon={
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                         </svg>
                     }
                 />
                 <StatCard
-                    title="見積り合計"
+                    title="総見積額"
                     value={`¥${leads.reduce((sum, l) => sum + (l.estimated_total_price || 0), 0).toLocaleString()}`}
-                    color="var(--color-gold)"
+                    color="#EC4899"
                     icon={
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                         </svg>
                     }
                 />
             </div>
 
-            {/* リード一覧テーブル */}
-            <div
-                className="rounded-2xl border overflow-hidden"
-                style={{ background: 'var(--admin-card)', borderColor: 'var(--admin-border)' }}
-            >
-                <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--admin-border)' }}>
-                    <h2 className="text-lg font-bold text-white">最新リード</h2>
-                    <span className="text-xs text-[var(--color-text-muted)]">直近50件</span>
+            {/* メインリスト */}
+            <div style={{
+                background: 'var(--admin-card)',
+                border: '1px solid var(--admin-border)',
+                borderRadius: '4px',
+            }}>
+                <div style={{
+                    padding: '20px 24px',
+                    borderBottom: '1px solid var(--admin-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                }}>
+                    <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--admin-text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--admin-accent)' }}>
+                            <path d="M4 14h4v-10h-4v10zm6 0h4v-10h-4v10zm6 0h4v-10h-4v10zM4 19h16v-2h-16v2z"/>
+                        </svg>
+                        最新の獲得リード
+                    </h2>
+                    <div style={{ fontSize: '12px', color: 'var(--admin-text-muted)' }}>
+                        全 {totalLeads} 件中 50 件を表示
+                    </div>
                 </div>
 
-                {leads.length === 0 ? (
-                    <div className="px-6 py-16 text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                            </svg>
-                        </div>
-                        <p className="text-[var(--color-text-muted)] text-sm">
-                            まだリードがありません
-                        </p>
-                        <p className="text-[var(--color-text-muted)] text-xs mt-1">
-                            フォームからお問い合わせが来ると、ここに表示されます
-                        </p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
-                                    <th className="px-6 py-4 font-medium">会社名</th>
-                                    <th className="px-6 py-4 font-medium">担当者</th>
-                                    <th className="px-6 py-4 font-medium">メール</th>
-                                    <th className="px-6 py-4 font-medium">見積額</th>
-                                    <th className="px-6 py-4 font-medium">ステータス</th>
-                                    <th className="px-6 py-4 font-medium">日時</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y" style={{ borderColor: 'var(--admin-border)' }}>
-                                {leads.map((lead) => (
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--admin-border)', background: 'rgba(255, 255, 255, 0.02)' }}>
+                                <th style={{ padding: '16px 32px', textAlign: 'left', fontSize: '12px', color: 'var(--admin-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>会社名</th>
+                                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '12px', color: 'var(--admin-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>担当者</th>
+                                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '12px', color: 'var(--admin-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>メールアドレス</th>
+                                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '12px', color: 'var(--admin-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>概算見積額</th>
+                                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '12px', color: 'var(--admin-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ステータス</th>
+                                <th style={{ padding: '16px 32px', textAlign: 'left', fontSize: '12px', color: 'var(--admin-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>日時</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {leads.length > 0 ? (
+                                leads.map((lead) => (
                                     <LeadRow key={lead.id} lead={lead} />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
+                                        リードがまだありません
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )
