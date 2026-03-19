@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Copy, Trash2, Edit, LayoutTemplate, Settings, Search, Wand2, X, Save } from 'lucide-react'
+import { Plus, Copy, Trash2, Edit, LayoutTemplate, Settings, Search, Wand2, X, Save, Mail } from 'lucide-react'
 import Link from 'next/link'
-import { getPages, createPage, deletePage, duplicateLpFromPage, duplicateFormFromPage, updatePageSeo } from '@/actions/pages'
+import { getPages, createPage, deletePage, duplicateLpFromPage, duplicateFormFromPage, updatePageSeo, updatePageEmailSettings } from '@/actions/pages'
 import { generateSeoFromPageContent } from '@/actions/seoGenerator'
 import type { Page } from '@/types/database'
 
@@ -30,6 +30,20 @@ export default function PagesDashboardClient() {
     }>({ seo_title: '', seo_description: '', og_title: '', og_description: '', og_image_url: '', favicon_url: '' })
     const [isGeneratingSeo, setIsGeneratingSeo] = useState(false)
     const [isSavingSeo, setIsSavingSeo] = useState(false)
+
+    // メール設定モーダル用
+    const [emailModalPage, setEmailModalPage] = useState<Page | null>(null)
+    const [emailForm, setEmailForm] = useState<{
+        email_from_name: string;
+        email_from_address: string;
+        admin_notification_email: string;
+        customer_email_subject: string;
+        admin_email_subject: string;
+        customer_email_intro: string;
+        customer_email_closing: string;
+        admin_email_intro: string;
+    }>({ email_from_name: '', email_from_address: '', admin_notification_email: '', customer_email_subject: '', admin_email_subject: '', customer_email_intro: '', customer_email_closing: '', admin_email_intro: '' })
+    const [isSavingEmail, setIsSavingEmail] = useState(false)
 
     useEffect(() => {
         loadPages()
@@ -133,6 +147,34 @@ export default function PagesDashboardClient() {
             alert(res.error)
         }
         setIsSavingSeo(false)
+    }
+
+    const openEmailModal = (page: Page) => {
+        setEmailModalPage(page)
+        setEmailForm({
+            email_from_name: page.email_from_name || 'OEM自動見積り',
+            email_from_address: page.email_from_address || 'staff@aizu-tv.com',
+            admin_notification_email: page.admin_notification_email || 'staff@aizu-tv.com',
+            customer_email_subject: page.customer_email_subject || '【自動回答】お見積り依頼を承りました',
+            admin_email_subject: page.admin_email_subject || '【新規リード獲得】新しいお見積り依頼が届きました',
+            customer_email_intro: page.customer_email_intro || 'この度はお見積りシミュレーションをご利用いただき、誠にありがとうございます。\n以下の内容で承りました。内容を確認の上、担当者より3営業日以内にご連絡させていただきます。',
+            customer_email_closing: page.customer_email_closing || '※本メールは自動送信されています。お心当たりのない場合は破棄してください。',
+            admin_email_intro: page.admin_email_intro || '新しいリードを獲得しました。管理画面から詳細を確認してください。',
+        })
+    }
+
+    const handleSaveEmail = async () => {
+        if (!emailModalPage) return
+        setIsSavingEmail(true)
+        const res = await updatePageEmailSettings(emailModalPage.id, emailForm)
+        if (res.success) {
+            alert('メール設定を保存しました')
+            setEmailModalPage(null)
+            loadPages()
+        } else {
+            alert(res.error)
+        }
+        setIsSavingEmail(false)
     }
 
     return (
@@ -339,9 +381,103 @@ export default function PagesDashboardClient() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* メール設定エリア */}
+                                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#f472b6', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Mail size={14} /> メール設定
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => openEmailModal(page)} style={{ flex: 1, textAlign: 'center', background: '#ec4899', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                            <Mail size={14} /> 送信設定を編集
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* メール設定モーダル */}
+            {emailModalPage && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div style={{ background: 'var(--admin-sidebar)', padding: '24px', borderRadius: '12px', border: '1px solid var(--admin-border)', width: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 style={{ fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Mail size={20} style={{ color: '#ec4899' }} />
+                                メール設定: {emailModalPage.title}
+                            </h3>
+                            <button onClick={() => setEmailModalPage(null)} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+
+                        <div style={{ background: 'rgba(236,72,153,0.1)', padding: '14px 16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid rgba(236,72,153,0.2)' }}>
+                            <p style={{ fontSize: '13px', color: '#f9a8d4' }}>
+                                フォーム送信時に自動送信されるメールの送信元・件名・本文を設定できます。変更後は次回送信分から反映されます。
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {/* === 送信設定 === */}
+                            <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#f472b6', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>📮 送信設定</h4>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>送信元名</label>
+                                <input value={emailForm.email_from_name} onChange={e => setEmailForm({ ...emailForm, email_from_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} placeholder="OEM自動見積り" />
+                                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', display: 'block' }}>例: OEM自動見積り、会津ブランド館</span>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>送信元メールアドレス</label>
+                                <input value={emailForm.email_from_address} onChange={e => setEmailForm({ ...emailForm, email_from_address: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} placeholder="staff@aizu-tv.com" />
+                                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', display: 'block' }}>※ Resendでドメイン認証済みのアドレスを使用してください</span>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>管理者通知先メール</label>
+                                <input value={emailForm.admin_notification_email} onChange={e => setEmailForm({ ...emailForm, admin_notification_email: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} placeholder="staff@aizu-tv.com" />
+                                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', display: 'block' }}>新規リード獲得時の通知先</span>
+                            </div>
+
+                            <hr style={{ borderColor: 'var(--admin-border)', margin: '8px 0' }} />
+
+                            {/* === お客様向けメール === */}
+                            <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#60a5fa', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>📨 お客様向けメール</h4>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>件名</label>
+                                <input value={emailForm.customer_email_subject} onChange={e => setEmailForm({ ...emailForm, customer_email_subject: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} placeholder="【自動回答】お見積り依頼を承りました" />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>本文（冒頭の挨拶文）</label>
+                                <textarea value={emailForm.customer_email_intro} onChange={e => setEmailForm({ ...emailForm, customer_email_intro: e.target.value })} rows={4} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff', resize: 'vertical' }} placeholder="この度はお見積りシミュレーションをご利用いただき..." />
+                                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', display: 'block' }}>※この後に見積もり内容・選択肢一覧が自動挿入されます</span>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>本文（末尾の注記）</label>
+                                <textarea value={emailForm.customer_email_closing} onChange={e => setEmailForm({ ...emailForm, customer_email_closing: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff', resize: 'vertical' }} placeholder="※本メールは自動送信されています..." />
+                            </div>
+
+                            <hr style={{ borderColor: 'var(--admin-border)', margin: '8px 0' }} />
+
+                            {/* === 管理者向けメール === */}
+                            <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#fbbf24', margin: '0', display: 'flex', alignItems: 'center', gap: '6px' }}>🔔 管理者向けメール</h4>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>件名</label>
+                                <input value={emailForm.admin_email_subject} onChange={e => setEmailForm({ ...emailForm, admin_email_subject: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff' }} placeholder="【新規リード獲得】新しいお見積り依頼が届きました" />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>本文（冒頭文）</label>
+                                <textarea value={emailForm.admin_email_intro} onChange={e => setEmailForm({ ...emailForm, admin_email_intro: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--admin-border)', color: '#fff', resize: 'vertical' }} placeholder="新しいリードを獲得しました。管理画面から..." />
+                                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', display: 'block' }}>※この後にリード情報（会社名・担当者・見積額）が自動挿入されます</span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                            <button onClick={() => setEmailModalPage(null)} style={{ background: 'transparent', border: '1px solid var(--admin-border)', color: 'var(--color-text-muted)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>キャンセル</button>
+                            <button onClick={handleSaveEmail} disabled={isSavingEmail} style={{ background: '#ec4899', padding: '8px 16px', borderRadius: '8px', color: '#fff', border: 'none', cursor: isSavingEmail ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Save size={16} /> 保存する
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

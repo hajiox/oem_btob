@@ -14,6 +14,14 @@ export interface Page {
     og_description: string | null
     og_image_url: string | null
     favicon_url: string | null
+    email_from_name: string | null
+    email_from_address: string | null
+    admin_notification_email: string | null
+    customer_email_subject: string | null
+    admin_email_subject: string | null
+    customer_email_intro: string | null
+    customer_email_closing: string | null
+    admin_email_intro: string | null
     created_at: string
     updated_at: string
 }
@@ -108,6 +116,7 @@ export type FormOptionUpdate = Partial<FormOptionInsert>
 // [C] リード
 export interface Lead {
     id: string
+    page_id: string | null
     company_name: string
     contact_name: string
     email: string

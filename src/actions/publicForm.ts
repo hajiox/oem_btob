@@ -111,6 +111,7 @@ export async function getFormStepsForProduct(pageId: string, productId: string):
 }
 
 export async function submitLead(formData: {
+    pageId?: string
     companyName: string
     contactName: string
     email: string
@@ -122,6 +123,7 @@ export async function submitLead(formData: {
     const supabase = await createClient()
 
     const { error } = await supabase.from('leads').insert([{
+        page_id: formData.pageId || null,
         company_name: formData.companyName,
         contact_name: formData.contactName,
         email: formData.email,
@@ -140,17 +142,45 @@ export async function submitLead(formData: {
     // --- 自動メール送信処理 (Resend) ---
     try {
         const resend = new Resend(process.env.RESEND_API_KEY)
+
+        // ページ固有のメール設定を取得
+        let emailFromName = 'OEM自動見積り'
+        let emailFromAddress = 'staff@aizu-tv.com'
+        let adminEmail = 'staff@aizu-tv.com'
+        let customerSubject = '【自動回答】お見積り依頼を承りました'
+        let adminSubject = '【新規リード獲得】新しいお見積り依頼が届きました'
+        let customerIntro = 'この度はお見積りシミュレーションをご利用いただき、誠にありがとうございます。\n以下の内容で承りました。内容を確認の上、担当者より3営業日以内にご連絡させていただきます。'
+        let customerClosing = '※本メールは自動送信されています。お心当たりのない場合は破棄してください。'
+        let adminIntro = '新しいリードを獲得しました。管理画面から詳細を確認してください。'
+
+        if (formData.pageId) {
+            const { data: pageData } = await supabase.from('pages').select('email_from_name, email_from_address, admin_notification_email, customer_email_subject, admin_email_subject, customer_email_intro, customer_email_closing, admin_email_intro').eq('id', formData.pageId).single()
+            if (pageData) {
+                emailFromName = pageData.email_from_name || emailFromName
+                emailFromAddress = pageData.email_from_address || emailFromAddress
+                adminEmail = pageData.admin_notification_email || adminEmail
+                customerSubject = pageData.customer_email_subject || customerSubject
+                adminSubject = pageData.admin_email_subject || adminSubject
+                customerIntro = pageData.customer_email_intro || customerIntro
+                customerClosing = pageData.customer_email_closing || customerClosing
+                adminIntro = pageData.admin_email_intro || adminIntro
+            }
+        }
         
+        // 改行をHTMLのbrタグに変換
+        const introHtml = customerIntro.split('\n').map(line => `<p>${line}</p>`).join('')
+        const closingHtml = customerClosing.split('\n').map(line => `<p>${line}</p>`).join('')
+        const adminIntroHtml = adminIntro.split('\n').map(line => `<p>${line}</p>`).join('')
+
         // 1. お客様への自動返信
         const customerResult = await resend.emails.send({
-            from: 'OEM自動見積り <staff@aizu-tv.com>', // ドメイン認証後は info@yourdomain.com 等に変更可能
+            from: `${emailFromName} <${emailFromAddress}>`,
             to: formData.email,
-            subject: '【自動回答】お見積り依頼を承りました',
+            subject: customerSubject,
             html: `
                 <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
                     <p>${formData.companyName} ${formData.contactName} 様</p>
-                    <p>この度はお見積りシミュレーションをご利用いただき、誠にありがとうございます。</p>
-                    <p>以下の内容で承りました。内容を確認の上、担当者より3営業日以内にご連絡させていただきます。</p>
+                    ${introHtml}
                     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                     <h3 style="color: #6366f1;">概算お見積り内容</h3>
                     <p><strong>概算総額:</strong> ¥${formData.estimatedTotalPrice.toLocaleString()}（税込）</p>
@@ -160,7 +190,7 @@ export async function submitLead(formData: {
                     </ul>
                     <p><strong>備考事項:</strong><br>${formData.notes || 'なし'}</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-                    <p style="font-size: 12px; color: #999;">※本メールは自動送信されています。お心当たりのない場合は破棄してください。</p>
+                    <p style="font-size: 12px; color: #999;">${closingHtml}</p>
                 </div>
             `
         })
@@ -169,15 +199,14 @@ export async function submitLead(formData: {
             console.error('Customer email failed:', customerResult.error)
         }
 
-        // 2. 管理者への通知 (Aizu TV様)
+        // 2. 管理者への通知
         const adminResult = await resend.emails.send({
-            from: 'OEM System Notification <staff@aizu-tv.com>',
-            to: 'staff@aizu-tv.com', // 管理者通知先を更新
-            subject: '【新規リード獲得】新しいお見積り依頼が届きました（法人OEM）',
+            from: `OEM System Notification <${emailFromAddress}>`,
+            to: adminEmail,
+            subject: adminSubject,
             html: `
                 <div style="font-family: sans-serif; color: #333;">
-                    <h2>新しいリードを獲得しました</h2>
-                    <p>管理画面から詳細を確認してください。</p>
+                    ${adminIntroHtml}
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr><td style="padding: 8px; border: 1px solid #eee;">会社名</td><td style="padding: 8px; border: 1px solid #eee;">${formData.companyName}</td></tr>
                         <tr><td style="padding: 8px; border: 1px solid #eee;">担当者</td><td style="padding: 8px; border: 1px solid #eee;">${formData.contactName}</td></tr>

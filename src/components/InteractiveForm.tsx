@@ -249,7 +249,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 return { question: q.question_text || qId, answer: displayValue, type: q.input_type }
             }).filter(Boolean)
         ]
-        const res = await submitLead({ companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: contactInfo.notes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails })
+        const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: contactInfo.notes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails })
         if (res.success) setIsSuccess(true)
         else { setErrorData(res.error || 'エラー'); setIsSubmitting(false) }
     }
@@ -341,47 +341,83 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             <div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)' }}>
 
                 {/* ステップインジケーター */}
-                <div style={{ 
-                    display: 'flex', 
-                    borderBottom: '1px solid rgba(255,255,255,0.08)', 
-                    overflowX: isMobile ? 'auto' : 'visible',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none'
-                }}>
-                    {visualSteps.map((label, idx) => {
-                        const isActive = idx === currentVisualIdx
-                        const isPast = idx < currentVisualIdx
-                        return (
-                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1, position: 'relative' }}>
-                                <div style={{ 
-                                    width: isMobile ? '28px' : '36px', 
-                                    height: isMobile ? '28px' : '36px', 
-                                    borderRadius: '50%', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    fontSize: isMobile ? '12px' : '14px', 
-                                    fontWeight: 700, 
-                                    zIndex: 2, 
-                                    background: isActive ? '#818cf8' : isPast ? 'rgba(129,140,248,0.2)' : 'rgba(255,255,255,0.08)', 
-                                    color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.4)', 
-                                    border: isActive ? 'none' : isPast ? '1px solid rgba(129,140,248,0.4)' : '1px solid rgba(255,255,255,0.1)' 
-                                }}>
-                                    {isPast ? '✓' : idx === visualSteps.length - 2 ? '💰' : idx + 1}
-                                </div>
-                                <span style={{ 
-                                    fontSize: isMobile ? '9px' : '11px', 
-                                    fontWeight: 600, 
-                                    color: isActive ? '#fff' : isPast ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)',
-                                    display: isMobile && !isActive ? 'none' : 'block', // モバイルでは非アクティブなラベルを隠してスッキリさせる
-                                    whiteSpace: 'nowrap'
-                                }}>
-                                    {label}
-                                </span>
-                            </div>
-                        )
-                    })}
-                </div>
+                {isMobile ? (
+                    /* モバイル版: プログレスバー＋ステップ名 */
+                    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#818cf8', letterSpacing: '0.05em' }}>
+                                STEP {currentVisualIdx + 1} / {visualSteps.length}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
+                                {Math.round(((currentVisualIdx + 1) / visualSteps.length) * 100)}%
+                            </span>
+                        </div>
+                        {/* プログレスバー */}
+                        <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden', marginBottom: '10px' }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${((currentVisualIdx + 1) / visualSteps.length) * 100}%`,
+                                background: 'linear-gradient(90deg, #818cf8, #a78bfa)',
+                                borderRadius: '4px',
+                                transition: 'width 0.4s ease'
+                            }} />
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {visualSteps[currentVisualIdx] || ''}
+                        </div>
+                    </div>
+                ) : (
+                    /* PC版: ドット＋ライン＋ラベル */
+                    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '20px 24px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            {/* 接続ライン (背景) */}
+                            <div style={{ position: 'absolute', top: '14px', left: '14px', right: '14px', height: '2px', background: 'rgba(255,255,255,0.08)', zIndex: 0 }} />
+                            {/* 接続ライン (進捗) */}
+                            <div style={{ position: 'absolute', top: '14px', left: '14px', height: '2px', background: 'linear-gradient(90deg, #818cf8, #a78bfa)', zIndex: 1, transition: 'width 0.4s ease', width: visualSteps.length > 1 ? `${(currentVisualIdx / (visualSteps.length - 1)) * 100}%` : '0%', maxWidth: 'calc(100% - 28px)' }} />
+
+                            {visualSteps.map((label, idx) => {
+                                const isActive = idx === currentVisualIdx
+                                const isPast = idx < currentVisualIdx
+                                return (
+                                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1, position: 'relative', zIndex: 2, minWidth: 0 }}>
+                                        <div style={{
+                                            width: isActive ? '28px' : '22px',
+                                            height: isActive ? '28px' : '22px',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: isActive ? '13px' : '11px',
+                                            fontWeight: 700,
+                                            background: isActive ? '#818cf8' : isPast ? 'rgba(129,140,248,0.25)' : 'rgba(255,255,255,0.06)',
+                                            color: isActive ? '#fff' : isPast ? '#818cf8' : 'rgba(255,255,255,0.35)',
+                                            border: isActive ? '2px solid rgba(129,140,248,0.4)' : isPast ? '2px solid rgba(129,140,248,0.3)' : '2px solid rgba(255,255,255,0.08)',
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: isActive ? '0 0 12px rgba(129,140,248,0.4)' : 'none',
+                                            flexShrink: 0,
+                                        }}>
+                                            {isPast ? '✓' : idx + 1}
+                                        </div>
+                                        <span style={{
+                                            fontSize: '10px',
+                                            fontWeight: isActive ? 700 : 500,
+                                            color: isActive ? '#fff' : isPast ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.3)',
+                                            textAlign: 'center',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            width: '100%',
+                                            maxWidth: '80px',
+                                            transition: 'color 0.3s ease',
+                                        } as React.CSSProperties}>
+                                            {label}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* 見積もりバー */}
                 {currentStep < RESULT_STEP && currentStep >= FORM_START && (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}><span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({oemQuantity}個)</span><span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}〜</span></div>)}
@@ -397,7 +433,29 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                             display: 'grid', 
                             gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', 
                             gap: '16px' 
-                        }}>{products.map(p => { const isSelected = selectedProduct === p.id; return (<button key={p.id} onClick={() => setSelectedProduct(p.id)} style={{ display: 'flex', flexDirection: isSelected && isMobile ? 'row' : 'column', alignItems: 'center', gap: '16px', padding: isMobile ? '20px 16px' : '32px 24px', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%' }}><div style={{ width: isMobile ? '40px' : '64px', height: isMobile ? '40px' : '64px', borderRadius: '50%', background: isSelected ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Package style={{ width: isMobile ? '20px' : '32px', height: isMobile ? '20px' : '32px', color: isSelected ? '#818cf8' : 'rgba(255,255,255,0.5)' }} /></div><div style={{ textAlign: isSelected && isMobile ? 'left' : 'center' }}><span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>{p.description && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{p.description}</span>}</div></button>) })}</div></motion.div>)}
+                        }}>
+                        {products.map(p => { const isSelected = selectedProduct === p.id; return (
+                            <button key={p.id} onClick={() => setSelectedProduct(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
+                                {/* 商品画像 or フォールバックアイコン */}
+                                {p.image_url ? (
+                                    <div style={{ width: '100%', aspectRatio: isMobile ? '16/9' : '1/1', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
+                                        <Image src={p.image_url} alt={p.name} fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 200px" />
+                                        {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>✓</div>}
+                                    </div>
+                                ) : (
+                                    <div style={{ width: '100%', padding: isMobile ? '24px 0' : '32px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ width: isMobile ? '48px' : '64px', height: isMobile ? '48px' : '64px', borderRadius: '50%', background: isSelected ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            <Package style={{ width: isMobile ? '24px' : '32px', height: isMobile ? '24px' : '32px', color: isSelected ? '#818cf8' : 'rgba(255,255,255,0.5)' }} />
+                                        </div>
+                                    </div>
+                                )}
+                                {/* テキスト部 */}
+                                <div style={{ padding: '16px 20px 20px', textAlign: 'center', width: '100%' }}>
+                                    <span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>
+                                    {p.description && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{p.description}</span>}
+                                </div>
+                            </button>
+                        ) })}</div></motion.div>)}
 
                         {/* フォームステップ（1ステップ1質問） */}
                         {currentStep >= FORM_START && currentStep < RESULT_STEP && (<motion.div key={`step-${currentStep}`} initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}>{loadingSteps ? <div style={{ textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.5)' }}>読み込み中...</div> : (() => { const stepData = activeSteps[currentStep - FORM_START]; if (!stepData) return null; const q = stepData.questions[0]; if (!q) return null; return (<><div style={{ marginBottom: '24px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>{stepData.step_title}{q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}</h2>{stepData.step_description && <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{stepData.step_description}</p>}{q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}</div><div>{renderQuestionInput(q)}</div></>)})()}</motion.div>)}
