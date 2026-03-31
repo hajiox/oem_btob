@@ -42,3 +42,7 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# 開発経過ドキュメント（機密情報を含むためリモートにプッシュしない）
+OEM開発.md
+*開発.md
