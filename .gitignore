@@ -42,3 +42,8 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# 開発履歴MD（Google Driveで管理）
+*開発*.md
+*総括*.md
+*管理システム.md
