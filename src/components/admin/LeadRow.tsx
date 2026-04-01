@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import type { Lead } from '@/types/database'
 import { LeadStatusSelect } from './LeadStatusSelect'
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, Mail, User, Phone, ClipboardList } from 'lucide-react'
 import { deleteLead } from '@/actions/dashboard'
 
 export function LeadRow({ lead }: { lead: Lead }) {
@@ -12,8 +12,8 @@ export function LeadRow({ lead }: { lead: Lead }) {
     const options = lead.selected_options as any[] | null
 
     const handleDelete = async (e: React.MouseEvent) => {
-        e.stopPropagation() // 行の展開を防ぐ
-        if (!window.confirm('本当にこのリードを削除しますか？\n（この操作は取り消せません）')) return
+        e.stopPropagation()
+        if (!window.confirm('本当にこのリードを削除しますか？')) return
 
         setIsDeleting(true)
         const res = await deleteLead(lead.id)
@@ -21,85 +21,146 @@ export function LeadRow({ lead }: { lead: Lead }) {
             alert(res.error || '削除に失敗しました')
             setIsDeleting(false)
         }
-        // 成功した場合は revalidatePath により自動で画面が更新されます
     }
 
     return (
         <React.Fragment>
             <tr 
-                className={`transition-colors cursor-pointer ${isExpanded ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'}`}
+                style={{ 
+                    borderBottom: '1px solid var(--admin-border)', 
+                    cursor: 'pointer',
+                    background: isExpanded ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
+                    transition: 'all 0.1s ease',
+                }}
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <td className="px-6 py-6 text-sm font-medium text-white">
-                    <div className="flex items-center gap-3">
-                        <button className="text-[var(--color-primary)] opacity-70 hover:opacity-100 transition-opacity">
-                            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                        </button>
-                        <span className={isDeleting ? 'opacity-50 line-through' : ''}>
+                <td style={{ padding: '16px 32px', fontSize: '14px', fontWeight: '700', color: 'var(--admin-text)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <span style={{ color: isExpanded ? 'var(--admin-accent)' : 'var(--admin-text-muted)', display: 'flex' }}>
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </span>
+                        <span style={{ opacity: isDeleting ? 0.5 : 1 }}>
                             {lead.company_name}
                         </span>
                     </div>
                 </td>
-                <td className="px-6 py-6 text-sm text-[var(--color-text-muted)]">{lead.contact_name}</td>
-                <td className="px-6 py-6 text-sm text-[var(--color-text-muted)]">{lead.email}</td>
-                <td className="px-6 py-6 text-sm font-medium text-white">
+                <td style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--admin-text)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <User size={14} style={{ color: 'var(--admin-text-muted)' }} />
+                        {lead.contact_name}
+                    </div>
+                </td>
+                <td style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Mail size={14} style={{ color: 'var(--admin-text-muted)' }} />
+                        {lead.email}
+                    </div>
+                </td>
+                <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '800', color: 'var(--admin-text)' }}>
                     ¥{(lead.estimated_total_price || 0).toLocaleString()}
                 </td>
-                <td className="px-6 py-6" onClick={(e) => e.stopPropagation()}>
+                <td style={{ padding: '16px 24px' }} onClick={(e) => e.stopPropagation()}>
                     <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} />
                 </td>
-                <td className="px-6 py-6 text-sm text-[var(--color-text-muted)]">
-                    <div className="flex items-center justify-between">
+                <td style={{ padding: '16px 32px', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         {new Date(lead.created_at).toLocaleDateString('ja-JP')}
                         <button
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="p-2 text-red-400/70 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors ml-4"
-                            title="このリードを削除"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--admin-text-muted)',
+                                cursor: 'pointer',
+                                padding: '6px',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'all 0.2s'
+                            }}
+                            title="削除"
                         >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                         </button>
                     </div>
                 </td>
             </tr>
             {isExpanded && (
-                <tr className="bg-[#0f172a] shadow-inner">
-                    <td colSpan={6} className="px-8 py-8 border-t border-[var(--admin-border)]">
-                        <div className="flex gap-12">
+                <tr style={{ background: 'var(--admin-bg)', borderBottom: '1px solid var(--admin-border)' }}>
+                    <td colSpan={6} style={{ padding: '32px 40px' }}>
+                        <div style={{ display: 'flex', gap: '40px' }}>
                             {/* BTO選択内容 */}
-                            <div className="flex-1">
-                                <h4 className="text-[13px] font-bold text-white mb-5 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded bg-[var(--color-primary)]/20 text-[var(--color-primary)] flex items-center justify-center text-xs">📋</span>
-                                    BTO 回答・見積り詳細
-                                </h4>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '4px', background: 'rgba(6, 182, 212, 0.1)', color: 'var(--admin-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <ClipboardList size={16} />
+                                    </div>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--admin-text)', letterSpacing: '0.04em' }}>
+                                        BTO構成・詳細
+                                    </h4>
+                                </div>
                                 {options && options.length > 0 ? (
-                                    <div className="grid grid-cols-2 gap-x-12 gap-y-4 bg-white/[0.02] p-6 rounded-2xl border border-white/[0.05]">
+                                    <div style={{ 
+                                        display: 'grid', 
+                                        gridTemplateColumns: 'repeat(2, 1fr)', 
+                                        gap: '24px',
+                                        background: 'var(--admin-card)',
+                                        border: '1px solid var(--admin-border)',
+                                        borderRadius: '4px',
+                                        padding: '24px'
+                                    }}>
                                         {options.map((opt, idx) => (
-                                            <div key={idx} className="flex flex-col gap-1 border-b border-white/5 pb-3">
-                                                <span className="text-[12px] text-[var(--color-text-muted)]">{opt.question}</span>
-                                                <span className="text-[14px] text-white font-medium">{opt.answer}</span>
+                                            <div key={idx} style={{ 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                gap: '6px',
+                                                borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                                                paddingBottom: '12px'
+                                            }}>
+                                                <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--admin-text-muted)', textTransform: 'uppercase' }}>{opt.question}</span>
+                                                <span style={{ fontSize: '14px', color: 'var(--admin-text)', fontWeight: '700' }}>{opt.answer}</span>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-sm text-[var(--color-text-muted)] bg-white/5 p-6 rounded-2xl">BTOデータの記録がありません。</div>
+                                    <div style={{ color: 'var(--admin-text-muted)', fontSize: '13px', background: 'var(--admin-card)', padding: '24px', borderRadius: '4px' }}>
+                                        詳細データはありません。
+                                    </div>
                                 )}
                             </div>
 
-                            {/* お客様情報と備考 */}
-                            <div className="w-[340px]">
-                                <h4 className="text-[13px] font-bold text-white mb-5 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded bg-[var(--admin-accent)]/20 text-[var(--admin-accent)] flex items-center justify-center text-xs">👤</span>
-                                    お客様情報・ご連絡先
-                                </h4>
-                                <div className="space-y-5 bg-black/20 rounded-2xl p-6 border border-white/5 shadow-inner">
-                                    <div>
-                                        <div className="text-[var(--color-text-muted)] text-[12px] mb-1">電話番号</div>
-                                        <div className="text-[14px] text-white font-medium">{lead.phone || '未設定'}</div>
+                            {/* お客様情報 */}
+                            <div style={{ width: '300px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--admin-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <User size={16} />
                                     </div>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--admin-text)', letterSpacing: '0.04em' }}>
+                                        連絡先・備考
+                                    </h4>
+                                </div>
+                                <div style={{ 
+                                    background: 'var(--admin-card)', 
+                                    border: '1px solid var(--admin-border)', 
+                                    borderRadius: '4px', 
+                                    padding: '24px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '20px'
+                                }}>
                                     <div>
-                                        <div className="text-[var(--color-text-muted)] text-[12px] mb-1">その他ご要望・備考事項</div>
-                                        <div className="text-[14px] text-white whitespace-pre-wrap leading-relaxed">{lead.notes || '記載なし'}</div>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--admin-text-muted)', marginBottom: '4px' }}>電話番号</div>
+                                        <div style={{ fontSize: '14px', color: 'var(--admin-text)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Phone size={14} style={{ color: 'var(--admin-accent)' }} />
+                                            {lead.phone || '未登録'}
+                                        </div>
+                                    </div>
+                                    <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.03)', paddingTop: '16px' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--admin-text-muted)', marginBottom: '8px' }}>ご要望・備考</div>
+                                        <div style={{ fontSize: '13px', color: 'var(--admin-text)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                                            {lead.notes || 'なし'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

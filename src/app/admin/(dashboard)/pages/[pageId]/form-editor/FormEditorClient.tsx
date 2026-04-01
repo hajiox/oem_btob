@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, X, ExternalLink, Package } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, ImagePlus, X, ExternalLink, Package, MessageSquareCode, MessageSquareX } from 'lucide-react'
 import Link from 'next/link'
 import type { FormStep, FormQuestion, FormOption, Product } from '@/types/database'
 import { saveFormEditorData, saveProduct, deleteProduct } from '@/actions/formEditor'
@@ -400,15 +400,112 @@ export default function FormEditorClient({
                 </button>
             </div>
 
-            {/* タブの説明 */}
-            <div style={{ marginBottom: '24px', padding: '12px 16px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px' }}>
-                <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-                    {activeTab === null
-                        ? '📋 共通ステップ: すべての商品で共通して表示されるステップです（原料供給など）'
-                        : `📦 ${products.find(p => p.id === activeTab)?.name || ''}: この商品を選んだときだけ表示されるステップです`
-                    }
-                </p>
-            </div>
+            {/* タブの説明 + 商品設定 */}
+            {activeTab !== null ? (() => {
+                const currentProduct = products.find(p => p.id === activeTab)
+                if (!currentProduct) return null
+                return (
+                    <div style={{ marginBottom: '24px', ...S.card, padding: '20px 24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                            <Package style={{ width: '18px', height: '18px', color: 'var(--admin-accent)' }} />
+                            <span style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>商品設定</span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
+                            {/* 商品画像 */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '120px', height: '120px', borderRadius: '16px', overflow: 'hidden', border: '2px dashed rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                    onClick={() => {
+                                        const input = document.createElement('input')
+                                        input.type = 'file'
+                                        input.accept = 'image/*'
+                                        input.onchange = async (ev: any) => {
+                                            const file = ev.target?.files?.[0]
+                                            if (!file) return
+                                            try {
+                                                const compressed = await compressImage(file, 400)
+                                                const fd = new FormData()
+                                                fd.append('file', compressed)
+                                                const res = await fetch('/api/upload-image', { method: 'POST', body: fd })
+                                                const result = await res.json()
+                                                if (!res.ok) {
+                                                    alert(result.error || 'アップロード失敗')
+                                                    return
+                                                }
+                                                const updated = { ...currentProduct, image_url: result.url }
+                                                const saveRes = await saveProduct(updated)
+                                                if (saveRes.success) {
+                                                    setProducts(products.map(p => p.id === activeTab ? { ...p, image_url: result.url } : p))
+                                                } else {
+                                                    alert(saveRes.error || '保存失敗')
+                                                }
+                                            } catch { alert('アップロードエラー') }
+                                        }
+                                        input.click()
+                                    }}
+                                >
+                                    {currentProduct.image_url ? (
+                                        <Image src={currentProduct.image_url} alt={currentProduct.name} fill style={{ objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+                                            <ImagePlus style={{ width: '28px', height: '28px', marginBottom: '4px' }} />
+                                            <div style={{ fontSize: '10px' }}>クリックで追加</div>
+                                        </div>
+                                    )}
+                                </div>
+                                {currentProduct.image_url && (
+                                    <button onClick={async () => {
+                                        const updated = { ...currentProduct, image_url: null }
+                                        const res = await saveProduct(updated)
+                                        if (res.success) {
+                                            setProducts(products.map(p => p.id === activeTab ? { ...p, image_url: null } : p))
+                                        }
+                                    }} style={{ fontSize: '11px', color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+                                        <X style={{ width: '12px', height: '12px', display: 'inline', verticalAlign: 'middle' }} /> 画像を削除
+                                    </button>
+                                )}
+                            </div>
+                            {/* 商品名・説明 */}
+                            <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '4px', display: 'block' }}>商品名</label>
+                                    <input
+                                        value={currentProduct.name}
+                                        onChange={(e) => setProducts(products.map(p => p.id === activeTab ? { ...p, name: e.target.value } : p))}
+                                        onBlur={async () => {
+                                            const p = products.find(p => p.id === activeTab)
+                                            if (p) await saveProduct(p)
+                                        }}
+                                        style={{ ...S.input, fontSize: '16px' }}
+                                        placeholder="商品名"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '4px', display: 'block' }}>説明文 (LP商品選択画面に表示)</label>
+                                    <input
+                                        value={currentProduct.description || ''}
+                                        onChange={(e) => setProducts(products.map(p => p.id === activeTab ? { ...p, description: e.target.value } : p))}
+                                        onBlur={async () => {
+                                            const p = products.find(p => p.id === activeTab)
+                                            if (p) await saveProduct(p)
+                                        }}
+                                        style={S.descInput}
+                                        placeholder="商品の説明文..."
+                                    />
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
+                                    📦 この商品を選んだときだけ表示されるステップです。画像は公開ページの商品選択画面に表示されます。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )
+            })() : (
+                <div style={{ marginBottom: '24px', padding: '12px 16px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                        📋 共通ステップ: すべての商品で共通して表示されるステップです（原料供給など）
+                    </p>
+                </div>
+            )}
 
             {filteredSteps.length === 0 ? (
                 <div style={{ ...S.card, padding: '48px', textAlign: 'center' as const, borderStyle: 'dashed' }}>
@@ -531,6 +628,7 @@ export default function FormEditorClient({
                                                                 onImageUpload={(file) => handleImageUpload(step.id, question.id, option.id, file)}
                                                                 onImageRemove={() => setSteps(steps.map(s => s.id === step.id ? { ...s, questions: s.questions.map(q => q.id === question.id ? { ...q, options: q.options.map(o => o.id === option.id ? { ...o, image_url: '' } : o) } : q) } : s))}
                                                                 onRemove={() => removeOption(step.id, question.id, option.id)}
+                                                                questionType={question.input_type}
                                                             />
                                                         ))}
                                                         <button onClick={() => addOption(step.id, question.id)} style={{ ...S.btn, color: 'var(--admin-accent)', background: 'rgba(99,102,241,0.1)', marginTop: '4px', fontSize: '13px', fontWeight: 'bold' }}>
@@ -552,15 +650,37 @@ export default function FormEditorClient({
                         </div>
                     ))}
 
-                    <div style={{ paddingTop: '32px', display: 'flex', justifyContent: 'center', paddingBottom: '48px' }}>
+                    <div style={{ paddingTop: '32px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '24px', paddingBottom: '48px' }}>
                         <button onClick={addStep} style={{ ...S.btn, color: '#fff', background: 'transparent', border: '2px dashed rgba(255,255,255,0.2)', padding: '16px 32px', fontSize: '16px', fontWeight: 'bold' }}>
                             <Plus style={{ width: '24px', height: '24px' }} /> 新しいステップを追加
+                        </button>
+
+                        <button
+                            onClick={handleSave}
+                            style={{ ...S.btn, background: 'var(--admin-accent)', color: '#fff', padding: '16px 48px', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(99,102,241,0.3)', minWidth: '220px', justifyContent: 'center' }}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? (
+                                <div style={{ width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.2)', borderTop: '3px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                            ) : (
+                                <Save style={{ width: '24px', height: '24px' }} />
+                            )}
+                            {isSaving ? '保存中...' : '変更を保存'}
                         </button>
                     </div>
                 </div>
             )}
         </div>
     )
+}
+
+// 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
+const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'いいえ', '否', 'none', 'null', 'n/a']
+
+const shouldShowExtraInput = (label: string | null | undefined) => {
+    if (!label) return false
+    const normalized = label.trim().toLowerCase()
+    return !EXTRA_EXCLUSION_KEYWORDS.some(k => normalized.includes(k))
 }
 
 // 選択肢の行コンポーネント
@@ -577,6 +697,7 @@ function OptionRow({
     onImageUpload,
     onImageRemove,
     onRemove,
+    questionType
 }: {
     option: FormOption
     stepId: string
@@ -590,6 +711,7 @@ function OptionRow({
     onImageUpload: (file: File) => void
     onImageRemove: () => void
     onRemove: () => void
+    questionType: string
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const isPercentage = option.price_modifier_type === 'percentage'
@@ -603,6 +725,16 @@ function OptionRow({
                     placeholder="選択肢の表示名"
                     style={{ flex: 1, minWidth: '150px', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '13px', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '8px', outline: 'none' }}
                 />
+
+                {(questionType === 'select_text' || questionType === 'select_number') && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', background: shouldShowExtraInput(option.label) ? 'rgba(34,197,94,0.1)' : 'rgba(248,113,113,0.1)', color: shouldShowExtraInput(option.label) ? '#4ade80' : '#f87171', border: `1px solid ${shouldShowExtraInput(option.label) ? 'rgba(34,197,94,0.2)' : 'rgba(248,113,113,0.2)'}` }} title={shouldShowExtraInput(option.label) ? 'この項目が選ばれた時、追加入力フォームを表示します' : '「なし」系のキーワードが含まれるため、入力フォームを表示しません'}>
+                        {shouldShowExtraInput(option.label) ? (
+                            <><MessageSquareCode style={{ width: '12px', height: '12px' }} /> 追加入力あり</>
+                        ) : (
+                            <><MessageSquareX style={{ width: '12px', height: '12px' }} /> 追加入力なし</>
+                        )}
+                    </div>
+                )}
 
                 <textarea
                     value={option.description || ''}

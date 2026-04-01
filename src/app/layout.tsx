@@ -16,16 +16,29 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   title: {
     template: '%s | 食品OEM パートナー',
     default: '食品OEM パートナー - あなただけのオリジナル食品を',
   },
-  description: '小ロットから対応可能な食品OEMサービス。レトルト食品、調味料、冷凍食品など、あなたのアイデアを形にします。BTO見積もりで簡単お見積り。',
+  description: '小ロットから対応可能なB2B向け食品OEMサービス。レトルト食品、調味料、冷凍食品など、あなたのアイデアを形にします。最新のBTO見積もりで簡単・瞬時にお見積りをシミュレーション。',
+  keywords: ['食品OEM', 'B2B', '小ロットOEM', 'レトルト食品製作', 'オリジナル食品', 'BTO見積もり'],
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
+    url: '/',
     siteName: '食品OEM パートナー',
+    title: '食品OEM パートナー - あなただけのオリジナル食品を',
+    description: '小ロットから対応可能なB2B向け食品OEMサービス。最新のBTO見積もりで簡単・瞬時にお見積りをシミュレーション。',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '食品OEM パートナー - あなただけのオリジナル食品を',
+    description: '小ロットから対応可能なB2B向け食品OEMサービス。あなたのアイデアを形にします。',
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 
@@ -35,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ja" className={`${notoSansJP.variable} ${inter.variable}`}>
-      <body>
+    <html lang="ja" className={`${notoSansJP.variable} ${inter.variable}`} suppressHydrationWarning>
+      <body style={{ fontFamily: 'var(--font-noto-sans-jp), "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif' }} suppressHydrationWarning>
         {children}
       </body>
     </html>

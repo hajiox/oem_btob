@@ -43,6 +43,10 @@ next-env.d.ts
 .vercel
 .env*.local
 
+# 開発経過ドキュメント（機密情報を含むためリモートにプッシュしない）
+OEM開発.md
+*開発.md
+
 # 開発履歴MD（Google Driveで管理）
 *開発*.md
 *総括*.md

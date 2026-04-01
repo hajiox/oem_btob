@@ -35,29 +35,25 @@ export function LeadStatusSelect({ leadId, currentStatus }: { leadId: string, cu
     const currentColor = statuses.find(s => s.value === status)?.color || '#fff'
 
     return (
-        <div className="relative">
+        <div className="relative w-full" style={{ minWidth: '100px' }}>
             <select
                 value={status}
                 onChange={handleStatusChange}
                 disabled={isPending}
-                className="appearance-none bg-transparent border rounded-md px-3 py-1 pr-8 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-white/20 transition-colors disabled:opacity-50 cursor-pointer"
+                className="w-full bg-transparent border rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-white/10 transition-all disabled:opacity-50 cursor-pointer hover:bg-white/5"
                 style={{
                     color: currentColor,
                     borderColor: `${currentColor}40`,
-                    background: `${currentColor}10`
+                    background: `${currentColor}08`,
                 }}
             >
                 {statuses.map(s => (
-                    <option key={s.value} value={s.value} className="bg-slate-800 text-white">
+                    <option key={s.value} value={s.value} className="bg-slate-900 text-white">
                         {s.label}
                     </option>
                 ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2" style={{ color: currentColor }}>
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-            </div>
+            {/* 不要な絶対配置の矢印アイコンを削除 */}
             {error && (
                 <div className="absolute top-full mt-1 left-0 text-[10px] text-red-400 whitespace-nowrap z-10 bg-black/80 p-1 rounded">
                     {error}

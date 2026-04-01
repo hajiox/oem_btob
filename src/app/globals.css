@@ -20,14 +20,16 @@
   --color-glass: rgba(255, 255, 255, 0.05);
   --color-glass-hover: rgba(255, 255, 255, 0.1);
 
-  /* Admin カラー */
-  --admin-bg: #0a0a0f;
-  --admin-sidebar: #111118;
-  --admin-card: #16161f;
+  /* Admin カラー (DocScanner Style Dark Theme) */
+  --admin-bg: #0B0E14;
+  --admin-sidebar: #121822;
+  --admin-card: #151B26;
   --admin-border: rgba(255, 255, 255, 0.06);
-  --admin-accent: #6366f1;
-  --admin-accent-hover: #818cf8;
-  --admin-success: #22c55e;
+  --admin-text: #F3F4F6;
+  --admin-text-muted: #9CA3AF;
+  --admin-accent: #06B6D4;
+  --admin-accent-hover: #0891B2;
+  --admin-success: #10B981;
   --admin-warning: #f59e0b;
   --admin-danger: #ef4444;
 

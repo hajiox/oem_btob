@@ -153,3 +153,26 @@ export async function duplicateFormFromPage(sourcePageId: string, targetPageId: 
     revalidatePath('/admin/')
     return { success: true }
 }
+
+export async function updatePageEmailSettings(
+    id: string,
+    data: {
+        email_from_name?: string | null
+        email_from_address?: string | null
+        admin_notification_email?: string | null
+        customer_email_subject?: string | null
+        admin_email_subject?: string | null
+        customer_email_intro?: string | null
+        customer_email_closing?: string | null
+        admin_email_intro?: string | null
+    }
+) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: '認証エラー' }
+
+    const { error } = await supabase.from('pages').update(data).eq('id', id)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/')
+    return { success: true }
+}

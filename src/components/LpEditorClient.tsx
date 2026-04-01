@@ -5,7 +5,7 @@ import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Loader2, ImageIcon, Ext
 import Image from 'next/image'
 import Link from 'next/link'
 import type { LpSection } from '@/types/database'
-import { addLpSection, deleteLpSection, reorderLpSections, updateLpSectionTitle } from '@/actions/lpEditor'
+import { addLpSection, deleteLpSection, reorderLpSections, updateLpSection } from '@/actions/lpEditor'
 import { forceSeedInitialLpSections } from '@/actions/lpEditorForceSeed'
 import { generateImageMetadata } from '@/actions/imageMetadata'
 import { compressImage } from '@/lib/imageCompressor'
@@ -154,13 +154,27 @@ export default function LpEditorClient({
         setIsSaving(false)
     }
 
-    // タイトル更新
-    const handleTitleChange = async (id: string, title: string) => {
-        setSections(prev => prev.map(s => s.id === id ? { ...s, title } : s))
+    // 各項目の更新操作（ステートのみ）
+    const handleFieldChange = (id: string, updates: Partial<LpSection>) => {
+        setSections(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
     }
 
-    const handleTitleBlur = async (id: string, title: string) => {
-        await updateLpSectionTitle(pageId, id, title)
+    // ぼかし（Blur）時にDB保存
+    const handleBlur = async (id: string) => {
+        const section = sections.find(s => s.id === id)
+        if (!section) return
+        await updateLpSection(pageId, id, {
+            title: section.title,
+            description: section.description,
+            section_type: section.section_type,
+            is_visible: section.is_visible
+        })
+    }
+
+    // セレクトボックス変更時は即時保存
+    const handleTypeChange = async (id: string, section_type: LpSection['section_type']) => {
+        handleFieldChange(id, { section_type })
+        await updateLpSection(pageId, id, { section_type })
     }
 
     // 初期画像（デフォルト状態）の強制立ち上げ
@@ -321,19 +335,51 @@ export default function LpEditorClient({
                                     )}
                                 </div>
 
-                                {/* タイトル/alt */}
-                                <input
-                                    type="text"
-                                    value={section.title || ''}
-                                    onChange={(e) => handleTitleChange(section.id, e.target.value)}
-                                    onBlur={(e) => handleTitleBlur(section.id, e.target.value)}
-                                    placeholder="alt テキスト / タイトルを入力"
-                                    style={{
-                                        flex: 1, padding: '8px 12px', borderRadius: '8px',
-                                        background: 'rgba(255,255,255,0.05)', border: '1px solid var(--admin-border)',
-                                        color: '#fff', fontSize: '13px', outline: 'none',
-                                    }}
-                                />
+                                {/* タイトル/タイプ/説明文の編集エリア */}
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <select
+                                            value={section.section_type}
+                                            onChange={(e) => handleTypeChange(section.id, e.target.value as any)}
+                                            style={{
+                                                padding: '8px 12px', borderRadius: '8px',
+                                                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--admin-border)',
+                                                color: '#fff', fontSize: '13px', outline: 'none', width: '120px'
+                                            }}
+                                        >
+                                            <option value="hero" style={{ background: '#1e293b' }}>ヒーロー</option>
+                                            <option value="content" style={{ background: '#1e293b' }}>画像/コンテンツ</option>
+                                            <option value="feature" style={{ background: '#1e293b' }}>特徴</option>
+                                            <option value="cta" style={{ background: '#1e293b' }}>CTA</option>
+                                            <option value="testimonial" style={{ background: '#1e293b' }}>お客様の声</option>
+                                            <option value="faq" style={{ background: '#1e293b' }}>Q&A</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={section.title || ''}
+                                            onChange={(e) => handleFieldChange(section.id, { title: e.target.value })}
+                                            onBlur={() => handleBlur(section.id)}
+                                            placeholder="タイトル・altテキストを入力"
+                                            style={{
+                                                flex: 1, padding: '8px 12px', borderRadius: '8px',
+                                                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--admin-border)',
+                                                color: '#fff', fontSize: '13px', outline: 'none',
+                                            }}
+                                        />
+                                    </div>
+                                    <textarea
+                                        value={section.description || ''}
+                                        onChange={(e) => handleFieldChange(section.id, { description: e.target.value })}
+                                        onBlur={() => handleBlur(section.id)}
+                                        placeholder="説明文・コピーを入力（任意）"
+                                        style={{
+                                            width: '100%', padding: '8px 12px', borderRadius: '8px',
+                                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--admin-border)',
+                                            color: '#fff', fontSize: '13px', outline: 'none', minHeight: '60px',
+                                            resize: 'vertical', fontFamily: 'inherit'
+                                        }}
+                                    />
+                                </div>
 
                                 {/* 上下ボタン */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
@@ -420,17 +466,52 @@ export default function LpEditorClient({
                             </div>
                         ) : (
                             sections.map((section, i) => (
-                                <div key={`preview-${section.id}`} style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)' }}>
-                                    {section.image_url ? (
-                                        /* eslint-disable-next-line @next/next/no-img-element */
-                                        <img
-                                            src={section.image_url}
-                                            alt={section.title || ''}
-                                            style={{ width: '100%', height: 'auto', display: 'block' }}
-                                        />
-                                    ) : (
-                                        <div style={{ width: '100%', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e5e7eb', color: '#9ca3af' }}>
-                                            No Image
+                                <div key={`preview-${section.id}`} style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: section.section_type === 'hero' ? '16px' : '12px',
+                                    alignItems: 'center',
+                                    textAlign: 'center'
+                                }}>
+                                    {section.image_url && (
+                                        <div style={{
+                                            width: '100%',
+                                            borderRadius: section.section_type === 'hero' ? '16px' : '12px',
+                                            overflow: 'hidden',
+                                            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                                        }}>
+                                            <img
+                                                src={section.image_url}
+                                                alt={section.title || ''}
+                                                style={{ width: '100%', height: 'auto', display: 'block' }}
+                                            />
+                                        </div>
+                                    )}
+                                    {(section.title || section.description) && (
+                                        <div style={{ padding: '0 8px' }}>
+                                            {section.title && (
+                                                <h3 style={{
+                                                    fontSize: section.section_type === 'hero' ? '18px' : '15px',
+                                                    fontWeight: 800,
+                                                    color: '#1f2937',
+                                                    marginBottom: '4px',
+                                                    lineHeight: 1.3
+                                                }}>
+                                                    {section.title}
+                                                </h3>
+                                            )}
+                                            {section.description && (
+                                                <p style={{
+                                                    fontSize: '12px',
+                                                    lineHeight: 1.5,
+                                                    color: '#4b5563',
+                                                    margin: 0,
+                                                    whiteSpace: 'pre-wrap'
+                                                }}>
+                                                    {section.description}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </div>
