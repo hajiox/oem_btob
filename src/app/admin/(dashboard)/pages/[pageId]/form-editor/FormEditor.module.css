@@ -21,7 +21,7 @@
 
 .eyebrow {
     color: var(--admin-accent);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: .18em;
     line-height: 1.4;
@@ -30,7 +30,7 @@
 .pageDescription,
 .sectionHeader p {
     color: var(--admin-text-muted);
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.7;
 }
 
@@ -66,7 +66,7 @@
     border: 1px solid var(--admin-accent);
     background: var(--admin-accent);
     color: #071319;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .saveButton:disabled {
@@ -82,7 +82,7 @@
     border: 1px solid rgba(255,255,255,.12);
     background: rgba(255,255,255,.04);
     color: var(--admin-text);
-    font-size: 13px;
+    font-size: 14px;
     text-decoration: none;
 }
 
@@ -93,7 +93,7 @@
     border-radius: 9px;
     background: rgba(245,158,11,.07);
     color: #fcd34d;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .noticeSuccess {
@@ -140,11 +140,11 @@
 
 .railHeader strong {
     color: var(--admin-text-muted);
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .railLabel {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
 }
 
@@ -213,7 +213,7 @@
     border-radius: 7px;
     background: rgba(255,255,255,.06);
     color: var(--admin-text-muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
 }
 
@@ -232,14 +232,14 @@
 
 .productButtonText strong {
     overflow: hidden;
-    font-size: 12px;
+    font-size: 14px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .productButtonText small {
     color: var(--admin-text-muted);
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .addProductButton {
@@ -249,7 +249,7 @@
     border: 1px dashed rgba(6,182,212,.28);
     background: transparent;
     color: var(--admin-accent);
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .editorArea {
@@ -312,13 +312,13 @@
 
 .productPanelTitle small {
     color: var(--admin-text-muted);
-    font-size: 9px;
+    font-size: 12px;
     font-weight: 700;
 }
 
 .productPanelTitle strong {
     overflow: hidden;
-    font-size: 14px;
+    font-size: 16px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -326,7 +326,7 @@
 .productSummary {
     color: #6ee7b7;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
 }
 
@@ -371,7 +371,7 @@
     flex-direction: column;
     align-items: center;
     gap: 7px;
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .imageLoading {
@@ -402,7 +402,7 @@
 .optionLabel > span,
 .optionPrice > span {
     color: var(--admin-text-muted);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -425,7 +425,7 @@
     background: rgba(5,8,13,.42);
     color: var(--admin-text);
     font: inherit;
-    font-size: 12px;
+    font-size: 14px;
     transition: border-color .15s ease, box-shadow .15s ease;
 }
 
@@ -434,7 +434,7 @@
 .optionLabel input,
 .optionPrice input,
 .optionPrice select {
-    height: 38px;
+    height: 42px;
     padding: 0 11px;
 }
 
@@ -481,14 +481,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 38px;
+    min-height: 42px;
     gap: 12px;
     padding: 0 11px;
     border: 1px solid rgba(255,255,255,.08);
     border-radius: 8px;
     background: rgba(255,255,255,.025);
     color: var(--admin-text-muted);
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -514,7 +514,7 @@
     border: 0;
     background: transparent;
     color: #f87171;
-    font-size: 10px;
+    font-size: 12px;
     cursor: pointer;
 }
 
@@ -525,7 +525,7 @@
     border: 0;
     background: transparent;
     color: #f87171;
-    font-size: 10px;
+    font-size: 12px;
     cursor: pointer;
 }
 
@@ -597,13 +597,13 @@
 .timelineMarker small,
 .estimateMarker small {
     margin-bottom: 3px;
-    font-size: 7px;
+    font-size: 10px;
     letter-spacing: .1em;
 }
 
 .timelineMarker strong,
 .estimateMarker strong {
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .stepCardOpen .timelineMarker {
@@ -642,14 +642,14 @@
 
 .stepSummary strong {
     overflow: hidden;
-    font-size: 13px;
+    font-size: 15px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .stepSummary small {
     color: var(--admin-text-muted);
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .stepBadges {
@@ -662,7 +662,7 @@
 .routeBadge {
     padding: 2px 6px;
     border-radius: 5px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 800;
 }
 
@@ -697,7 +697,7 @@
     grid-template-columns: minmax(80px, .45fr) 18px minmax(180px, 1fr);
     align-items: center;
     gap: 7px;
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .routePreview > div > span {
@@ -714,7 +714,7 @@
 
 .routePreview strong {
     color: #67e8f9;
-    font-size: 9px;
+    font-size: 12px;
 }
 
 .stepActions {
@@ -740,15 +740,15 @@
 .stepBody {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding: 18px;
+    gap: 18px;
+    padding: 20px;
     border-top: 1px solid var(--admin-border);
     background: rgba(0,0,0,.13);
 }
 
 .questionInput {
-    height: 44px !important;
-    font-size: 14px !important;
+    height: 46px !important;
+    font-size: 15px !important;
     font-weight: 750 !important;
 }
 
@@ -782,12 +782,12 @@
 }
 
 .optionsHeader h3 {
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .optionsHeader p {
     color: var(--admin-text-muted);
-    font-size: 9px;
+    font-size: 12px;
     line-height: 1.5;
 }
 
@@ -797,7 +797,7 @@
     border: 1px solid rgba(6,182,212,.22);
     background: rgba(6,182,212,.07);
     color: var(--admin-accent);
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .smallButton:disabled {
@@ -844,7 +844,7 @@
 
 .optionRouteRow select {
     color: #67e8f9;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -891,12 +891,12 @@
 
 .estimateFlowNode > div strong {
     color: var(--admin-text);
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .estimateFlowNode > div small {
     color: var(--admin-text-muted);
-    font-size: 9px;
+    font-size: 12px;
 }
 
 .optionMainRow {
@@ -927,7 +927,7 @@
     border-left: 0;
     border-radius: 0 8px 8px 0;
     color: #6ee7b7;
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .extraInputStatus {
@@ -936,7 +936,7 @@
     gap: 4px;
     margin: 7px 0 0 35px;
     color: #6ee7b7;
-    font-size: 9px;
+    font-size: 12px;
     line-height: 1.5;
 }
 
@@ -949,7 +949,7 @@
     align-items: center;
     gap: 5px;
     color: var(--admin-text-muted);
-    font-size: 9px;
+    font-size: 12px;
     cursor: pointer;
     list-style: none;
 }
@@ -992,7 +992,7 @@
     border: 1px dashed rgba(6,182,212,.22);
     background: transparent;
     color: var(--admin-accent);
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .addStepButton {
@@ -1003,7 +1003,7 @@
     border: 1px dashed rgba(6,182,212,.3);
     background: var(--admin-bg);
     color: var(--admin-accent);
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .flowEmpty,
@@ -1044,7 +1044,7 @@
 .flowEmpty p,
 .emptyState p {
     color: var(--admin-text-muted);
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .emptyState {
