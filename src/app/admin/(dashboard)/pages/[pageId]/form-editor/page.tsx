@@ -26,17 +26,25 @@ export default async function FormEditorPage({ params }: { params: { pageId: str
 
     const steps = (stepsData ?? []) as FormStep[]
 
-    const { data: questionsData } = await supabase
-        .from('form_questions')
-        .select('*')
-        .order('order_index')
+    const stepIds = steps.map(step => step.id)
+    const { data: questionsData } = stepIds.length > 0
+        ? await supabase
+            .from('form_questions')
+            .select('*')
+            .in('step_id', stepIds)
+            .order('order_index')
+        : { data: [] }
 
     const questions = (questionsData ?? []) as FormQuestion[]
 
-    const { data: optionsData } = await supabase
-        .from('form_options')
-        .select('*')
-        .order('order_index')
+    const questionIds = questions.map(question => question.id)
+    const { data: optionsData } = questionIds.length > 0
+        ? await supabase
+            .from('form_options')
+            .select('*')
+            .in('question_id', questionIds)
+            .order('order_index')
+        : { data: [] }
 
     const options = (optionsData ?? []) as FormOption[]
 

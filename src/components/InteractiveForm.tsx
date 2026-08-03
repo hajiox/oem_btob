@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, MessageSquareCode, MessageSquareX, Package } from 'lucide-react'
+import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, Package } from 'lucide-react'
 import Image from 'next/image'
 import type { FormStepWithItems } from '@/actions/publicForm'
-import { getFormStepsForProduct, submitLead } from '@/actions/publicForm'
+import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
 
 // 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
@@ -25,9 +25,8 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const [errorData, setErrorData] = useState<string | null>(null)
     const [oemQuantity, setOemQuantity] = useState<number>(400)
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
-    const [productSteps, setProductSteps] = useState<FormStepWithItems[]>([])
-    const [loadingSteps, setLoadingSteps] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
+    const [navigationHistory, setNavigationHistory] = useState<number[]>([])
 
     // モバイル判定
     useEffect(() => {
@@ -39,52 +38,54 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     const [answers, setAnswers] = useState<Record<string, any>>({})
     const [contactInfo, setContactInfo] = useState({ companyName: '', contactName: '', email: '', phone: '', notes: '' })
+    const productSteps = useMemo(
+        () => selectedProduct ? allSteps.filter(step => step.product_id === selectedProduct) : [],
+        [allSteps, selectedProduct],
+    )
+    const usesExplicitRouting = useMemo(
+        () => productSteps.some(step => step.questions.some(question => (
+            question.options.some(option => option.next_step_id || option.go_to_estimate)
+        ))),
+        [productSteps],
+    )
 
     // 現在のステップ群（商品選択後は商品専用ステップ、かつ依存関係によるフィルタリングを適用）
     const filteredActiveSteps = useMemo(() => {
         if (!selectedProduct) return []
-        
-        // 1. まず全ての質問について表示可否を判定
-        const isQuestionVisible = (q: any) => {
-            if (!q.depends_on_option_id) return true
-            // 全ての回答の中から、依存先のoption_idが選ばれているか探す
-            return Object.values(answers).some(val => {
-                if (Array.isArray(val)) return val.includes(q.depends_on_option_id)
-                if (typeof val === 'object' && val !== null && val.selected) return val.selected === q.depends_on_option_id
-                return val === q.depends_on_option_id
-            })
-        }
+        if (usesExplicitRouting) return productSteps.filter(step => step.questions.length > 0)
 
-        // 2. 表示対象の質問を含むステップのみを抽出
-        return productSteps.map(step => ({
-            ...step,
-            questions: step.questions.filter(isQuestionVisible)
-        })).filter(step => step.questions.length > 0)
-    }, [selectedProduct, productSteps, answers])
+        // 上から順に判定し、表示中の前問で選ばれた選択肢だけを次の条件に使う。
+        // これにより、途中の質問が非表示になった際に古い回答から後続質問が誤表示されない。
+        const selectedVisibleOptionIds = new Set<string>()
+        return productSteps
+            .map(step => {
+                const visibleQuestions = step.questions.filter(question => (
+                    !question.depends_on_option_id || selectedVisibleOptionIds.has(question.depends_on_option_id)
+                ))
+
+                visibleQuestions.forEach(question => {
+                    const answer = answers[question.id]
+                    if (Array.isArray(answer)) {
+                        answer.forEach(value => selectedVisibleOptionIds.add(String(value)))
+                    } else if (typeof answer === 'object' && answer !== null && answer.selected) {
+                        selectedVisibleOptionIds.add(String(answer.selected))
+                    } else if (answer) {
+                        selectedVisibleOptionIds.add(String(answer))
+                    }
+                })
+
+                return { ...step, questions: visibleQuestions }
+            })
+            .filter(step => step.questions.length > 0)
+    }, [selectedProduct, productSteps, answers, usesExplicitRouting])
 
     const activeSteps = filteredActiveSteps
 
     // 0=数量, 1=商品選択, 2~N+1=フォーム, N+2=結果, N+3=お客様情報
     const PRODUCT_STEP = 1
     const FORM_START = 2
-    // ステップ読み込み中は RESULT_STEP を一時的に後ろにずらし、一瞬結果画面が出るのを防ぐ
-    const RESULT_STEP = loadingSteps ? 999 : FORM_START + activeSteps.length
+    const RESULT_STEP = FORM_START + activeSteps.length
     const CONTACT_STEP = RESULT_STEP + 1
-
-    // activeSteps が (回答変更により) 縮小した場合、currentStep が範囲外になるのを防ぐ
-    useEffect(() => {
-        const resultStepVal = FORM_START + activeSteps.length
-        // 結果画面やお客様情報画面にいる場合は補正不要
-        if (currentStep >= resultStepVal) return
-
-        if (currentStep >= FORM_START) {
-            const maxFormStep = FORM_START + activeSteps.length - 1
-            if (activeSteps.length > 0 && currentStep > maxFormStep) {
-                // 現在のステップが消えたので、最後のフォームステップまで戻す
-                setCurrentStep(maxFormStep)
-            }
-        }
-    }, [activeSteps.length, currentStep, FORM_START])
 
     // 進捗インジケーターの計算（動的なステップ数に対応）
     const visualSteps = useMemo(() => {
@@ -106,40 +107,19 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         return FORM_START + Math.min(formIdx, activeSteps.length - 1)
     }, [currentStep, visualSteps, RESULT_STEP, PRODUCT_STEP, activeSteps.length])
 
-    // 商品選択時にステップを取得
-    useEffect(() => {
-        if (!selectedProduct || !pageId) return
-        setLoadingSteps(true)
-        getFormStepsForProduct(pageId, selectedProduct).then(steps => {
-            // 共通の「商品種別」ステップは除外（商品選択は既にUI側で行っている）
-            const filtered = steps.filter(s => {
-                const isProductSelector = s.questions.some(q => q.question_text === '作りたい商品はなんですか？')
-                return !isProductSelector
-            })
-            setProductSteps(filtered)
-            setLoadingSteps(false)
-        })
-    }, [selectedProduct, pageId])
-
     // 金額計算
     const unitPrice = useMemo(() => {
         let total = 0
         let percentageTotal = 0 // パーセント加算の合計
-        // 商品ベース価格を追加（productsから取得した商品の基本価格）
-        const productSelectStep = allSteps.find(s => s.questions.some(q => q.question_text === '作りたい商品はなんですか？'))
-        if (productSelectStep && selectedProduct) {
-            const productQ = productSelectStep.questions.find(q => q.question_text === '作りたい商品はなんですか？')
-            if (productQ) {
-                const selectedProd = products.find(p => p.id === selectedProduct)
-                if (selectedProd) {
-                    const opt = productQ.options.find(o => o.label === selectedProd.name)
-                    if (opt) {
-                        if (opt.price_modifier_type === 'percentage') {
-                            percentageTotal += opt.price_modifier
-                        } else {
-                            total += opt.price_modifier
-                        }
-                    }
+
+        // 商品ベース価格を products テーブルから直接取得
+        if (selectedProduct) {
+            const selectedProd = products.find(p => p.id === selectedProduct)
+            if (selectedProd) {
+                if (selectedProd.base_price_type === 'percentage') {
+                    percentageTotal += selectedProd.base_price
+                } else {
+                    total += selectedProd.base_price
                 }
             }
         }
@@ -164,7 +144,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             })
         })
         return { fixed: total, percentage: percentageTotal }
-    }, [answers, activeSteps, allSteps, selectedProduct, products])
+    }, [answers, activeSteps, selectedProduct, products])
 
     const basePrice = unitPrice.fixed * oemQuantity
     const estimatedPrice = Math.ceil(basePrice * (1 + unitPrice.percentage / 100))
@@ -191,16 +171,61 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     const isContactInfoValid = () => contactInfo.companyName.trim() !== '' && contactInfo.contactName.trim() !== '' && contactInfo.email.includes('@')
 
+    const getNextScreen = () => {
+        if (currentStep < FORM_START || currentStep >= RESULT_STEP) return Math.min(currentStep + 1, CONTACT_STEP)
+
+        const stepData = activeSteps[currentStep - FORM_START]
+        const question = stepData?.questions[0]
+        if (!question || question.input_type === 'checkbox') return Math.min(currentStep + 1, RESULT_STEP)
+
+        const answer = answers[question.id]
+        const selectedOptionId = typeof answer === 'object' && answer !== null && !Array.isArray(answer)
+            ? answer.selected
+            : answer
+        const selectedOption = question.options.find(option => option.id === selectedOptionId)
+
+        if (selectedOption?.go_to_estimate) return RESULT_STEP
+        if (selectedOption?.next_step_id) {
+            const targetIndex = activeSteps.findIndex(step => step.id === selectedOption.next_step_id)
+            if (targetIndex > currentStep - FORM_START) return FORM_START + targetIndex
+        }
+
+        return Math.min(currentStep + 1, RESULT_STEP)
+    }
+
+    const navigateTo = (nextStep: number) => {
+        setDirection(1)
+        setNavigationHistory(history => [...history, currentStep])
+        setCurrentStep(nextStep)
+    }
+
     const handleNext = () => {
         if (!isCurrentStepValid()) return
-        setDirection(1)
-        setCurrentStep(currentStep + 1)
+        if (currentStep >= FORM_START && currentStep < RESULT_STEP) {
+            const currentFormIndex = currentStep - FORM_START
+            const laterQuestionIds = new Set(
+                activeSteps
+                    .slice(currentFormIndex + 1)
+                    .flatMap(step => step.questions.map(question => question.id)),
+            )
+            setAnswers(currentAnswers => Object.fromEntries(
+                Object.entries(currentAnswers).filter(([questionId]) => !laterQuestionIds.has(questionId)),
+            ))
+        }
+        navigateTo(getNextScreen())
     }
     const handlePrev = () => {
         setDirection(-1)
-        setCurrentStep(Math.max(0, currentStep - 1))
+        const previousStep = navigationHistory[navigationHistory.length - 1]
+        setCurrentStep(previousStep ?? Math.max(0, currentStep - 1))
+        if (previousStep !== undefined) setNavigationHistory(history => history.slice(0, -1))
     }
-    const handleApply = () => { setDirection(1); setCurrentStep(CONTACT_STEP) }
+    const handleApply = () => navigateTo(CONTACT_STEP)
+
+    const handleProductSelect = (productId: string) => {
+        if (productId !== selectedProduct) setAnswers({})
+        setSelectedProduct(productId)
+    }
 
     const handleAnswerChange = (questionId: string, value: any, type: string) => {
         if (type === 'checkbox') {
@@ -435,7 +460,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                             gap: '16px' 
                         }}>
                         {products.map(p => { const isSelected = selectedProduct === p.id; return (
-                            <button key={p.id} onClick={() => setSelectedProduct(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
+                            <button key={p.id} onClick={() => handleProductSelect(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
                                 {/* 商品画像 or フォールバックアイコン */}
                                 {p.image_url ? (
                                     <div style={{ width: '100%', aspectRatio: isMobile ? '16/9' : '1/1', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
@@ -458,7 +483,35 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         ) })}</div></motion.div>)}
 
                         {/* フォームステップ（1ステップ1質問） */}
-                        {currentStep >= FORM_START && currentStep < RESULT_STEP && (<motion.div key={`step-${currentStep}`} initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}>{loadingSteps ? <div style={{ textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.5)' }}>読み込み中...</div> : (() => { const stepData = activeSteps[currentStep - FORM_START]; if (!stepData) return null; const q = stepData.questions[0]; if (!q) return null; return (<><div style={{ marginBottom: '24px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>{stepData.step_title}{q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}</h2>{stepData.step_description && <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{stepData.step_description}</p>}{q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}</div><div>{renderQuestionInput(q)}</div></>)})()}</motion.div>)}
+                        {currentStep >= FORM_START && currentStep < RESULT_STEP && (
+                            <motion.div
+                                key={`step-${currentStep}`}
+                                initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                {(() => {
+                                    const stepData = activeSteps[currentStep - FORM_START]
+                                    if (!stepData) return null
+                                    const q = stepData.questions[0]
+                                    if (!q) return null
+                                    return (
+                                        <>
+                                            <div style={{ marginBottom: '24px' }}>
+                                                <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    {stepData.step_title}
+                                                    {q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}
+                                                </h2>
+                                                {stepData.step_description && <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{stepData.step_description}</p>}
+                                                {q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}
+                                            </div>
+                                            <div>{renderQuestionInput(q)}</div>
+                                        </>
+                                    )
+                                })()}
+                            </motion.div>
+                        )}
 
                         {/* 見積もり結果 */}
                         {currentStep === RESULT_STEP && (
@@ -579,7 +632,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                     <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <button onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', visibility: currentStep === 0 ? 'hidden' : 'visible' }}><ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る</button>
                         {currentStep < RESULT_STEP ? (
-                            <button onClick={handleNext} disabled={!isCurrentStepValid()} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed', opacity: isCurrentStepValid() ? 1 : 0.4, boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.2s' }}>{currentStep === RESULT_STEP - 1 ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} /></button>
+                            <button onClick={handleNext} disabled={!isCurrentStepValid()} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed', opacity: isCurrentStepValid() ? 1 : 0.4, boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.2s' }}>{getNextScreen() === RESULT_STEP ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} /></button>
                         ) : currentStep === CONTACT_STEP ? (
                             <button onClick={handleSubmit} disabled={!isContactInfoValid() || isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isContactInfoValid() ? 'linear-gradient(135deg, #22c55e, #10b981)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isContactInfoValid() ? 'pointer' : 'not-allowed', opacity: isContactInfoValid() && !isSubmitting ? 1 : 0.5, boxShadow: isContactInfoValid() ? '0 8px 24px rgba(34,197,94,0.3)' : 'none' }}>{isSubmitting ? <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 style={{ width: '20px', height: '20px' }} />}{isSubmitting ? '送信中...' : 'この内容で送信する'}</button>
                         ) : <div />}

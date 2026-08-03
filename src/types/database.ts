@@ -36,6 +36,8 @@ export interface Product {
     name: string
     description: string | null
     image_url: string | null
+    base_price: number
+    base_price_type: 'fixed' | 'percentage'
     order_index: number
     is_visible: boolean
     created_at: string
@@ -106,6 +108,8 @@ export interface FormOption {
     is_base_price: boolean
     description: string | null
     image_url: string | null
+    next_step_id: string | null  // この回答を選んだ後に進むステップ。NULLなら次のステップ
+    go_to_estimate: boolean      // この回答を選んだ後に概算見積もりへ進む
     created_at: string
     updated_at: string
 }

@@ -71,13 +71,13 @@ export async function getPublicProducts(pageId: string) {
 export async function getFormStepsForProduct(pageId: string, productId: string): Promise<FormStepWithItems[]> {
     const supabase = await createClient()
 
-    // 対象商品のステップ + 共通ステップ(product_id IS NULL) を取得
+    // 対象商品のステップを取得
     const { data: stepsData } = await supabase
         .from('form_steps')
         .select('*')
         .eq('page_id', pageId)
         .eq('is_visible', true)
-        .or(`product_id.eq.${productId},product_id.is.null`)
+        .eq('product_id', productId)
         .order('order_index')
 
     if (!stepsData || stepsData.length === 0) return []

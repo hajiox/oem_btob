@@ -1,0 +1,1175 @@
+.page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    color: var(--admin-text);
+}
+
+.pageHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.pageHeader h1 {
+    margin: 2px 0 4px;
+    font-size: clamp(24px, 3vw, 32px);
+    letter-spacing: -.02em;
+}
+
+.eyebrow {
+    color: var(--admin-accent);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    line-height: 1.4;
+}
+
+.pageDescription,
+.sectionHeader p {
+    color: var(--admin-text-muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.headerActions,
+.inlineFields,
+.questionSettings {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.saveButton,
+.primaryButton,
+.secondaryButton,
+.smallButton,
+.addProductButton,
+.addStepButton,
+.emptyOptionButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border-radius: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+}
+
+.saveButton,
+.primaryButton {
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid var(--admin-accent);
+    background: var(--admin-accent);
+    color: #071319;
+    font-size: 13px;
+}
+
+.saveButton:disabled {
+    border-color: var(--admin-border);
+    background: rgba(255,255,255,.04);
+    color: var(--admin-text-muted);
+    cursor: default;
+}
+
+.secondaryButton {
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.04);
+    color: var(--admin-text);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.notice {
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    border: 1px solid rgba(245,158,11,.22);
+    border-radius: 9px;
+    background: rgba(245,158,11,.07);
+    color: #fcd34d;
+    font-size: 12px;
+}
+
+.noticeSuccess {
+    border-color: rgba(16,185,129,.25);
+    background: rgba(16,185,129,.08);
+    color: #6ee7b7;
+}
+
+.noticeError {
+    border-color: rgba(239,68,68,.25);
+    background: rgba(239,68,68,.08);
+    color: #fca5a5;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.productRail {
+    position: sticky;
+    top: 24px;
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: rgba(18,24,34,.72);
+}
+
+.railHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.railHeader > div {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.railHeader strong {
+    color: var(--admin-text-muted);
+    font-size: 12px;
+}
+
+.railLabel {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.iconButton,
+.stepActions button,
+.dangerIconButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: rgba(255,255,255,.03);
+    color: var(--admin-text-muted);
+    cursor: pointer;
+}
+
+.iconButton:hover,
+.stepActions button:hover:not(:disabled) {
+    border-color: rgba(6,182,212,.35);
+    color: var(--admin-accent);
+}
+
+.productList {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px;
+}
+
+.productButton {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--admin-text-muted);
+    text-align: left;
+    cursor: pointer;
+}
+
+.productButton:hover {
+    background: rgba(255,255,255,.035);
+    color: var(--admin-text);
+}
+
+.productButtonActive {
+    border-color: rgba(6,182,212,.24);
+    background: rgba(6,182,212,.09);
+    color: var(--admin-text);
+}
+
+.productIndex,
+.optionIndex {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    border-radius: 7px;
+    background: rgba(255,255,255,.06);
+    color: var(--admin-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.productButtonActive .productIndex {
+    background: var(--admin-accent);
+    color: #071319;
+}
+
+.productButtonText {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.productButtonText strong {
+    overflow: hidden;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.productButtonText small {
+    color: var(--admin-text-muted);
+    font-size: 10px;
+}
+
+.addProductButton {
+    width: calc(100% - 16px);
+    min-height: 38px;
+    margin: 0 8px 8px;
+    border: 1px dashed rgba(6,182,212,.28);
+    background: transparent;
+    color: var(--admin-accent);
+    font-size: 11px;
+}
+
+.editorArea {
+    min-width: 0;
+}
+
+.productPanel,
+.stepCard,
+.emptyState,
+.flowEmpty {
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: var(--admin-card);
+}
+
+.productPanel {
+    margin-bottom: 26px;
+    overflow: hidden;
+}
+
+.productPanelHeader {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+    padding: 13px 16px;
+    border: 0;
+    background: transparent;
+    color: var(--admin-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.productThumb {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: rgba(6,182,212,.1);
+    color: var(--admin-accent);
+}
+
+.productThumb img,
+.imagePicker img,
+.optionImage img {
+    object-fit: cover;
+}
+
+.productPanelTitle {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.productPanelTitle small {
+    color: var(--admin-text-muted);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.productPanelTitle strong {
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.productSummary {
+    color: #6ee7b7;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.productSettings {
+    position: relative;
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 18px;
+    padding: 18px;
+    border-top: 1px solid var(--admin-border);
+    background: rgba(0,0,0,.13);
+}
+
+.imageField {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+}
+
+.imagePicker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 112px;
+    height: 112px;
+    overflow: hidden;
+    border: 1px dashed rgba(255,255,255,.18);
+    border-radius: 12px;
+    background: rgba(0,0,0,.22);
+    color: var(--admin-text-muted);
+    cursor: pointer;
+}
+
+.imagePicker > span:not(.imageLoading) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+}
+
+.imageLoading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,10,15,.72);
+    color: var(--admin-accent);
+}
+
+.productFields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.field {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.field > span,
+.optionLabel > span,
+.optionPrice > span {
+    color: var(--admin-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.field em {
+    color: rgba(156,163,175,.6);
+    font-style: normal;
+    font-weight: 500;
+}
+
+.field input,
+.field textarea,
+.field select,
+.optionLabel input,
+.optionPrice input,
+.optionPrice select {
+    width: 100%;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 8px;
+    outline: none;
+    background: rgba(5,8,13,.42);
+    color: var(--admin-text);
+    font: inherit;
+    font-size: 12px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.field input,
+.field select,
+.optionLabel input,
+.optionPrice input,
+.optionPrice select {
+    height: 38px;
+    padding: 0 11px;
+}
+
+.field textarea {
+    padding: 9px 11px;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus,
+.optionLabel input:focus,
+.optionPrice input:focus,
+.optionPrice select:focus {
+    border-color: rgba(6,182,212,.55);
+    box-shadow: 0 0 0 3px rgba(6,182,212,.08);
+}
+
+.inlineFields .field {
+    max-width: 310px;
+}
+
+.priceInput {
+    display: grid;
+    grid-template-columns: 20px minmax(80px, 1fr) 86px;
+    align-items: center;
+    gap: 5px;
+    padding-left: 10px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 8px;
+    background: rgba(5,8,13,.42);
+    color: #6ee7b7;
+}
+
+.priceInput input,
+.priceInput select {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.toggleField {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 38px;
+    gap: 12px;
+    padding: 0 11px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    background: rgba(255,255,255,.025);
+    color: var(--admin-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.toggleField > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.toggleField input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--admin-accent);
+}
+
+.deleteProductButton {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    color: #f87171;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.textDangerButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 0;
+    background: transparent;
+    color: #f87171;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.flowSection {
+    min-width: 0;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.sectionHeader h2 {
+    margin: 2px 0 3px;
+    font-size: 20px;
+}
+
+.timeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-left: 64px;
+}
+
+.timeline::before {
+    position: absolute;
+    top: 20px;
+    bottom: 24px;
+    left: 23px;
+    width: 2px;
+    background: linear-gradient(var(--admin-accent), rgba(6,182,212,.2) 80%, rgba(16,185,129,.5));
+    content: '';
+}
+
+.stepCard {
+    position: relative;
+    min-width: 0;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.stepCardOpen {
+    border-color: rgba(6,182,212,.3);
+    box-shadow: 0 12px 30px rgba(0,0,0,.15);
+}
+
+.timelineMarker {
+    position: absolute;
+    top: 8px;
+    left: -64px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 46px;
+    flex-direction: column;
+    border: 1px solid rgba(6,182,212,.35);
+    border-radius: 11px;
+    background: var(--admin-bg);
+    color: var(--admin-accent);
+    line-height: 1;
+    font-weight: 800;
+}
+
+.timelineMarker small,
+.estimateMarker small {
+    margin-bottom: 3px;
+    font-size: 7px;
+    letter-spacing: .1em;
+}
+
+.timelineMarker strong,
+.estimateMarker strong {
+    font-size: 14px;
+}
+
+.stepCardOpen .timelineMarker {
+    background: var(--admin-accent);
+    color: #071319;
+}
+
+.stepHeader {
+    display: flex;
+    align-items: center;
+    min-height: 60px;
+    gap: 10px;
+    padding: 8px 10px 8px 16px;
+}
+
+.stepSummary {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 0;
+    background: transparent;
+    color: var(--admin-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.stepSummary > span:first-child {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stepSummary strong {
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stepSummary small {
+    color: var(--admin-text-muted);
+    font-size: 10px;
+}
+
+.stepBadges {
+    display: flex;
+    gap: 5px;
+}
+
+.requiredBadge,
+.hiddenBadge,
+.routeBadge {
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.requiredBadge {
+    background: rgba(244,63,94,.1);
+    color: #fda4af;
+}
+
+.hiddenBadge {
+    background: rgba(156,163,175,.1);
+    color: var(--admin-text-muted);
+}
+
+.routeBadge {
+    background: rgba(6,182,212,.1);
+    color: #67e8f9;
+}
+
+.routePreview {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0 12px 12px 16px;
+    padding: 9px 11px;
+    border: 1px solid rgba(6,182,212,.14);
+    border-radius: 9px;
+    background: rgba(6,182,212,.035);
+}
+
+.routePreview > div {
+    display: grid;
+    grid-template-columns: minmax(80px, .45fr) 18px minmax(180px, 1fr);
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+}
+
+.routePreview > div > span {
+    overflow: hidden;
+    color: var(--admin-text);
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.routePreview svg {
+    color: var(--admin-accent);
+}
+
+.routePreview strong {
+    color: #67e8f9;
+    font-size: 9px;
+}
+
+.stepActions {
+    display: flex;
+    gap: 5px;
+}
+
+.stepActions button {
+    width: 30px;
+    height: 30px;
+}
+
+.stepActions button:disabled {
+    opacity: .25;
+    cursor: default;
+}
+
+.dangerIconButton:hover {
+    border-color: rgba(239,68,68,.3) !important;
+    color: #f87171 !important;
+}
+
+.stepBody {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 18px;
+    border-top: 1px solid var(--admin-border);
+    background: rgba(0,0,0,.13);
+}
+
+.questionInput {
+    height: 44px !important;
+    font-size: 14px !important;
+    font-weight: 750 !important;
+}
+
+.questionSettings {
+    align-items: stretch;
+}
+
+.questionSettings .field {
+    min-width: 180px;
+}
+
+.questionSettings .toggleField {
+    flex: 1;
+}
+
+.optionsSection {
+    overflow: hidden;
+    margin-top: 2px;
+    border: 1px solid var(--admin-border);
+    border-radius: 11px;
+    background: rgba(5,8,13,.24);
+}
+
+.optionsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.optionsHeader h3 {
+    font-size: 12px;
+}
+
+.optionsHeader p {
+    color: var(--admin-text-muted);
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.smallButton {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid rgba(6,182,212,.22);
+    background: rgba(6,182,212,.07);
+    color: var(--admin-accent);
+    font-size: 10px;
+}
+
+.smallButton:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.optionList {
+    display: flex;
+    flex-direction: column;
+}
+
+.optionCard {
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.optionCard:last-child {
+    border-bottom: 0;
+}
+
+.optionRouteRow {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: end;
+    gap: 9px;
+    margin: 10px 0 0 35px;
+    padding: 10px;
+    border: 1px solid rgba(6,182,212,.16);
+    border-radius: 9px;
+    background: rgba(6,182,212,.04);
+}
+
+.routeIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(6,182,212,.1);
+    color: var(--admin-accent);
+}
+
+.optionRouteRow select {
+    color: #67e8f9;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.estimateFlowNode {
+    position: relative;
+    min-height: 58px;
+}
+
+.estimateMarker {
+    position: absolute;
+    top: 5px;
+    left: -64px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    flex-direction: column;
+    border: 1px solid rgba(16,185,129,.38);
+    border-radius: 50%;
+    background: #0b111b;
+    color: #6ee7b7;
+    line-height: 1;
+}
+
+.estimateFlowNode > div {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 58px;
+    padding: 10px 15px;
+    border: 1px solid rgba(16,185,129,.22);
+    border-radius: 12px;
+    background: rgba(16,185,129,.055);
+    color: #6ee7b7;
+}
+
+.estimateFlowNode > div > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.estimateFlowNode > div strong {
+    color: var(--admin-text);
+    font-size: 12px;
+}
+
+.estimateFlowNode > div small {
+    color: var(--admin-text-muted);
+    font-size: 9px;
+}
+
+.optionMainRow {
+    display: grid;
+    grid-template-columns: 26px minmax(150px, 1fr) minmax(190px, .7fr) 32px;
+    align-items: end;
+    gap: 9px;
+}
+
+.optionLabel,
+.optionPrice {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.optionPrice > div {
+    display: grid;
+    grid-template-columns: minmax(70px, 1fr) 82px;
+}
+
+.optionPrice input {
+    border-radius: 8px 0 0 8px;
+}
+
+.optionPrice select {
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+    color: #6ee7b7;
+    font-size: 10px;
+}
+
+.extraInputStatus {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 7px 0 0 35px;
+    color: #6ee7b7;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.optionDetails {
+    margin: 8px 0 0 35px;
+}
+
+.optionDetails summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--admin-text-muted);
+    font-size: 9px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.optionDetails summary::-webkit-details-marker {
+    display: none;
+}
+
+.optionDetailsBody {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    margin-top: 9px;
+    padding: 11px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.02);
+}
+
+.optionImageField {
+    display: flex;
+    min-width: 120px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+}
+
+.optionImage {
+    position: relative;
+    width: 58px;
+    height: 58px;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.emptyOptionButton {
+    width: calc(100% - 24px);
+    min-height: 38px;
+    margin: 12px;
+    border: 1px dashed rgba(6,182,212,.22);
+    background: transparent;
+    color: var(--admin-accent);
+    font-size: 10px;
+}
+
+.addStepButton {
+    position: relative;
+    align-self: flex-start;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px dashed rgba(6,182,212,.3);
+    background: var(--admin-bg);
+    color: var(--admin-accent);
+    font-size: 11px;
+}
+
+.flowEmpty,
+.emptyState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 150px;
+    padding: 24px;
+    border-style: dashed;
+    color: var(--admin-text-muted);
+}
+
+.flowEmpty .stepNumber {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(6,182,212,.3);
+    border-radius: 50%;
+    color: var(--admin-accent);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.flowEmpty > div {
+    flex: 1;
+}
+
+.flowEmpty h3,
+.emptyState h2 {
+    color: var(--admin-text);
+    font-size: 14px;
+}
+
+.flowEmpty p,
+.emptyState p {
+    color: var(--admin-text-muted);
+    font-size: 10px;
+}
+
+.emptyState {
+    min-height: 320px;
+    flex-direction: column;
+    text-align: center;
+}
+
+.spinner {
+    animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 980px) {
+    .workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .productRail {
+        position: static;
+    }
+
+    .productList {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .productButton {
+        min-width: 170px;
+    }
+
+    .addProductButton {
+        display: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .pageHeader,
+    .sectionHeader {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .headerActions {
+        width: 100%;
+    }
+
+    .headerActions > * {
+        flex: 1;
+    }
+
+    .productSettings {
+        grid-template-columns: 1fr;
+    }
+
+    .imageField {
+        align-items: flex-start;
+    }
+
+    .deleteProductButton {
+        position: static;
+        grid-column: 1 / -1;
+        justify-self: flex-start;
+    }
+
+    .inlineFields,
+    .questionSettings {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .timeline {
+        padding-left: 48px;
+    }
+
+    .timeline::before {
+        left: 19px;
+    }
+
+    .timelineMarker,
+    .estimateMarker {
+        left: -48px;
+        width: 40px;
+        height: 42px;
+    }
+
+    .routePreview > div {
+        grid-template-columns: minmax(70px, .5fr) 16px minmax(120px, 1fr);
+    }
+
+    .optionRouteRow {
+        margin-left: 0;
+    }
+
+    .inlineFields .field {
+        max-width: none;
+    }
+
+    .stepHeader {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .stepActions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .optionMainRow {
+        grid-template-columns: 26px minmax(0, 1fr) 32px;
+    }
+
+    .optionPrice {
+        grid-column: 2 / 3;
+    }
+
+    .optionMainRow > .dangerIconButton {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .optionDetailsBody {
+        grid-template-columns: 1fr;
+    }
+}
