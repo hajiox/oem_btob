@@ -32,6 +32,22 @@ const fallbackHero = {
     description: '小ロット400個から。レシピ開発・パッケージ・製造まで、会津の食品開発チームがひとつの窓口で伴走します。',
 }
 
+const btobImages = {
+    hero: '/images/btob/oem-hero-v2.webp',
+    consultation: '/images/btob/oem-consultation-v2.webp',
+    regionalProducts: '/images/btob/oem-regional-products-v2.webp',
+    development: '/images/btob/oem-development-v2.webp',
+    offer: '/images/btob/oem-offer-v2.webp',
+} as const
+
+const legacyImageReplacements = [
+    { markers: ['1772951498736_1.jpg', '/images/lp-hero.jpg'], replacement: btobImages.hero },
+    { markers: ['1773114673701_', '/images/lp-problems.jpg'], replacement: btobImages.consultation },
+    { markers: ['1773120587054_', '/images/lp-reasons.jpg'], replacement: btobImages.regionalProducts },
+    { markers: ['1773115309124_', '/images/lp-cases.jpg'], replacement: btobImages.development },
+    { markers: ['/images/lp-cta.jpg'], replacement: btobImages.offer },
+] as const
+
 const standardFaqs = [
     {
         question: 'まだ商品仕様が決まっていなくても相談できますか？',
@@ -57,9 +73,19 @@ const standardFaqs = [
 
 const isRenderableImage = (url: string | null | undefined) => Boolean(url && (url.startsWith('/') || url.includes('public.blob.vercel-storage.com')))
 
+function resolveBtobImage(url: string | null | undefined, fallback?: string) {
+    if (!url) return fallback
+
+    // Replace only the known text-heavy legacy artwork. A new image saved from
+    // the LP editor keeps taking precedence without changing its data contract.
+    const legacyImage = legacyImageReplacements.find(({ markers }) => markers.some(marker => url.includes(marker)))
+    return legacyImage?.replacement || url
+}
+
 function SectionImage({ url, alt }: { url: string | null | undefined; alt: string }) {
-    if (!isRenderableImage(url)) return null
-    return <Image className={styles.sectionImage} src={url as string} alt={alt} width={900} height={620} sizes="(max-width: 700px) 100vw, 50vw" />
+    const resolvedUrl = resolveBtobImage(url)
+    if (!isRenderableImage(resolvedUrl)) return null
+    return <Image className={styles.sectionImage} src={resolvedUrl as string} alt={alt} width={900} height={600} sizes="(max-width: 700px) 100vw, 50vw" />
 }
 
 function RichSection({ section }: { section: LpSection }) {
@@ -101,6 +127,7 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
     const hero = explicitHero || visibleSections[0]
     const contentSections = visibleSections.filter(section => section.id !== hero?.id && section.section_type !== 'faq')
     const faqSections = visibleSections.filter(section => section.section_type === 'faq')
+    const heroImage = resolveBtobImage(hero?.image_url, btobImages.hero)
 
     return (
         <div className={styles.page}>
@@ -133,7 +160,7 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                         <div className={styles.heroVisual}>
                             <div className={styles.heroCard}>
                                 <Image
-                                    src={isRenderableImage(hero?.image_url) ? hero!.image_url! : '/images/lp-hero.jpg'}
+                                    src={isRenderableImage(heroImage) ? heroImage! : btobImages.hero}
                                     alt={hero?.title || '福島の食材を使った食品OEM'}
                                     fill
                                     priority
