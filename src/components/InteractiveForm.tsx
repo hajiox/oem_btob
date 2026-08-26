@@ -17,7 +17,19 @@ const shouldShowExtraInput = (label: string | null | undefined) => {
     return !EXTRA_EXCLUSION_KEYWORDS.some(k => normalized.includes(k))
 }
 
-export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
+type InteractiveFormProps = {
+    steps: FormStepWithItems[]
+    products: Product[]
+    pageId: string
+    showFloatingCta?: boolean
+}
+
+export default function InteractiveForm({
+    steps: allSteps,
+    products,
+    pageId,
+    showFloatingCta = true,
+}: InteractiveFormProps) {
     const [currentStep, setCurrentStep] = useState(0)
     const [direction, setDirection] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -642,7 +654,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
             {/* フローティング見積もりボタン（フォーム開始前のみ表示） */}
             <AnimatePresence>
-                {currentStep === 0 && (
+                {showFloatingCta && currentStep === 0 && (
                     <motion.a
                         key="floating-cta"
                         href="#bto-form"
