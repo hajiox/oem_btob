@@ -3,10 +3,15 @@ import Link from 'next/link'
 import {
     ArrowRight,
     BadgeCheck,
+    Boxes,
+    Calculator,
     Check,
     ChevronDown,
+    ClipboardList,
     Clock3,
     ExternalLink,
+    FileCheck2,
+    FlaskConical,
     Instagram,
     MapPin,
     MessageCircle,
@@ -15,6 +20,8 @@ import {
     ShieldCheck,
     Sparkles,
     Star,
+    Tags,
+    Truck,
 } from 'lucide-react'
 import InteractiveForm from '@/components/InteractiveForm'
 import type { FormStepWithItems } from '@/actions/publicForm'
@@ -34,10 +41,10 @@ const fallbackHero = {
 }
 
 const btobImages = {
-    consultation: '/images/btob/ec-takada-ume-furikake.webp',
-    regionalProducts: '/images/btob/ec-suumomo.webp',
-    development: '/images/btob/ec-tomato-dressing.webp',
-    offer: '/images/btob/ec-peach-zero-curry.webp',
+    consultation: '/images/btob/oem-label-design-illustration-v1.webp',
+    regionalProducts: '/images/btob/oem-regional-product-flow-illustration-v1.webp',
+    development: '/images/btob/oem-one-stop-flow-illustration-v1.webp',
+    offer: '/images/btob/oem-startup-kit-illustration-v1.webp',
 } as const
 
 const legacyHeroMarkers = ['1772951498736_1.jpg', '/images/lp-hero.jpg'] as const
@@ -75,6 +82,20 @@ const packagingSupport = [
     '原材料表示・栄養成分表示の作成',
     '簡易パッケージデザイン',
     '商品ロットと包材ロットを同時に確認',
+] as const
+
+const packagingFlow = [
+    { label: '製造数', icon: Boxes },
+    { label: '包材仕様', icon: Tags },
+    { label: '表示確認', icon: FileCheck2 },
+] as const
+
+const flowSteps = [
+    { title: 'ご相談・ヒアリング', description: 'フォームから気軽にご希望をお聞かせください。', icon: MessageCircle },
+    { title: '商品仕様と数量を整理', description: '味・容量・パッケージなどを一緒に整理します。', icon: ClipboardList },
+    { title: '概算見積もり・ご提案', description: '条件に合わせた現実的なプランをご案内します。', icon: Calculator },
+    { title: '試作・最終確認', description: '納得いくまで仕上がりを確認します。', icon: FlaskConical },
+    { title: '製造・納品', description: '完成した商品を、指定場所へお届けします。', icon: Truck },
 ] as const
 
 const targetUseCases = [
@@ -186,7 +207,8 @@ function SectionImage({ url, alt }: { url: string | null | undefined; alt: strin
     const resolvedUrl = resolveBtobImage(url)
     if (!isRenderableImage(resolvedUrl)) return null
     const isEcProduct = resolvedUrl?.startsWith('/images/btob/ec-')
-    return <Image className={`${styles.sectionImage} ${isEcProduct ? styles.sectionProductImage : ''}`} src={resolvedUrl as string} alt={alt} width={900} height={600} sizes="(max-width: 700px) 100vw, 50vw" />
+    const isIllustration = resolvedUrl?.includes('-illustration-')
+    return <Image className={`${styles.sectionImage} ${isEcProduct ? styles.sectionProductImage : ''} ${isIllustration ? styles.sectionIllustration : ''}`} src={resolvedUrl as string} alt={alt} width={900} height={600} sizes="(max-width: 700px) 100vw, 50vw" />
 }
 
 function RichSection({ section }: { section: LpSection }) {
@@ -323,6 +345,15 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                     <div className={styles.packagingSolution}>
                         <span>会津ブランド館なら</span>
                         <h3>製造数と売り方から逆算して、包材まで一緒に整理します。</h3>
+                        <ol className={styles.packageMiniFlow} aria-label="包材設計の確認順序">
+                            {packagingFlow.map(({ label, icon: Icon }, index) => (
+                                <li key={label}>
+                                    <Icon size={20} aria-hidden="true" />
+                                    <strong>{label}</strong>
+                                    {index < packagingFlow.length - 1 && <ArrowRight className={styles.packageFlowArrow} size={16} aria-hidden="true" />}
+                                </li>
+                            ))}
+                        </ol>
                         <ul>
                             {packagingSupport.map(item => <li key={item}><Check size={17} aria-hidden="true" />{item}</li>)}
                         </ul>
@@ -391,7 +422,14 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
 
                 <section className={styles.flowSection} id="flow" aria-labelledby="flow-title">
                     <div className={styles.sectionHeading}><p className={styles.eyebrow}>HOW IT WORKS</p><h2 id="flow-title">ご相談から納品まで</h2></div>
-                    <ol className={styles.flowList}>{['ご相談・ヒアリング', '商品仕様と数量を整理', '概算見積もり・ご提案', '試作・最終確認', '製造・納品'].map((step, index) => <li key={step}><span>{String(index + 1).padStart(2, '0')}</span><div><h3>{step}</h3><p>{['フォームから気軽にご希望をお聞かせください。', '味・容量・パッケージなどを一緒に整理します。', '条件に合わせた現実的なプランをご案内します。', '納得いくまで仕上がりを確認します。', '完成した商品を、指定場所へお届けします。'][index]}</p></div></li>)}</ol>
+                    <ol className={styles.flowList}>
+                        {flowSteps.map(({ title, description, icon: Icon }, index) => (
+                            <li key={title}>
+                                <span className={styles.flowMarker}><Icon size={19} aria-hidden="true" /><small>{String(index + 1).padStart(2, '0')}</small></span>
+                                <div><h3>{title}</h3><p>{description}</p></div>
+                            </li>
+                        ))}
+                    </ol>
                 </section>
 
                 <section className={styles.offerSection} aria-labelledby="offer-title">
