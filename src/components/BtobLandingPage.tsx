@@ -49,20 +49,7 @@ const legacyImageReplacements = [
     { markers: ['/images/lp-cta.jpg'], replacement: btobImages.offer },
 ] as const
 
-const heroProductImages = [
-    {
-        src: '/images/btob/ec-peach-zero-curry.webp',
-        alt: '福島もものZEROカレー',
-    },
-    {
-        src: '/images/btob/ec-takada-ume-furikake.webp',
-        alt: '会津たかだうめふりかけ',
-    },
-    {
-        src: '/images/btob/ec-tomato-dressing.webp',
-        alt: '南会津産トマトドレッシング',
-    },
-] as const
+const defaultEcHeroImage = '/images/btob/oem-hero-real-products-v3.webp'
 
 const actualProductExamples = [
     {
@@ -230,18 +217,19 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                         </div>
                         <div className={styles.heroVisual}>
                             {showEcProductHero ? (
-                                <div className={`${styles.heroCard} ${styles.heroProductGrid}`} aria-label="会津ブランド館が商品化した実商品">
-                                    {heroProductImages.map((product, index) => (
-                                        <div className={`${styles.heroProductTile} ${index === 0 ? styles.heroProductMain : ''}`} key={product.src}>
-                                            <Image src={product.src} alt={product.alt} fill priority={index === 0} sizes={index === 0 ? '(max-width: 700px) 58vw, 28vw' : '(max-width: 700px) 28vw, 14vw'} />
-                                        </div>
-                                    ))}
-                                    <span className={styles.heroProductLabel}><BadgeCheck size={16} aria-hidden="true" />ECで販売中の実商品</span>
+                                <div className={`${styles.heroCard} ${styles.heroGeneratedCard}`}>
+                                    <Image
+                                        src={defaultEcHeroImage}
+                                        alt="会津ブランド館の実商品を、福島の素材とともに並べた商品開発イメージ"
+                                        fill
+                                        priority
+                                        sizes="(max-width: 700px) 100vw, 43vw"
+                                    />
                                 </div>
                             ) : (
                                 <div className={styles.heroCard}>
                                     <Image
-                                        src={isRenderableImage(heroImage) ? heroImage! : heroProductImages[0].src}
+                                        src={isRenderableImage(heroImage) ? heroImage! : defaultEcHeroImage}
                                         alt={hero?.title || '福島の食材を使った食品OEM'}
                                         fill
                                         priority
