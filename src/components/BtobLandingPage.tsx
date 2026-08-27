@@ -17,7 +17,7 @@ import {
     MessageCircle,
     PackageCheck,
     Phone,
-    ShieldCheck,
+    ShoppingBag,
     Sparkles,
     Star,
     Tags,
@@ -36,135 +36,127 @@ type Props = {
 }
 
 const fallbackHero = {
-    title: '福島の食材を、\n売れる商品へ。',
-    description: '小ロット400個から。レシピ開発・パッケージ・製造まで、会津の食品開発チームがひとつの窓口で伴走します。',
+    title: '売り場から逆算する、\n食品OEM。',
+    description: '自社で商品を企画し、EC・実店舗で販売してきたチームが、素材・レシピ・価格・表示・包材・製造をひとつの商品として設計します。400個から、売って確かめられる第一歩を。',
 }
 
-const btobImages = {
-    consultation: '/images/btob/oem-label-design-illustration-v1.webp',
-    regionalProducts: '/images/btob/oem-regional-product-flow-illustration-v1.webp',
-    development: '/images/btob/oem-one-stop-flow-illustration-v1.webp',
-    offer: '/images/btob/oem-startup-kit-illustration-v1.webp',
-} as const
-
-const legacyHeroMarkers = ['1772951498736_1.jpg', '/images/lp-hero.jpg'] as const
-
-const legacyImageReplacements = [
-    { markers: ['1773114673701_', '/images/lp-problems.jpg'], replacement: btobImages.consultation },
-    { markers: ['1773120587054_', '/images/lp-reasons.jpg'], replacement: btobImages.regionalProducts },
-    { markers: ['1773115309124_', '/images/lp-cases.jpg'], replacement: btobImages.development },
-    { markers: ['/images/lp-cta.jpg'], replacement: btobImages.offer },
-] as const
-
 const defaultEcHeroImage = '/images/btob/oem-hero-real-products-v3.webp'
+const legacyHeroMarkers = ['1772951498736_1.jpg', '/images/lp-hero.jpg'] as const
+const legacyManagedMarkers = [
+    '1773114673701_',
+    '/images/lp-problems.jpg',
+    '1773120587054_',
+    '/images/lp-reasons.jpg',
+    '1773115309124_',
+    '/images/lp-cases.jpg',
+    '/images/lp-cta.jpg',
+] as const
 
 const provenResults = [
-    {
-        value: '10商品以上',
-        label: '楽天・Yahoo!ランキング1位獲得商品',
-        detail: '売れた商品の経験を、味・容量・見せ方の設計に活かします。',
-    },
-    {
-        value: '50社以上',
-        label: 'OEM取引実績',
-        detail: '地域素材の相談から商品化まで、さまざまな条件を整理してきました。',
-    },
-    {
-        value: '400個〜',
-        label: '対応商品の小ロット製造',
-        detail: 'テスト販売や限定商品から始めたい事業者にも対応します。',
-    },
+    { value: '10商品以上', label: '楽天・Yahoo!ランキング1位獲得商品' },
+    { value: '50社以上', label: 'OEM取引実績' },
+    { value: '400個〜', label: '対応商品の小ロット製造' },
 ] as const
 
-const packagingSupport = [
-    '白無地箱＋巻紙など、始めやすい簡易仕様',
-    'バルク納品を含めた包装方法の整理',
-    '原材料表示・栄養成分表示の作成',
-    '簡易パッケージデザイン',
-    '商品ロットと包材ロットを同時に確認',
-] as const
-
-const packagingFlow = [
-    { label: '製造数', icon: Boxes },
-    { label: '包材仕様', icon: Tags },
-    { label: '表示確認', icon: FileCheck2 },
-] as const
-
-const flowSteps = [
-    { title: 'ご相談・ヒアリング', description: 'フォームから気軽にご希望をお聞かせください。', icon: MessageCircle },
-    { title: '商品仕様と数量を整理', description: '味・容量・パッケージなどを一緒に整理します。', icon: ClipboardList },
-    { title: '概算見積もり・ご提案', description: '条件に合わせた現実的なプランをご案内します。', icon: Calculator },
-    { title: '試作・最終確認', description: '納得いくまで仕上がりを確認します。', icon: FlaskConical },
-    { title: '製造・納品', description: '完成した商品を、指定場所へお届けします。', icon: Truck },
-] as const
-
-const targetUseCases = [
+const differencePillars = [
     {
-        audience: '農家・生産者',
-        issue: '余剰・規格外・旬の短い農産物',
-        outcome: '常温商品や加工品に変え、廃棄を減らしながら付加価値をつくる。',
+        title: '売り場を知っている',
+        description: '自社ECと実店舗で販売しているから、客層・価格・容量・見せ方を商品仕様に落とし込めます。',
+        icon: ShoppingBag,
     },
     {
-        audience: '自治体・地域団体',
-        issue: '地域資源や、ふるさと納税の新しい題材',
-        outcome: '地域の物語が伝わる返礼品・ギフトとして設計する。',
+        title: '小さく始められる',
+        description: '対応商品は400個から。初回在庫を抑え、反応を見ながら育てる前提で設計します。',
+        icon: Boxes,
     },
     {
-        audience: '道の駅・ホテル・小売店',
-        issue: 'その場所でしか買えない商品がない',
-        outcome: '売り場と客層に合わせたオリジナル商品・自社ブランドへ。',
+        title: '包材まで同時に考える',
+        description: '商品ロットと包材ロットを切り離さず、余剰資材が負担になりにくい仕様を選びます。',
+        icon: Tags,
+    },
+    {
+        title: '窓口を一本にする',
+        description: 'レシピ、表示、デザイン、製造条件を同じ担当者が整理し、判断の行き違いを減らします。',
+        icon: ClipboardList,
     },
 ] as const
 
 const actualProductExamples = [
     {
-        title: 'ふりかけ・ご飯のお供',
-        materials: '高田梅、会津産雪下にんじん、国産春鮎',
-        formats: '地域素材の香りと食感を活かした常温商品、ご当地ギフトへ。',
+        transformation: '会津美里町の高田梅 → 常温1年のご飯のお供',
+        title: '会津たかだうめふりかけ',
+        description: '大粒で果肉の厚い地域素材を、毎日の食卓で使いやすいふりかけへ。',
         image: '/images/btob/ec-takada-ume-furikake.webp',
         alt: '会津たかだうめふりかけの実商品',
         href: 'https://www.aizubrandhall-ec.com/items/141696577',
     },
     {
-        title: 'レトルト・常温惣菜',
-        materials: '福島の桃、会津産トマト、牛バラ・豚角煮',
-        formats: 'カレーや炊き込みご飯の素、備蓄・アウトドア商品へ。',
+        transformation: '福島の桃 → 常温流通できるレトルト食品',
+        title: '福島もものZEROカレー',
+        description: '果実の個性を意外性のある食べ方に変え、土産・ギフトにもなる商品へ。',
         image: '/images/btob/ec-peach-zero-curry.webp',
         alt: '福島もものZEROカレーの実商品',
         href: 'https://www.aizubrandhall-ec.com/items/125350864',
     },
     {
-        title: 'ドレッシング・ソース',
-        materials: '南会津産トマト、会津地酒、じゅうねん',
-        formats: '素材感のある調味料、ご当地ソース、業務用商品へ。',
+        transformation: '南会津産トマト＋会津の地酒 → 10年以上続く定番',
+        title: '南会津産トマトドレッシング',
+        description: '地域素材の味を前面に出し、家庭用からホテル・旅館まで届く調味料へ。',
         image: '/images/btob/ec-tomato-dressing.webp',
         alt: '南会津産トマトドレッシングの実商品',
         href: 'https://www.aizubrandhall-ec.com/items/125353567',
     },
     {
-        title: '素材茶・果実商品',
-        materials: '会津産りんご、福島の桃、湯川村産米、喜多方市産そば',
-        formats: '乾燥素材のお茶、常温保存の濃密果実商品、ギフトへ。',
-        image: '/images/btob/ec-aizu-apple-tea.webp',
-        alt: '会津のりんご茶の実商品',
-        href: 'https://www.aizubrandhall-ec.com/items/125565759',
-    },
-    {
-        title: '郷土料理の簡便商品',
-        materials: 'こづゆ、いかにんじんなど会津・福島の郷土料理',
-        formats: 'お湯で食べられるカップスープや、ふりかけなどの時短商品へ。',
+        transformation: '会津の郷土料理 → お湯だけで食べられる簡便商品',
+        title: 'カップこづゆ',
+        description: '地域の食文化を、旅行者や若い世代にも手に取りやすい一食分の商品へ。',
         image: '/images/btob/ec-cup-kozuyu.webp',
         alt: 'カップこづゆの実商品',
         href: 'https://www.aizubrandhall-ec.com/items/125351142',
     },
+] as const
+
+const entryRoutes = [
     {
-        title: '麺・スープ・セット',
-        materials: '喜多方ラーメン、会津山塩、西会津味噌',
-        formats: '麺とスープ、土産用の箱入りセット、食べ比べ商品へ。',
-        image: '/images/btob/ec-aizu-three-ramen.webp',
-        alt: '会津三大ラーメンの実商品',
-        href: 'https://www.aizubrandhall-ec.com/items/125352708',
+        label: '原料がある',
+        title: 'その素材に向く商品を考える',
+        description: '原料名、状態、供給量を確認し、素材の個性と販売先に合う加工方法を整理します。',
+        steps: ['原料の状態を確認', '加工方法を選定', '商品仕様を提案'],
+        icon: PackageCheck,
     },
+    {
+        label: '原料がない',
+        title: '作りたい商品から概算する',
+        description: '対応商品、数量、包装仕様を選び、現在の条件での概算金額をその場で確認できます。',
+        steps: ['商品を選ぶ', '数量・包材を選ぶ', '概算を確認'],
+        icon: Calculator,
+    },
+] as const
+
+const targetUseCases = [
+    {
+        audience: '農家・生産者',
+        source: '余剰・規格外・旬の短い農産物',
+        destination: '常温商品や加工品に変え、廃棄を減らしながら付加価値をつくる。',
+    },
+    {
+        audience: '自治体・地域団体',
+        source: '地域資源や、ふるさと納税の新しい題材',
+        destination: '地域の物語が伝わる返礼品・ギフトとして設計する。',
+    },
+    {
+        audience: '道の駅・ホテル・小売店',
+        source: 'その場所でしか買えない商品がない',
+        destination: '売り場と客層に合わせたオリジナル商品・自社ブランドへ。',
+    },
+] as const
+
+const flowSteps = [
+    { title: '条件整理', description: '原料の有無、商品、数量、売り場を確認します。', icon: MessageCircle },
+    { title: '商品設計', description: '味・容量・価格・保存性・包材を一つにまとめます。', icon: ClipboardList },
+    { title: '概算・提案', description: '現実的な仕様と費用、進め方をご案内します。', icon: Calculator },
+    { title: '試作・確認', description: '味と仕上がりを確認し、量産仕様を決定します。', icon: FlaskConical },
+    { title: '製造・納品', description: '表示と品質を確認し、指定場所へお届けします。', icon: Truck },
 ] as const
 
 const standardFaqs = [
@@ -188,39 +180,22 @@ const standardFaqs = [
         question: '見積もりを試すと、すぐに申込みになりますか？',
         answer: 'いいえ。まず概算金額を確認し、内容に納得した場合のみ仮申込みへ進みます。条件整理だけでもお気軽にお試しください。',
     },
-]
+] as const
 
 const isRenderableImage = (url: string | null | undefined) => Boolean(url && (url.startsWith('/') || url.includes('public.blob.vercel-storage.com')))
-
-const usesEcProductShowcase = (url: string | null | undefined) => !url || legacyHeroMarkers.some(marker => url.includes(marker))
-
-function resolveBtobImage(url: string | null | undefined, fallback?: string) {
-    if (!url) return fallback
-
-    // Replace only the known text-heavy legacy artwork. A new image saved from
-    // the LP editor keeps taking precedence without changing its data contract.
-    const legacyImage = legacyImageReplacements.find(({ markers }) => markers.some(marker => url.includes(marker)))
-    return legacyImage?.replacement || url
-}
+const usesDefaultHero = (url: string | null | undefined) => !url || legacyHeroMarkers.some(marker => url.includes(marker))
+const isLegacyManagedSection = (section: LpSection) => Boolean(section.image_url && legacyManagedMarkers.some(marker => section.image_url?.includes(marker)))
 
 function SectionImage({ url, alt }: { url: string | null | undefined; alt: string }) {
-    const resolvedUrl = resolveBtobImage(url)
-    if (!isRenderableImage(resolvedUrl)) return null
-    const isEcProduct = resolvedUrl?.startsWith('/images/btob/ec-')
-    const isIllustration = resolvedUrl?.includes('-illustration-')
-    return <Image className={`${styles.sectionImage} ${isEcProduct ? styles.sectionProductImage : ''} ${isIllustration ? styles.sectionIllustration : ''}`} src={resolvedUrl as string} alt={alt} width={900} height={600} sizes="(max-width: 700px) 100vw, 50vw" />
+    if (!isRenderableImage(url)) return null
+    return <Image className={styles.supplementalImage} src={url as string} alt={alt} width={900} height={600} sizes="(max-width: 760px) 100vw, 48vw" />
 }
 
 function RichSection({ section }: { section: LpSection }) {
     const title = section.title || '会津の恵みを、あなたの商品へ。'
-    const isPolicy = title.includes('注意事項')
-    const description = section.description || (isPolicy
-        ? '品質、製造ロット、サンプル、キャンセルなどの条件は、商品仕様を確認したうえで個別にご案内します。'
-        : '素材の魅力を引き出し、販売したい人に届く商品へ。')
-    const isWide = section.section_type === 'hero' || section.section_type === 'testimonial' || section.section_type === 'cta'
-    const typeClass = styles[section.section_type] || ''
+    const description = section.description || '素材の魅力を引き出し、販売したい人に届く商品へ。'
 
-    if (section.section_type === 'faq' || isPolicy) {
+    if (section.section_type === 'faq' || title.includes('注意事項')) {
         return (
             <section className={styles.faqItem} aria-labelledby={`lp-section-${section.id}`}>
                 <details>
@@ -232,12 +207,12 @@ function RichSection({ section }: { section: LpSection }) {
     }
 
     return (
-        <section className={`${styles.managedSection} ${typeClass} ${isWide ? styles.wideSection : ''}`} aria-labelledby={`lp-section-${section.id}`}>
-            <div className={styles.sectionCopy}>
-                <span className={styles.sectionKicker}>{section.section_type === 'feature' ? 'FEATURE' : section.section_type.toUpperCase()}</span>
+        <section className={styles.supplementalCard} aria-labelledby={`lp-section-${section.id}`}>
+            <div>
+                <span className={styles.sectionKicker}>{section.section_type.toUpperCase()}</span>
                 <h2 id={`lp-section-${section.id}`}>{title}</h2>
                 <p>{description}</p>
-                {section.section_type === 'cta' && <Link className={styles.inlineCta} href="#bto-form">商品企画を相談する <ArrowRight size={17} aria-hidden="true" /></Link>}
+                {section.section_type === 'cta' && <Link className={styles.secondaryCta} href="#bto-form">商品化を相談する <ArrowRight size={17} aria-hidden="true" /></Link>}
             </div>
             <SectionImage url={section.image_url} alt={title} />
         </section>
@@ -248,10 +223,17 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
     const visibleSections = sections.filter(section => section.is_visible).sort((a, b) => a.order_index - b.order_index)
     const explicitHero = visibleSections.find(section => section.section_type === 'hero')
     const hero = explicitHero || visibleSections[0]
-    const contentSections = visibleSections.filter(section => section.id !== hero?.id && section.section_type !== 'faq')
-    const faqSections = visibleSections.filter(section => section.section_type === 'faq')
-    const showEcProductHero = usesEcProductShowcase(hero?.image_url)
-    const heroImage = resolveBtobImage(hero?.image_url)
+    const showDefaultHero = usesDefaultHero(hero?.image_url)
+    const heroTitle = showDefaultHero ? fallbackHero.title : (hero?.title || fallbackHero.title)
+    const heroDescription = showDefaultHero ? fallbackHero.description : (hero?.description || fallbackHero.description)
+    const faqSections = visibleSections.filter(section => section.section_type === 'faq' || section.title?.includes('注意事項'))
+    const supplementalSections = visibleSections.filter(section => (
+        section.id !== hero?.id
+        && section.section_type !== 'faq'
+        && !section.title?.includes('注意事項')
+        && !isLegacyManagedSection(section)
+    ))
+    const visibleProducts = products.filter(product => product.is_visible).sort((a, b) => a.order_index - b.order_index)
 
     return (
         <div className={styles.page}>
@@ -260,172 +242,197 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                     <Image src="/images/btob/rogo.jpg" alt="会津ブランド館" width={64} height={64} />
                 </Link>
                 <nav className={styles.nav} aria-label="ページ内ナビゲーション">
-                    <Link href="#record">実績</Link><Link href="#packaging">包材対応</Link><Link href="#products">商品例</Link><Link href="#flow">ご利用の流れ</Link>
+                    <Link href="#difference">私たちの違い</Link>
+                    <Link href="#cases">商品化実績</Link>
+                    <Link href="#start">始め方</Link>
+                    <Link href="#products">概算商品</Link>
+                    <Link href="#flow">ご利用の流れ</Link>
                 </nav>
-                <Link className={styles.headerCta} href="#bto-form">無料で相談する <ArrowRight size={16} aria-hidden="true" /></Link>
+                <Link className={styles.headerCta} href="#bto-form">商品化を相談する <ArrowRight size={16} aria-hidden="true" /></Link>
             </header>
 
             <main id="top">
                 <section className={styles.hero} aria-labelledby="hero-title">
-                    <div className={styles.heroGlow} aria-hidden="true" />
+                    <div className={styles.heroAccent} aria-hidden="true" />
                     <div className={styles.heroInner}>
                         <div className={styles.heroCopy}>
-                            <p className={styles.eyebrow}><Sparkles size={15} aria-hidden="true" /> 会津ブランド館｜食品OEM</p>
-                            <h1 id="hero-title">{explicitHero?.title || fallbackHero.title}</h1>
-                            <p className={styles.heroDescription}>{explicitHero?.description || fallbackHero.description}</p>
-                            <div className={styles.heroActions}><Link className={styles.primaryCta} href="#bto-form">まずは商品を相談する <ArrowRight size={19} aria-hidden="true" /></Link><span>相談・概算見積もり無料</span></div>
-                            <div className={styles.proofBar} aria-label="OEMの実績">
-                                <span><strong>400</strong>個〜の小ロット</span>
-                                <span><strong>50+</strong>社のOEM取引実績</span>
-                                <span><strong>No.1</strong>楽天・Yahoo!ランキング商品実績</span>
-                                <span><strong>0円</strong>初期費用キャンペーン</span>
+                            <p className={styles.eyebrow}><Sparkles size={15} aria-hidden="true" /> 売り手がつくる、食品OEM</p>
+                            <h1 id="hero-title">{heroTitle}</h1>
+                            <p className={styles.heroDescription}>{heroDescription}</p>
+                            <div className={styles.heroActions}>
+                                <Link className={styles.primaryCta} href="#bto-form">商品化の条件を整理する <ArrowRight size={19} aria-hidden="true" /></Link>
+                                <Link className={styles.textCta} href="#cases">実商品を見る <ArrowRight size={16} aria-hidden="true" /></Link>
+                            </div>
+                            <div className={styles.heroTrust} aria-label="会津ブランド館の特徴">
+                                <span><Check size={15} aria-hidden="true" />自社EC・実店舗で販売</span>
+                                <span><Check size={15} aria-hidden="true" />相談・概算見積もり無料</span>
                             </div>
                         </div>
                         <div className={styles.heroVisual}>
-                            {showEcProductHero ? (
-                                <div className={`${styles.heroCard} ${styles.heroGeneratedCard}`}>
-                                    <Image
-                                        src={defaultEcHeroImage}
-                                        alt="会津ブランド館の実商品を、福島の素材とともに並べた商品開発イメージ"
-                                        fill
-                                        priority
-                                        sizes="(max-width: 700px) 100vw, 43vw"
-                                    />
-                                </div>
-                            ) : (
-                                <div className={styles.heroCard}>
-                                    <Image
-                                        src={isRenderableImage(heroImage) ? heroImage! : defaultEcHeroImage}
-                                        alt={hero?.title || '福島の食材を使った食品OEM'}
-                                        fill
-                                        priority
-                                        sizes="(max-width: 700px) 90vw, 43vw"
-                                    />
-                                </div>
-                            )}
-                            <div className={styles.rankingBadge}><BadgeCheck size={18} aria-hidden="true" /><span>企画から商品化まで<br /><strong>ワンストップ</strong></span></div>
+                            <div className={styles.heroCard}>
+                                <Image
+                                    src={showDefaultHero ? defaultEcHeroImage : (isRenderableImage(hero?.image_url) ? hero!.image_url! : defaultEcHeroImage)}
+                                    alt="会津ブランド館が企画・販売する実商品"
+                                    fill
+                                    priority
+                                    sizes="(max-width: 760px) 100vw, 46vw"
+                                />
+                            </div>
+                            <div className={styles.heroBadge}><BadgeCheck size={19} aria-hidden="true" /><span>掲載商品は<br /><strong>自社の開発・販売実績</strong></span></div>
                         </div>
+                    </div>
+                    <div className={styles.proofStrip} aria-label="商品開発実績">
+                        {provenResults.map(result => <div key={result.value}><strong>{result.value}</strong><span>{result.label}</span></div>)}
                     </div>
                 </section>
 
-                <section className={styles.recordSection} id="record" aria-labelledby="record-title">
-                    <div className={styles.sectionHeading}>
-                        <p className={styles.eyebrow}>PROVEN RECORD</p>
-                        <h2 id="record-title">売り場で選ばれた、<br />商品開発の実績。</h2>
-                        <p>会津ブランド館が積み重ねてきた商品開発・OEM取引の実績です。</p>
+                <section className={styles.differenceSection} id="difference" aria-labelledby="difference-title">
+                    <div className={styles.splitHeading}>
+                        <div><p className={styles.eyebrow}>WHY AIZU BRAND HALL</p><h2 id="difference-title">「作れる商品」ではなく、<br />「売り切れる設計」を考える。</h2></div>
+                        <p>製造条件だけで商品を決めると、味はできても、価格・容量・包材・売り場が噛み合いません。会津ブランド館は、販売する側の判断から商品仕様を組み立てます。</p>
                     </div>
-                    <div className={styles.recordGrid}>
-                        {provenResults.map(result => (
-                            <article className={styles.recordCard} key={result.value}>
-                                <strong>{result.value}</strong>
-                                <h3>{result.label}</h3>
-                                <p>{result.detail}</p>
-                            </article>
+                    <div className={styles.comparisonGrid}>
+                        <article className={styles.comparisonMuted}>
+                            <span>一般的な製造受託</span>
+                            <h3>決まった仕様を、工場で形にする</h3>
+                            <p>商品・数量・包材が固まった後の製造が中心。</p>
+                        </article>
+                        <div className={styles.comparisonArrow} aria-hidden="true"><ArrowRight size={22} /></div>
+                        <article className={styles.comparisonPrimary}>
+                            <span>会津ブランド館</span>
+                            <h3>売る相手と場所から、仕様そのものを決める</h3>
+                            <p>素材やアイデアの段階から、商品として成立する条件を整理。</p>
+                        </article>
+                    </div>
+                    <div className={styles.pillarGrid}>
+                        {differencePillars.map(({ title, description, icon: Icon }) => (
+                            <article key={title}><div><Icon size={23} aria-hidden="true" /></div><h3>{title}</h3><p>{description}</p></article>
                         ))}
                     </div>
-                    <p className={styles.recordNote}>※会津ブランド館の商品開発・OEM取引における実績です。対応ロットは商品・仕様により異なります。</p>
                 </section>
 
-                <section className={styles.problemSection} aria-labelledby="problem-title">
-                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>こんなお悩みありませんか</p><h2 id="problem-title">「作りたい」が、止まっていませんか？</h2></div>
-                    <div className={styles.problemGrid}>{['大手工場の最小ロットでは、在庫リスクを抱えられない', '商品より包材が余る。表示やデザインの進め方も分からない', 'レシピ・表示・製造先の窓口が分かれ、手順が複雑'].map((text, index) => <article className={styles.problemCard} key={text}><span>0{index + 1}</span><p>{text}</p><MessageCircle size={21} aria-hidden="true" /></article>)}</div>
-                </section>
-
-                <section className={styles.packagingSection} id="packaging" aria-labelledby="packaging-title">
-                    <div className={styles.packagingIntro}>
-                        <p className={styles.eyebrow}>PACKAGE BOTTLENECK</p>
-                        <h2 id="packaging-title">商品化を、<br />包材で止めない。</h2>
-                        <p>食品OEMでは、商品ロットと包材ロットが一致するとは限りません。箱・袋・ラベルを別々に進めると、余剰在庫や追加費用につながります。</p>
-                        <div className={styles.packagingRisks} aria-label="よくあるパッケージの問題">
-                            <span>包材だけ大量に残る</span>
-                            <span>表示作成の手順が不明</span>
-                            <span>売り場に仕様が合わない</span>
-                        </div>
-                    </div>
-                    <div className={styles.packagingSolution}>
-                        <span>会津ブランド館なら</span>
-                        <h3>製造数と売り方から逆算して、包材まで一緒に整理します。</h3>
-                        <ol className={styles.packageMiniFlow} aria-label="包材設計の確認順序">
-                            {packagingFlow.map(({ label, icon: Icon }, index) => (
-                                <li key={label}>
-                                    <Icon size={20} aria-hidden="true" />
-                                    <strong>{label}</strong>
-                                    {index < packagingFlow.length - 1 && <ArrowRight className={styles.packageFlowArrow} size={16} aria-hidden="true" />}
-                                </li>
-                            ))}
-                        </ol>
-                        <ul>
-                            {packagingSupport.map(item => <li key={item}><Check size={17} aria-hidden="true" />{item}</li>)}
-                        </ul>
-                        <Link className={styles.inlineCta} href="#bto-form">包装条件も含めて相談する <ArrowRight size={17} aria-hidden="true" /></Link>
-                    </div>
-                </section>
-
-                <section className={styles.reasonsSection} id="reasons" aria-labelledby="reasons-title">
-                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>選ばれる理由</p><h2 id="reasons-title">企画担当者の目線で、<br />最後まで伴走します。</h2></div>
-                    <div className={styles.reasonGrid}>
-                        <article><div className={styles.iconCircle}><PackageCheck size={24} /></div><span>01</span><h3>小ロットから現実的に</h3><p>400個から相談できるから、テスト販売や新商品の第一歩に。</p></article>
-                        <article><div className={styles.iconCircle}><ShieldCheck size={24} /></div><span>02</span><h3>品質と表示を一緒に確認</h3><p>食品として大切な確認事項を整理し、安心して販売できる形へ。</p></article>
-                        <article><div className={styles.iconCircle}><Clock3 size={24} /></div><span>03</span><h3>相談から納品まで一本化</h3><p>仕様・数量・納期を同じ担当者に相談。やりとりの負担を減らします。</p></article>
-                    </div>
-                </section>
-
-                {contentSections.length > 0 && <section className={styles.managedSections} aria-label="ご提案内容">{contentSections.map(section => <RichSection key={section.id} section={section} />)}</section>}
-
-                <section className={styles.actualExamplesSection} aria-labelledby="actual-examples-title">
+                <section className={styles.casesSection} id="cases" aria-labelledby="cases-title">
                     <div className={styles.sectionHeading}>
-                        <p className={styles.eyebrow}>REAL PRODUCT RECORD</p>
-                        <h2 id="actual-examples-title">素材を、ここまで商品にしてきました。</h2>
-                        <p>会津ブランド館ECで実際に販売している商品化事例です。果実・野菜・穀物・郷土料理を、売り方に合わせた形へ変えています。</p>
+                        <p className={styles.eyebrow}>PROOF, NOT PROMISES</p>
+                        <h2 id="cases-title">素材を商品に変え、<br />自分たちで売ってきました。</h2>
+                        <p>イメージ写真ではなく、会津ブランド館ECで現在も販売している実商品です。</p>
                     </div>
-                    <div className={styles.actualExampleGrid}>
+                    <div className={styles.caseGrid}>
                         {actualProductExamples.map(example => (
-                            <article className={styles.actualExampleCard} key={example.href}>
-                                <div className={styles.actualExampleImage}><Image src={example.image} alt={example.alt} fill sizes="(max-width: 700px) 100vw, 33vw" /></div>
-                                <div className={styles.actualExampleCopy}>
-                                    <span className={styles.materialLabel}>素材</span>
-                                    <p>{example.materials}</p>
+                            <article className={styles.caseCard} key={example.href}>
+                                <div className={styles.caseImage}><Image src={example.image} alt={example.alt} fill sizes="(max-width: 760px) 100vw, 25vw" /></div>
+                                <div className={styles.caseCopy}>
+                                    <span>{example.transformation}</span>
                                     <h3>{example.title}</h3>
-                                    <p>{example.formats}</p>
-                                    <Link className={styles.actualExampleLink} href={example.href} target="_blank" rel="noreferrer">ECで実商品を見る <ExternalLink size={15} aria-hidden="true" /></Link>
+                                    <p>{example.description}</p>
+                                    <Link href={example.href} target="_blank" rel="noreferrer">ECで実商品を見る <ExternalLink size={14} aria-hidden="true" /></Link>
                                 </div>
                             </article>
                         ))}
                     </div>
-                    <p className={styles.actualExamplesNote}><BadgeCheck size={18} aria-hidden="true" />上記は自社の商品開発実績です。御社の原料の状態・希望ロット・販売方法に合わせ、実際に製造可能な商品を個別にご提案します。</p>
+                    <p className={styles.note}><BadgeCheck size={18} aria-hidden="true" />商品ジャンルを並べるためではなく、素材・保存性・売り場に応じて、異なる形へ設計してきた事例です。</p>
+                </section>
+
+                <section className={styles.startSection} id="start" aria-labelledby="start-title">
+                    <div className={styles.sectionHeading}>
+                        <p className={styles.eyebrow}>TWO WAYS TO START</p>
+                        <h2 id="start-title">スタート地点は、2つだけです。</h2>
+                        <p>原料を持っていても、作りたい商品だけが決まっていても進められます。</p>
+                    </div>
+                    <div className={styles.routeGrid}>
+                        {entryRoutes.map(({ label, title, description, steps, icon: Icon }) => (
+                            <article className={styles.routeCard} key={label}>
+                                <div className={styles.routeTop}><div><Icon size={25} aria-hidden="true" /></div><span>{label}</span></div>
+                                <h3>{title}</h3>
+                                <p>{description}</p>
+                                <ol>{steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}{index < steps.length - 1 && <ArrowRight size={15} aria-hidden="true" />}</li>)}</ol>
+                                <Link href="#bto-form">この条件で相談する <ArrowRight size={17} aria-hidden="true" /></Link>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+
+                <section className={styles.designSection} aria-labelledby="design-title">
+                    <div className={styles.splitHeading}>
+                        <div><p className={styles.eyebrow}>ONE PRODUCT BLUEPRINT</p><h2 id="design-title">全部を、ひとつの設計図で決める。</h2></div>
+                        <p>味、価格、保存性、包材、製造を別々に決めるのではありません。売り場を中心に、互いの条件が矛盾しない一つの商品として設計します。</p>
+                    </div>
+                    <div className={styles.designMap} aria-label="売り場から逆算する商品設計">
+                        <div className={styles.designEndpoint}><Sparkles size={24} aria-hidden="true" /><span>素材・アイデア</span></div>
+                        <ArrowRight className={styles.designArrow} size={25} aria-hidden="true" />
+                        <div className={styles.designCore}><ShoppingBag size={29} aria-hidden="true" /><strong>売り場</strong><span>客層・価格・販売場所</span></div>
+                        <ArrowRight className={styles.designArrow} size={25} aria-hidden="true" />
+                        <div className={styles.designEndpoint}><PackageCheck size={24} aria-hidden="true" /><span>売れる商品仕様</span></div>
+                    </div>
+                    <div className={styles.designFactors}>
+                        <div><FlaskConical size={20} aria-hidden="true" /><strong>味・容量</strong><span>誰が、いつ食べるか</span></div>
+                        <div><Calculator size={20} aria-hidden="true" /><strong>価格・ロット</strong><span>利益と在庫のバランス</span></div>
+                        <div><Truck size={20} aria-hidden="true" /><strong>保存・物流</strong><span>売り方に合う賞味期限</span></div>
+                        <div><Tags size={20} aria-hidden="true" /><strong>表示・包材</strong><span>伝わり方と資材在庫</span></div>
+                    </div>
+                    <div className={styles.packagingCallout}>
+                        <div>
+                            <p className={styles.eyebrow}>PACKAGE REALITY</p>
+                            <h3>商品より包材が余る設計は、最初から避ける。</h3>
+                            <p>白無地箱＋巻紙、ラベル、バルク納品などを使い分け、商品ロットと包材ロットを同時に確認します。</p>
+                        </div>
+                        <ul>
+                            <li><FileCheck2 size={18} aria-hidden="true" />原材料・栄養成分表示</li>
+                            <li><Tags size={18} aria-hidden="true" />簡易パッケージデザイン</li>
+                            <li><Boxes size={18} aria-hidden="true" />販売量に合う包装仕様</li>
+                        </ul>
+                    </div>
                 </section>
 
                 <section className={styles.useCaseSection} aria-labelledby="use-case-title">
                     <div className={styles.sectionHeading}>
                         <p className={styles.eyebrow}>WHO WE SUPPORT</p>
-                        <h2 id="use-case-title">誰に、どこで売るかまで考えて商品にします。</h2>
-                        <p>同じ素材でも、販売先によって必要な容量・保存性・包装は変わります。目的から商品仕様を整理します。</p>
+                        <h2 id="use-case-title">素材の事情ではなく、<br />売る目的から商品にします。</h2>
                     </div>
                     <div className={styles.useCaseGrid}>
                         {targetUseCases.map((useCase, index) => (
                             <article className={styles.useCaseCard} key={useCase.audience}>
-                                <span>{String(index + 1).padStart(2, '0')}</span>
+                                <span>0{index + 1}</span>
                                 <h3>{useCase.audience}</h3>
-                                <p className={styles.useCaseIssue}>{useCase.issue}</p>
+                                <p>{useCase.source}</p>
                                 <div aria-hidden="true"><ArrowRight size={18} /></div>
-                                <p>{useCase.outcome}</p>
+                                <strong>{useCase.destination}</strong>
                             </article>
                         ))}
                     </div>
-                    <p className={styles.useCaseNote}>※販売代行ではなく、想定する売り場に適した商品仕様・包装方法を一緒に整理します。</p>
+                    <p className={styles.note}>※販売代行ではなく、想定する売り場に適した商品仕様・包装方法を一緒に整理します。</p>
                 </section>
 
                 <section className={styles.productsSection} id="products" aria-labelledby="products-title">
-                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>ESTIMATE PRODUCTS</p><h2 id="products-title">まずは対応商品から、概算できます。</h2><p>以下の商品は、このページ上で数量・原料供給・包装仕様を選んで概算を確認できます。</p></div>
-                    <div className={styles.productGrid}>{products.filter(product => product.is_visible).sort((a, b) => a.order_index - b.order_index).map(product => <article className={styles.productCard} key={product.id}>{isRenderableImage(product.image_url) ? <Image src={product.image_url as string} alt="" width={520} height={340} sizes="(max-width: 700px) 100vw, 33vw" /> : <div className={styles.productPlaceholder}><PackageCheck size={28} aria-hidden="true" /></div>}<div><h3>{product.name}</h3>{product.description && <p>{product.description}</p>}<span>基本単価 {product.base_price.toLocaleString()}{product.base_price_type === 'percentage' ? '%' : '円 / 個'}〜</span></div></article>)}</div>
+                    <div className={styles.splitHeading}>
+                        <div><p className={styles.eyebrow}>QUICK ESTIMATE</p><h2 id="products-title">条件が決まっている方は、<br />ここで概算まで。</h2></div>
+                        <p>対応商品を選び、数量・原料供給・包装仕様に答えると、その場で概算を確認できます。原料持ち込みなど個別条件は回答内容をもとにご案内します。</p>
+                    </div>
+                    <div className={styles.productGrid}>
+                        {visibleProducts.map(product => (
+                            <article className={styles.productCard} key={product.id}>
+                                {isRenderableImage(product.image_url)
+                                    ? <Image src={product.image_url as string} alt="" width={520} height={340} sizes="(max-width: 760px) 100vw, 33vw" />
+                                    : <div className={styles.productPlaceholder}><PackageCheck size={28} aria-hidden="true" /></div>}
+                                <div><h3>{product.name}</h3>{product.description && <p>{product.description}</p>}<span>基本単価 {product.base_price.toLocaleString()}{product.base_price_type === 'percentage' ? '%' : '円 / 個'}〜</span></div>
+                            </article>
+                        ))}
+                    </div>
+                    <Link className={styles.primaryCta} href="#bto-form">概算条件を入力する <ArrowRight size={18} aria-hidden="true" /></Link>
                 </section>
 
+                {supplementalSections.length > 0 && (
+                    <section className={styles.supplementalSections} aria-label="追加のご案内">
+                        {supplementalSections.map(section => <RichSection key={section.id} section={section} />)}
+                    </section>
+                )}
+
                 <section className={styles.flowSection} id="flow" aria-labelledby="flow-title">
-                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>HOW IT WORKS</p><h2 id="flow-title">ご相談から納品まで</h2></div>
+                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>HOW IT WORKS</p><h2 id="flow-title">ご相談から納品まで</h2><p>最初に売り方と条件を揃え、その後に試作・製造へ進みます。</p></div>
                     <ol className={styles.flowList}>
                         {flowSteps.map(({ title, description, icon: Icon }, index) => (
                             <li key={title}>
-                                <span className={styles.flowMarker}><Icon size={19} aria-hidden="true" /><small>{String(index + 1).padStart(2, '0')}</small></span>
+                                <span className={styles.flowMarker}><Icon size={20} aria-hidden="true" /><small>{String(index + 1).padStart(2, '0')}</small></span>
                                 <div><h3>{title}</h3><p>{description}</p></div>
                             </li>
                         ))}
@@ -435,16 +442,16 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                 <section className={styles.offerSection} aria-labelledby="offer-title">
                     <div className={styles.offerCopy}>
                         <p className={styles.eyebrow}>先着10社限定キャンペーン</p>
-                        <h2 id="offer-title">商品化に必要な初期費用を、今なら0円に。</h2>
-                        <p>構想段階から動き出せるよう、商品設計の最初の負担を軽くしました。</p>
+                        <h2 id="offer-title">商品化の最初の負担を、今なら0円に。</h2>
+                        <p>構想を具体的な商品仕様に変える、初期設計の3項目が対象です。</p>
                         <ul>
-                            <li><Check size={16} aria-hidden="true" />レシピ開発費（2回修正まで）</li>
-                            <li><Check size={16} aria-hidden="true" />原材料表示・栄養成分表示の作成</li>
-                            <li><Check size={16} aria-hidden="true" />簡易パッケージデザイン</li>
+                            <li><Check size={17} aria-hidden="true" />レシピ開発費（2回修正まで）</li>
+                            <li><Check size={17} aria-hidden="true" />原材料表示・栄養成分表示の作成</li>
+                            <li><Check size={17} aria-hidden="true" />簡易パッケージデザイン</li>
                         </ul>
                         <small>※キャンペーンには適用条件があります。詳細はお見積もり後にご案内します。</small>
                     </div>
-                    <Link className={styles.lightCta} href="#bto-form">無料で概算を見る <ArrowRight size={18} aria-hidden="true" /></Link>
+                    <Link className={styles.lightCta} href="#bto-form">対象条件を確認する <ArrowRight size={18} aria-hidden="true" /></Link>
                 </section>
 
                 <section className={styles.faqSection} aria-labelledby="faq-title">
@@ -452,24 +459,24 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                     <div className={styles.faqList}>
                         {standardFaqs.map(({ question, answer }) => (
                             <section className={styles.faqItem} key={question}>
-                                <details>
-                                    <summary><span className={styles.faqMark}>Q</span>{question}<ChevronDown size={19} aria-hidden="true" /></summary>
-                                    <p>{answer}</p>
-                                </details>
+                                <details><summary><span className={styles.faqMark}>Q</span>{question}<ChevronDown size={19} aria-hidden="true" /></summary><p>{answer}</p></details>
                             </section>
                         ))}
                         {faqSections.map(section => <RichSection key={section.id} section={section} />)}
                     </div>
                 </section>
 
-                <section className={styles.formSection} id="bto-form" aria-labelledby="form-title"><div className={styles.formHeading}><p className={styles.eyebrow}>3分で条件整理</p><h2 id="form-title">無料で概算見積もり</h2><p>選択式で条件を整理できます。回答後、その場で概算金額をご確認いただけます。</p></div><div className={styles.formShell}><InteractiveForm steps={formSteps} products={products} pageId={pageId} showFloatingCta={false} /></div></section>
+                <section className={styles.formSection} id="bto-form" aria-labelledby="form-title">
+                    <div className={styles.formHeading}><p className={styles.eyebrow}>3分で条件整理</p><h2 id="form-title">まず、作れる条件と概算を確認する。</h2><p>原料がある方も、ない方も、選択式で必要な条件を順番に整理できます。</p></div>
+                    <div className={styles.formShell}><InteractiveForm steps={formSteps} products={products} pageId={pageId} showFloatingCta={false} /></div>
+                </section>
 
                 <section className={styles.storeSection} aria-labelledby="store-title">
-                    <div className={styles.storeVisual}><Image src="/images/btob/brandkan.jpg" alt="会津ブランド館 店舗外観" fill sizes="(max-width: 700px) 100vw, 48vw" /></div>
+                    <div className={styles.storeVisual}><Image src="/images/btob/brandkan.jpg" alt="会津ブランド館 店舗外観" fill sizes="(max-width: 760px) 100vw, 48vw" /></div>
                     <div className={styles.storeCopy}>
-                        <p className={styles.eyebrow}>運営者情報</p>
-                        <h2 id="store-title">顔の見える食品開発チームです。</h2>
-                        <p>OEMは、福島県会津若松市の「会津ブランド館」が実施しています。地域の商品を実際に販売してきた視点で、売り場まで見据えた商品づくりをお手伝いします。</p>
+                        <p className={styles.eyebrow}>WHO WE ARE</p>
+                        <h2 id="store-title">売り場を持つ、食品開発チームです。</h2>
+                        <p>OEMは、福島県会津若松市の「会津ブランド館」が実施しています。自分たちの商品を実際に販売し、お客様の反応を見てきた経験を、御社の商品設計に活かします。</p>
                         <dl>
                             <div><dt><MapPin size={17} aria-hidden="true" />所在地</dt><dd>福島県会津若松市七日町6−15</dd></div>
                             <div><dt><Phone size={17} aria-hidden="true" />電話</dt><dd><a href="tel:0242254141">0242-25-4141</a></dd></div>
@@ -480,7 +487,17 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                 </section>
             </main>
 
-            <footer className={styles.footer}><div className={styles.footerInner}><div><Image src="/images/btob/rogo.jpg" alt="会津ブランド館" width={80} height={80} /><p>地域の素材と、つくり手の想いを<br />次の商品へ。</p></div><div className={styles.footerLinks}><Link href="https://maps.app.goo.gl/Dw5oKqfk7SEEYJLS9" target="_blank" rel="noreferrer"><MapPin size={16} />会津ブランド館</Link><Link href="tel:0242254141"><Phone size={16} />0242-25-4141</Link><Link href="https://www.instagram.com/aizubrandhall/" target="_blank" rel="noreferrer"><Instagram size={16} />Instagram</Link></div></div><div className={styles.footerBottom}><span>© Aizu Brand Hall</span><span><Star size={13} />会津から、次の定番を。</span></div></footer>
+            <footer className={styles.footer}>
+                <div className={styles.footerInner}>
+                    <div><Image src="/images/btob/rogo.jpg" alt="会津ブランド館" width={80} height={80} /><p>地域の素材と、つくり手の想いを<br />売り場で選ばれる商品へ。</p></div>
+                    <div className={styles.footerLinks}>
+                        <Link href="https://maps.app.goo.gl/Dw5oKqfk7SEEYJLS9" target="_blank" rel="noreferrer"><MapPin size={16} />会津ブランド館</Link>
+                        <Link href="tel:0242254141"><Phone size={16} />0242-25-4141</Link>
+                        <Link href="https://www.instagram.com/aizubrandhall/" target="_blank" rel="noreferrer"><Instagram size={16} />Instagram</Link>
+                    </div>
+                </div>
+                <div className={styles.footerBottom}><span>© Aizu Brand Hall</span><span><Star size={13} />会津から、次の定番を。</span></div>
+            </footer>
         </div>
     )
 }
