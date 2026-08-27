@@ -6,6 +6,7 @@ import {
     Check,
     ChevronDown,
     Clock3,
+    ExternalLink,
     Instagram,
     MapPin,
     MessageCircle,
@@ -33,19 +34,85 @@ const fallbackHero = {
 }
 
 const btobImages = {
-    hero: '/images/btob/oem-hero-v2.webp',
-    consultation: '/images/btob/oem-consultation-v2.webp',
-    regionalProducts: '/images/btob/oem-regional-products-v2.webp',
-    development: '/images/btob/oem-development-v2.webp',
-    offer: '/images/btob/oem-offer-v2.webp',
+    consultation: '/images/btob/ec-takada-ume-furikake.webp',
+    regionalProducts: '/images/btob/ec-suumomo.webp',
+    development: '/images/btob/ec-tomato-dressing.webp',
+    offer: '/images/btob/ec-peach-zero-curry.webp',
 } as const
 
+const legacyHeroMarkers = ['1772951498736_1.jpg', '/images/lp-hero.jpg'] as const
+
 const legacyImageReplacements = [
-    { markers: ['1772951498736_1.jpg', '/images/lp-hero.jpg'], replacement: btobImages.hero },
     { markers: ['1773114673701_', '/images/lp-problems.jpg'], replacement: btobImages.consultation },
     { markers: ['1773120587054_', '/images/lp-reasons.jpg'], replacement: btobImages.regionalProducts },
     { markers: ['1773115309124_', '/images/lp-cases.jpg'], replacement: btobImages.development },
     { markers: ['/images/lp-cta.jpg'], replacement: btobImages.offer },
+] as const
+
+const heroProductImages = [
+    {
+        src: '/images/btob/ec-peach-zero-curry.webp',
+        alt: '福島もものZEROカレー',
+    },
+    {
+        src: '/images/btob/ec-takada-ume-furikake.webp',
+        alt: '会津たかだうめふりかけ',
+    },
+    {
+        src: '/images/btob/ec-tomato-dressing.webp',
+        alt: '南会津産トマトドレッシング',
+    },
+] as const
+
+const actualProductExamples = [
+    {
+        title: 'ふりかけ・ご飯のお供',
+        materials: '高田梅、会津産雪下にんじん、国産春鮎',
+        formats: '地域素材の香りと食感を活かした常温商品、ご当地ギフトへ。',
+        image: '/images/btob/ec-takada-ume-furikake.webp',
+        alt: '会津たかだうめふりかけの実商品',
+        href: 'https://www.aizubrandhall-ec.com/items/141696577',
+    },
+    {
+        title: 'レトルト・常温惣菜',
+        materials: '福島の桃、会津産トマト、牛バラ・豚角煮',
+        formats: 'カレーや炊き込みご飯の素、備蓄・アウトドア商品へ。',
+        image: '/images/btob/ec-peach-zero-curry.webp',
+        alt: '福島もものZEROカレーの実商品',
+        href: 'https://www.aizubrandhall-ec.com/items/125350864',
+    },
+    {
+        title: 'ドレッシング・ソース',
+        materials: '南会津産トマト、会津地酒、じゅうねん',
+        formats: '素材感のある調味料、ご当地ソース、業務用商品へ。',
+        image: '/images/btob/ec-tomato-dressing.webp',
+        alt: '南会津産トマトドレッシングの実商品',
+        href: 'https://www.aizubrandhall-ec.com/items/125353567',
+    },
+    {
+        title: '素材茶・果実商品',
+        materials: '会津産りんご、福島の桃、湯川村産米、喜多方市産そば',
+        formats: '乾燥素材のお茶、常温保存の濃密果実商品、ギフトへ。',
+        image: '/images/btob/ec-aizu-apple-tea.webp',
+        alt: '会津のりんご茶の実商品',
+        href: 'https://www.aizubrandhall-ec.com/items/125565759',
+    },
+    {
+        title: '郷土料理の簡便商品',
+        materials: 'こづゆ、いかにんじんなど会津・福島の郷土料理',
+        formats: 'お湯で食べられるカップスープや、ふりかけなどの時短商品へ。',
+        image: '/images/btob/ec-cup-kozuyu.webp',
+        alt: 'カップこづゆの実商品',
+        href: 'https://www.aizubrandhall-ec.com/items/125351142',
+    },
+    {
+        title: '麺・スープ・セット',
+        materials: '喜多方ラーメン、会津山塩、西会津味噌',
+        formats: '麺とスープ、土産用の箱入りセット、食べ比べ商品へ。',
+        image: '/images/btob/ec-aizu-three-ramen.webp',
+        alt: '会津三大ラーメンの実商品',
+        href: 'https://www.aizubrandhall-ec.com/items/125352708',
+    },
 ] as const
 
 const standardFaqs = [
@@ -73,6 +140,8 @@ const standardFaqs = [
 
 const isRenderableImage = (url: string | null | undefined) => Boolean(url && (url.startsWith('/') || url.includes('public.blob.vercel-storage.com')))
 
+const usesEcProductShowcase = (url: string | null | undefined) => !url || legacyHeroMarkers.some(marker => url.includes(marker))
+
 function resolveBtobImage(url: string | null | undefined, fallback?: string) {
     if (!url) return fallback
 
@@ -85,7 +154,8 @@ function resolveBtobImage(url: string | null | undefined, fallback?: string) {
 function SectionImage({ url, alt }: { url: string | null | undefined; alt: string }) {
     const resolvedUrl = resolveBtobImage(url)
     if (!isRenderableImage(resolvedUrl)) return null
-    return <Image className={styles.sectionImage} src={resolvedUrl as string} alt={alt} width={900} height={600} sizes="(max-width: 700px) 100vw, 50vw" />
+    const isEcProduct = resolvedUrl?.startsWith('/images/btob/ec-')
+    return <Image className={`${styles.sectionImage} ${isEcProduct ? styles.sectionProductImage : ''}`} src={resolvedUrl as string} alt={alt} width={900} height={600} sizes="(max-width: 700px) 100vw, 50vw" />
 }
 
 function RichSection({ section }: { section: LpSection }) {
@@ -127,7 +197,8 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
     const hero = explicitHero || visibleSections[0]
     const contentSections = visibleSections.filter(section => section.id !== hero?.id && section.section_type !== 'faq')
     const faqSections = visibleSections.filter(section => section.section_type === 'faq')
-    const heroImage = resolveBtobImage(hero?.image_url, btobImages.hero)
+    const showEcProductHero = usesEcProductShowcase(hero?.image_url)
+    const heroImage = resolveBtobImage(hero?.image_url)
 
     return (
         <div className={styles.page}>
@@ -158,15 +229,26 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                             </div>
                         </div>
                         <div className={styles.heroVisual}>
-                            <div className={styles.heroCard}>
-                                <Image
-                                    src={isRenderableImage(heroImage) ? heroImage! : btobImages.hero}
-                                    alt={hero?.title || '福島の食材を使った食品OEM'}
-                                    fill
-                                    priority
-                                    sizes="(max-width: 700px) 90vw, 43vw"
-                                />
-                            </div>
+                            {showEcProductHero ? (
+                                <div className={`${styles.heroCard} ${styles.heroProductGrid}`} aria-label="会津ブランド館が商品化した実商品">
+                                    {heroProductImages.map((product, index) => (
+                                        <div className={`${styles.heroProductTile} ${index === 0 ? styles.heroProductMain : ''}`} key={product.src}>
+                                            <Image src={product.src} alt={product.alt} fill priority={index === 0} sizes={index === 0 ? '(max-width: 700px) 58vw, 28vw' : '(max-width: 700px) 28vw, 14vw'} />
+                                        </div>
+                                    ))}
+                                    <span className={styles.heroProductLabel}><BadgeCheck size={16} aria-hidden="true" />ECで販売中の実商品</span>
+                                </div>
+                            ) : (
+                                <div className={styles.heroCard}>
+                                    <Image
+                                        src={isRenderableImage(heroImage) ? heroImage! : heroProductImages[0].src}
+                                        alt={hero?.title || '福島の食材を使った食品OEM'}
+                                        fill
+                                        priority
+                                        sizes="(max-width: 700px) 90vw, 43vw"
+                                    />
+                                </div>
+                            )}
                             <div className={styles.rankingBadge}><BadgeCheck size={18} aria-hidden="true" /><span>企画から商品化まで<br /><strong>ワンストップ</strong></span></div>
                         </div>
                     </div>
@@ -188,8 +270,31 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
 
                 {contentSections.length > 0 && <section className={styles.managedSections} aria-label="ご提案内容">{contentSections.map(section => <RichSection key={section.id} section={section} />)}</section>}
 
+                <section className={styles.actualExamplesSection} aria-labelledby="actual-examples-title">
+                    <div className={styles.sectionHeading}>
+                        <p className={styles.eyebrow}>REAL PRODUCT RECORD</p>
+                        <h2 id="actual-examples-title">素材を、ここまで商品にしてきました。</h2>
+                        <p>会津ブランド館ECで実際に販売している商品化事例です。果実・野菜・穀物・郷土料理を、売り方に合わせた形へ変えています。</p>
+                    </div>
+                    <div className={styles.actualExampleGrid}>
+                        {actualProductExamples.map(example => (
+                            <article className={styles.actualExampleCard} key={example.href}>
+                                <div className={styles.actualExampleImage}><Image src={example.image} alt={example.alt} fill sizes="(max-width: 700px) 100vw, 33vw" /></div>
+                                <div className={styles.actualExampleCopy}>
+                                    <span className={styles.materialLabel}>素材</span>
+                                    <p>{example.materials}</p>
+                                    <h3>{example.title}</h3>
+                                    <p>{example.formats}</p>
+                                    <Link className={styles.actualExampleLink} href={example.href} target="_blank" rel="noreferrer">ECで実商品を見る <ExternalLink size={15} aria-hidden="true" /></Link>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                    <p className={styles.actualExamplesNote}><BadgeCheck size={18} aria-hidden="true" />上記は自社の商品開発実績です。御社の原料の状態・希望ロット・販売方法に合わせ、実際に製造可能な商品を個別にご提案します。</p>
+                </section>
+
                 <section className={styles.productsSection} id="products" aria-labelledby="products-title">
-                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>PRODUCT EXAMPLES</p><h2 id="products-title">商品化のイメージ</h2><p>素材や用途に合わせて、オリジナル商品を設計します。</p></div>
+                    <div className={styles.sectionHeading}><p className={styles.eyebrow}>ESTIMATE PRODUCTS</p><h2 id="products-title">まずは対応商品から、概算できます。</h2><p>以下の商品は、このページ上で数量・原料供給・包装仕様を選んで概算を確認できます。</p></div>
                     <div className={styles.productGrid}>{products.filter(product => product.is_visible).sort((a, b) => a.order_index - b.order_index).map(product => <article className={styles.productCard} key={product.id}>{isRenderableImage(product.image_url) ? <Image src={product.image_url as string} alt="" width={520} height={340} sizes="(max-width: 700px) 100vw, 33vw" /> : <div className={styles.productPlaceholder}><PackageCheck size={28} aria-hidden="true" /></div>}<div><h3>{product.name}</h3>{product.description && <p>{product.description}</p>}<span>基本単価 {product.base_price.toLocaleString()}{product.base_price_type === 'percentage' ? '%' : '円 / 個'}〜</span></div></article>)}</div>
                 </section>
 
