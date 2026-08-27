@@ -51,6 +51,50 @@ const legacyImageReplacements = [
 
 const defaultEcHeroImage = '/images/btob/oem-hero-real-products-v3.webp'
 
+const provenResults = [
+    {
+        value: '10商品以上',
+        label: '楽天・Yahoo!ランキング1位獲得商品',
+        detail: '売れた商品の経験を、味・容量・見せ方の設計に活かします。',
+    },
+    {
+        value: '50社以上',
+        label: 'OEM取引実績',
+        detail: '地域素材の相談から商品化まで、さまざまな条件を整理してきました。',
+    },
+    {
+        value: '400個〜',
+        label: '対応商品の小ロット製造',
+        detail: 'テスト販売や限定商品から始めたい事業者にも対応します。',
+    },
+] as const
+
+const packagingSupport = [
+    '白無地箱＋巻紙など、始めやすい簡易仕様',
+    'バルク納品を含めた包装方法の整理',
+    '原材料表示・栄養成分表示の作成',
+    '簡易パッケージデザイン',
+    '商品ロットと包材ロットを同時に確認',
+] as const
+
+const targetUseCases = [
+    {
+        audience: '農家・生産者',
+        issue: '余剰・規格外・旬の短い農産物',
+        outcome: '常温商品や加工品に変え、廃棄を減らしながら付加価値をつくる。',
+    },
+    {
+        audience: '自治体・地域団体',
+        issue: '地域資源や、ふるさと納税の新しい題材',
+        outcome: '地域の物語が伝わる返礼品・ギフトとして設計する。',
+    },
+    {
+        audience: '道の駅・ホテル・小売店',
+        issue: 'その場所でしか買えない商品がない',
+        outcome: '売り場と客層に合わせたオリジナル商品・自社ブランドへ。',
+    },
+] as const
+
 const actualProductExamples = [
     {
         title: 'ふりかけ・ご飯のお供',
@@ -194,7 +238,7 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                     <Image src="/images/btob/rogo.jpg" alt="会津ブランド館" width={64} height={64} />
                 </Link>
                 <nav className={styles.nav} aria-label="ページ内ナビゲーション">
-                    <Link href="#reasons">選ばれる理由</Link><Link href="#products">商品例</Link><Link href="#flow">ご利用の流れ</Link>
+                    <Link href="#record">実績</Link><Link href="#packaging">包材対応</Link><Link href="#products">商品例</Link><Link href="#flow">ご利用の流れ</Link>
                 </nav>
                 <Link className={styles.headerCta} href="#bto-form">無料で相談する <ArrowRight size={16} aria-hidden="true" /></Link>
             </header>
@@ -242,9 +286,48 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                     </div>
                 </section>
 
+                <section className={styles.recordSection} id="record" aria-labelledby="record-title">
+                    <div className={styles.sectionHeading}>
+                        <p className={styles.eyebrow}>PROVEN RECORD</p>
+                        <h2 id="record-title">売り場で選ばれた、<br />商品開発の実績。</h2>
+                        <p>会津ブランド館が積み重ねてきた商品開発・OEM取引の実績です。</p>
+                    </div>
+                    <div className={styles.recordGrid}>
+                        {provenResults.map(result => (
+                            <article className={styles.recordCard} key={result.value}>
+                                <strong>{result.value}</strong>
+                                <h3>{result.label}</h3>
+                                <p>{result.detail}</p>
+                            </article>
+                        ))}
+                    </div>
+                    <p className={styles.recordNote}>※会津ブランド館の商品開発・OEM取引における実績です。対応ロットは商品・仕様により異なります。</p>
+                </section>
+
                 <section className={styles.problemSection} aria-labelledby="problem-title">
                     <div className={styles.sectionHeading}><p className={styles.eyebrow}>こんなお悩みありませんか</p><h2 id="problem-title">「作りたい」が、止まっていませんか？</h2></div>
-                    <div className={styles.problemGrid}>{['アイデアはあるけれど、何から始めるか分からない', '大手工場のロットや費用が合わない', '品質・表示・納期まで相談できる相手がいない'].map((text, index) => <article className={styles.problemCard} key={text}><span>0{index + 1}</span><p>{text}</p><MessageCircle size={21} aria-hidden="true" /></article>)}</div>
+                    <div className={styles.problemGrid}>{['大手工場の最小ロットでは、在庫リスクを抱えられない', '商品より包材が余る。表示やデザインの進め方も分からない', 'レシピ・表示・製造先の窓口が分かれ、手順が複雑'].map((text, index) => <article className={styles.problemCard} key={text}><span>0{index + 1}</span><p>{text}</p><MessageCircle size={21} aria-hidden="true" /></article>)}</div>
+                </section>
+
+                <section className={styles.packagingSection} id="packaging" aria-labelledby="packaging-title">
+                    <div className={styles.packagingIntro}>
+                        <p className={styles.eyebrow}>PACKAGE BOTTLENECK</p>
+                        <h2 id="packaging-title">商品化を、<br />包材で止めない。</h2>
+                        <p>食品OEMでは、商品ロットと包材ロットが一致するとは限りません。箱・袋・ラベルを別々に進めると、余剰在庫や追加費用につながります。</p>
+                        <div className={styles.packagingRisks} aria-label="よくあるパッケージの問題">
+                            <span>包材だけ大量に残る</span>
+                            <span>表示作成の手順が不明</span>
+                            <span>売り場に仕様が合わない</span>
+                        </div>
+                    </div>
+                    <div className={styles.packagingSolution}>
+                        <span>会津ブランド館なら</span>
+                        <h3>製造数と売り方から逆算して、包材まで一緒に整理します。</h3>
+                        <ul>
+                            {packagingSupport.map(item => <li key={item}><Check size={17} aria-hidden="true" />{item}</li>)}
+                        </ul>
+                        <Link className={styles.inlineCta} href="#bto-form">包装条件も含めて相談する <ArrowRight size={17} aria-hidden="true" /></Link>
+                    </div>
                 </section>
 
                 <section className={styles.reasonsSection} id="reasons" aria-labelledby="reasons-title">
@@ -279,6 +362,26 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                         ))}
                     </div>
                     <p className={styles.actualExamplesNote}><BadgeCheck size={18} aria-hidden="true" />上記は自社の商品開発実績です。御社の原料の状態・希望ロット・販売方法に合わせ、実際に製造可能な商品を個別にご提案します。</p>
+                </section>
+
+                <section className={styles.useCaseSection} aria-labelledby="use-case-title">
+                    <div className={styles.sectionHeading}>
+                        <p className={styles.eyebrow}>WHO WE SUPPORT</p>
+                        <h2 id="use-case-title">誰に、どこで売るかまで考えて商品にします。</h2>
+                        <p>同じ素材でも、販売先によって必要な容量・保存性・包装は変わります。目的から商品仕様を整理します。</p>
+                    </div>
+                    <div className={styles.useCaseGrid}>
+                        {targetUseCases.map((useCase, index) => (
+                            <article className={styles.useCaseCard} key={useCase.audience}>
+                                <span>{String(index + 1).padStart(2, '0')}</span>
+                                <h3>{useCase.audience}</h3>
+                                <p className={styles.useCaseIssue}>{useCase.issue}</p>
+                                <div aria-hidden="true"><ArrowRight size={18} /></div>
+                                <p>{useCase.outcome}</p>
+                            </article>
+                        ))}
+                    </div>
+                    <p className={styles.useCaseNote}>※販売代行ではなく、想定する売り場に適した商品仕様・包装方法を一緒に整理します。</p>
                 </section>
 
                 <section className={styles.productsSection} id="products" aria-labelledby="products-title">
