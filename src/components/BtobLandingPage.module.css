@@ -124,7 +124,7 @@
 
 .hero {
     position: relative;
-    padding: 64px max(24px, calc((100% - 1380px) / 2)) 0;
+    padding: 52px max(24px, calc((100% - 1440px) / 2)) 0;
     background:
         radial-gradient(circle at 8% 20%, rgba(220, 180, 114, .18), transparent 25%),
         radial-gradient(circle at 95% 8%, rgba(82, 118, 98, .12), transparent 28%),
@@ -133,10 +133,10 @@
 
 .heroInner {
     display: grid;
-    grid-template-columns: minmax(390px, .78fr) minmax(620px, 1.22fr);
+    grid-template-columns: minmax(430px, .8fr) minmax(650px, 1.2fr);
     align-items: center;
-    gap: clamp(38px, 5vw, 76px);
-    min-height: 650px;
+    gap: clamp(34px, 4.2vw, 68px);
+    min-height: 710px;
 }
 
 .heroCopy {
@@ -163,7 +163,7 @@
     margin: 0;
     color: var(--ink);
     font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
-    font-size: clamp(48px, 4.35vw, 68px);
+    font-size: clamp(50px, 4.55vw, 72px);
     font-weight: 600;
     letter-spacing: -.045em;
     line-height: 1.31;
@@ -219,104 +219,64 @@
 
 .heroVisual {
     position: relative;
-    aspect-ratio: 3 / 2;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
-    background: #f2e8d7;
-    border: 1px solid rgba(183, 122, 43, .22);
+    background: #d8ccbb;
+    border: 1px solid rgba(23, 59, 50, .18);
     border-radius: 32px;
-    box-shadow: 0 28px 70px rgba(55, 47, 35, .17);
+    box-shadow: 0 30px 72px rgba(39, 34, 27, .24);
     isolation: isolate;
 }
 
-.heroArtwork {
+.heroVisual::after {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, transparent 48%, rgba(10, 30, 25, .08) 62%, rgba(10, 30, 25, .82) 100%);
+    content: "";
+    pointer-events: none;
+}
+
+.heroStorePhoto {
     z-index: 0;
     object-fit: cover;
+    object-position: 50% 35%;
 }
 
-.heroOriginLabel,
-.heroShopLabel {
-    position: absolute;
-    z-index: 3;
-    top: 5.5%;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    column-gap: 7px;
-    padding: 9px 12px;
-    color: var(--ink);
-    background: rgba(255, 253, 248, .9);
-    border: 1px solid rgba(183, 122, 43, .27);
-    border-radius: 13px;
-    box-shadow: 0 8px 22px rgba(55, 47, 35, .1);
-    backdrop-filter: blur(8px);
-}
-
-.heroOriginLabel {
-    left: 3.5%;
-}
-
-.heroShopLabel {
-    right: 3.5%;
-}
-
-.heroOriginLabel svg,
-.heroShopLabel svg {
-    grid-row: 1 / 3;
-    color: var(--gold);
-}
-
-.heroOriginLabel span,
-.heroShopLabel span {
-    color: var(--gold);
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: .08em;
-}
-
-.heroOriginLabel strong,
-.heroShopLabel strong {
-    font-size: 12px;
-}
-
-.heroProductStage {
+.heroPhotoCaption {
     position: absolute;
     z-index: 2;
-    bottom: 6%;
-    left: 35%;
-    width: 30%;
-    height: 48%;
-    overflow: hidden;
-    background: #eee4d5;
-    border: 4px solid rgba(255, 253, 248, .96);
-    border-radius: 18px;
-    box-shadow: 0 14px 28px rgba(40, 35, 28, .2);
+    right: 36px;
+    bottom: 30px;
+    left: 36px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    color: #fff;
 }
 
-.heroActualBadge {
-    position: absolute;
-    z-index: 5;
-    top: 7px;
-    left: 50%;
+.heroPhotoCaption span {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    width: max-content;
-    padding: 7px 10px;
-    color: #fff;
-    background: var(--ink);
+    gap: 7px;
+    padding: 8px 11px;
+    color: var(--ink-dark);
+    background: #f0d49d;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 900;
-    transform: translateX(-50%);
-    box-shadow: 0 8px 18px rgba(15, 44, 38, .2);
+    white-space: nowrap;
 }
 
-.heroProductPhoto {
-    z-index: 1;
-    object-fit: cover;
-    object-position: 50% 77%;
-    transform: scale(1.6);
-    transform-origin: 15% 82%;
+.heroPhotoCaption strong {
+    max-width: 360px;
+    font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+    font-size: clamp(21px, 1.65vw, 28px);
+    font-weight: 600;
+    letter-spacing: -.025em;
+    line-height: 1.5;
+    text-align: right;
 }
 
 .proofStrip {
@@ -357,6 +317,139 @@
     font-size: 11px;
     font-weight: 700;
     line-height: 1.55;
+}
+
+.salesFloorSection {
+    padding: 104px max(24px, calc((100% - 1160px) / 2));
+    color: #fff;
+    background:
+        radial-gradient(circle at 95% 0, rgba(224, 185, 116, .13), transparent 26%),
+        var(--ink-dark);
+}
+
+.salesFloorIntro {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+    align-items: end;
+    gap: 70px;
+    margin-bottom: 42px;
+}
+
+.salesFloorIntro h2 {
+    margin: 0;
+    color: #fff;
+    font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif;
+    font-size: clamp(39px, 4.2vw, 54px);
+    font-weight: 600;
+    letter-spacing: -.035em;
+    line-height: 1.4;
+}
+
+.salesFloorIntro>p {
+    margin: 0 0 8px;
+    color: rgba(255, 255, 255, .72);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.9;
+}
+
+.salesFloorGallery {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+    grid-template-rows: repeat(2, 235px);
+    gap: 14px;
+}
+
+.salesFloorGallery figure {
+    position: relative;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    background: #213c34;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 22px;
+    isolation: isolate;
+}
+
+.salesFloorGallery figure::after {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, transparent 48%, rgba(7, 24, 20, .82) 100%);
+    content: "";
+    pointer-events: none;
+}
+
+.salesFloorPrimary {
+    grid-row: 1 / 3;
+}
+
+.salesFloorGallery img {
+    object-fit: cover;
+    transition: transform .45s ease;
+}
+
+.salesFloorPrimary img {
+    object-position: 50% 31%;
+}
+
+.salesFloorGallery figure:nth-child(2) img {
+    object-position: 50% 47%;
+}
+
+.salesFloorGallery figure:nth-child(3) img {
+    object-position: 50% 61%;
+}
+
+.salesFloorGallery figure:hover img {
+    transform: scale(1.025);
+}
+
+.salesFloorGallery figcaption {
+    position: absolute;
+    right: 23px;
+    bottom: 20px;
+    left: 23px;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.salesFloorGallery figcaption span {
+    color: #f0cf91;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+}
+
+.salesFloorGallery figcaption strong {
+    font-size: 18px;
+    line-height: 1.35;
+    text-align: right;
+}
+
+.salesFloorPrimary figcaption strong {
+    font-size: 25px;
+}
+
+.salesFloorNote {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 24px 0 0;
+    color: rgba(255, 255, 255, .64);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.salesFloorNote svg {
+    flex: 0 0 auto;
+    color: #e1b86d;
 }
 
 .routeSection,
@@ -412,6 +505,85 @@
 
 .routeSection {
     background: var(--paper);
+}
+
+.routeStoryVisual {
+    position: relative;
+    width: min(1080px, 100%);
+    aspect-ratio: 16 / 8.6;
+    margin: 0 auto 38px;
+    overflow: hidden;
+    background: #f1e6d2;
+    border: 1px solid var(--line);
+    border-radius: 27px;
+    box-shadow: 0 20px 46px rgba(60, 50, 37, .1);
+    isolation: isolate;
+}
+
+.routeStoryVisual>img {
+    z-index: 0;
+    object-fit: cover;
+    object-position: 50% 50%;
+}
+
+.routeStoryOrigin,
+.routeStoryCenter,
+.routeStoryShop {
+    position: absolute;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 3px 8px;
+    padding: 11px 14px;
+    color: var(--ink);
+    background: rgba(255, 253, 248, .92);
+    border: 1px solid rgba(183, 122, 43, .25);
+    border-radius: 14px;
+    box-shadow: 0 10px 25px rgba(45, 38, 29, .12);
+    backdrop-filter: blur(8px);
+}
+
+.routeStoryOrigin {
+    top: 6%;
+    left: 4%;
+}
+
+.routeStoryShop {
+    top: 6%;
+    right: 4%;
+}
+
+.routeStoryCenter {
+    bottom: 7%;
+    left: 50%;
+    padding: 13px 18px;
+    color: #fff;
+    background: rgba(15, 44, 38, .93);
+    border-color: rgba(255, 255, 255, .18);
+    transform: translateX(-50%);
+}
+
+.routeStoryOrigin svg,
+.routeStoryCenter svg,
+.routeStoryShop svg {
+    grid-row: 1 / 3;
+    color: var(--gold);
+}
+
+.routeStoryOrigin span,
+.routeStoryCenter span,
+.routeStoryShop span {
+    color: var(--gold);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .08em;
+}
+
+.routeStoryOrigin strong,
+.routeStoryCenter strong,
+.routeStoryShop strong {
+    font-size: 13px;
 }
 
 .routeDiagram {
@@ -821,8 +993,8 @@
 
 .caseCard {
     display: grid;
-    grid-template-columns: minmax(180px, .72fr) minmax(0, 1.28fr);
-    min-height: 325px;
+    grid-template-columns: 1fr;
+    min-height: 0;
     overflow: hidden;
     background: #fff;
     border: 1px solid var(--line);
@@ -832,12 +1004,12 @@
 
 .caseImage {
     position: relative;
-    min-height: 100%;
+    min-height: 320px;
     background: #f7f3ea;
 }
 
 .caseImage img {
-    padding: 28px 20px;
+    padding: 30px 54px;
     object-fit: contain;
     mix-blend-mode: multiply;
 }
@@ -845,13 +1017,13 @@
 .caseCopy {
     display: flex;
     flex-direction: column;
-    padding: 25px 23px;
+    padding: 27px 28px 29px;
 }
 
 .caseCopy h3 {
     margin: 0 0 15px;
     color: var(--ink);
-    font-size: 18px;
+    font-size: 21px;
     line-height: 1.5;
 }
 
@@ -1715,9 +1887,9 @@
 
 @media (max-width: 1160px) {
     .heroInner {
-        grid-template-columns: minmax(350px, .82fr) minmax(520px, 1.18fr);
+        grid-template-columns: minmax(390px, .84fr) minmax(500px, 1.16fr);
         gap: 32px;
-        min-height: 580px;
+        min-height: 620px;
     }
 
     .hero h1 {
@@ -1725,11 +1897,11 @@
     }
 
     .caseCard {
-        grid-template-columns: 165px 1fr;
+        grid-template-columns: 1fr;
     }
 
     .caseImage img {
-        padding: 28px 14px;
+        padding: 28px 44px;
     }
 
     .storeCopy {
@@ -1737,7 +1909,7 @@
     }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 980px) {
     .nav {
         display: none;
     }
@@ -1783,6 +1955,15 @@
         margin-top: 28px;
     }
 
+    .salesFloorIntro {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .salesFloorIntro>p {
+        max-width: 760px;
+    }
+
     .splitHeading,
     .packagingIntro {
         grid-template-columns: 1fr;
@@ -1806,8 +1987,12 @@
     }
 
     .caseCard {
-        grid-template-columns: 230px 1fr;
-        min-height: 310px;
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .caseImage {
+        min-height: 340px;
     }
 
     .packagingIntro>div:first-child {
@@ -1886,11 +2071,35 @@
     }
 
     .hero {
-        padding: 26px 15px 0;
+        padding: 14px 15px 0;
+    }
+
+    .heroInner {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
     .heroCopy {
-        padding-block: 12px 20px;
+        padding-block: 16px 22px;
+        text-align: left;
+    }
+
+    .heroCopy .eyebrow,
+    .heroActions,
+    .heroTrust {
+        justify-content: flex-start;
+    }
+
+    .heroVisual {
+        order: -1;
+        width: 100%;
+        aspect-ratio: 5 / 4;
+        border-radius: 20px;
+    }
+
+    .heroStorePhoto {
+        object-position: 52% 32%;
     }
 
     .eyebrow {
@@ -1931,51 +2140,25 @@
         font-size: 10px;
     }
 
-    .heroVisual {
-        border-radius: 20px;
+    .heroPhotoCaption {
+        right: 15px;
+        bottom: 14px;
+        left: 15px;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
     }
 
-    .heroOriginLabel,
-    .heroShopLabel {
-        top: 4%;
-        column-gap: 4px;
-        padding: 6px 7px;
-        border-radius: 8px;
+    .heroPhotoCaption span {
+        padding: 6px 9px;
+        font-size: 9px;
     }
 
-    .heroOriginLabel {
-        left: 2.5%;
-    }
-
-    .heroShopLabel {
-        right: 2.5%;
-    }
-
-    .heroOriginLabel svg,
-    .heroShopLabel svg {
-        width: 12px;
-        height: 12px;
-    }
-
-    .heroOriginLabel span,
-    .heroShopLabel span {
-        font-size: 7px;
-    }
-
-    .heroOriginLabel strong,
-    .heroShopLabel strong {
-        font-size: 8px;
-    }
-
-    .heroActualBadge {
-        top: 4px;
-        padding: 4px 6px;
-        font-size: 7px;
-    }
-
-    .heroActualBadge svg {
-        width: 10px;
-        height: 10px;
+    .heroPhotoCaption strong {
+        max-width: 260px;
+        font-size: 19px;
+        line-height: 1.4;
+        text-align: left;
     }
 
     .proofStrip {
@@ -2013,6 +2196,69 @@
         padding: 76px 16px;
     }
 
+    .salesFloorSection {
+        padding: 76px 16px;
+    }
+
+    .salesFloorIntro {
+        margin-bottom: 30px;
+    }
+
+    .salesFloorIntro h2 {
+        font-size: clamp(32px, 9vw, 40px);
+        line-height: 1.42;
+    }
+
+    .salesFloorIntro>p {
+        font-size: 14px;
+        line-height: 1.85;
+    }
+
+    .salesFloorGallery {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: 330px 165px;
+        gap: 9px;
+    }
+
+    .salesFloorGallery figure {
+        border-radius: 16px;
+    }
+
+    .salesFloorPrimary {
+        grid-column: 1 / 3;
+        grid-row: 1;
+    }
+
+    .salesFloorGallery figcaption {
+        right: 13px;
+        bottom: 12px;
+        left: 13px;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .salesFloorGallery figcaption span {
+        font-size: 8px;
+    }
+
+    .salesFloorGallery figcaption strong,
+    .salesFloorPrimary figcaption strong {
+        font-size: 15px;
+        text-align: left;
+    }
+
+    .salesFloorPrimary figcaption strong {
+        font-size: 20px;
+    }
+
+    .salesFloorNote {
+        align-items: flex-start;
+        justify-content: flex-start;
+        font-size: 11px;
+        text-align: left;
+    }
+
     .sectionHeading {
         margin-bottom: 34px;
         text-align: left;
@@ -2045,6 +2291,54 @@
     .routeGrid {
         grid-template-columns: 1fr;
         gap: 18px;
+    }
+
+    .routeStoryVisual {
+        width: calc(100% + 12px);
+        aspect-ratio: 4 / 3;
+        margin: 0 0 26px -6px;
+        border-radius: 18px;
+    }
+
+    .routeStoryOrigin,
+    .routeStoryShop {
+        top: 4%;
+        gap: 2px 5px;
+        padding: 7px 8px;
+        border-radius: 9px;
+    }
+
+    .routeStoryOrigin {
+        left: 3%;
+    }
+
+    .routeStoryShop {
+        right: 3%;
+    }
+
+    .routeStoryCenter {
+        bottom: 5%;
+        padding: 8px 10px;
+        border-radius: 10px;
+    }
+
+    .routeStoryOrigin svg,
+    .routeStoryCenter svg,
+    .routeStoryShop svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .routeStoryOrigin span,
+    .routeStoryCenter span,
+    .routeStoryShop span {
+        font-size: 7px;
+    }
+
+    .routeStoryOrigin strong,
+    .routeStoryCenter strong,
+    .routeStoryShop strong {
+        font-size: 9px;
     }
 
     .routeCard {
@@ -2388,16 +2682,6 @@
 
     .hero h1 {
         font-size: 36px;
-    }
-
-    .heroOriginLabel strong,
-    .heroShopLabel strong {
-        display: none;
-    }
-
-    .heroOriginLabel span,
-    .heroShopLabel span {
-        font-size: 8px;
     }
 
     .caseImage {

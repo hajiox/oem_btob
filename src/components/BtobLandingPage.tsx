@@ -50,7 +50,8 @@ const fallbackHero = {
     description: '農家の素材は、道の駅やふるさと納税での販売を想定した商品へ。道の駅・観光施設・土産店には、その売り場に合うオリジナル商品を。400個から一緒につくります。',
 }
 
-const defaultHeroArtwork = '/images/btob/oem-hybrid-hero-illustration-v1.webp'
+const defaultHeroStorePhoto = '/images/btob/store-floor-hero-4911.webp'
+const defaultRouteArtwork = '/images/btob/oem-hybrid-hero-illustration-v1.webp'
 const legacyHeroMarkers = ['1772951498736_1.jpg', '/images/lp-hero.jpg'] as const
 const legacyManagedMarkers = [
     '1773114673701_',
@@ -109,6 +110,27 @@ const channelPlans = [
         subtitle: '旅の記憶を、持ち帰れる',
         points: ['福島らしい物語', '持ち運びやすいサイズ', '施設限定の理由づくり'],
         icon: ShoppingBag,
+    },
+] as const
+
+const salesFloorPhotos = [
+    {
+        image: '/images/btob/store-floor-curry-4913.webp',
+        alt: '会津ブランド館の売り場に並ぶカレーやこづゆなどの地域商品',
+        label: '商品が棚に立つ',
+        title: 'レトルト・郷土食',
+    },
+    {
+        image: '/images/btob/store-floor-packaging-4912.webp',
+        alt: '会津ブランド館の売り場に並ぶ袋物や茶の商品',
+        label: '形が変われば、見え方も変わる',
+        title: '袋物・茶・ギフト',
+    },
+    {
+        image: '/images/btob/store-floor-series-4915.webp',
+        alt: '会津ブランド館の売り場に並ぶ瓶商品のシリーズ',
+        label: '味違いで、棚をつくる',
+        title: '瓶・シリーズ展開',
     },
 ] as const
 
@@ -267,7 +289,7 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
     const showDefaultHero = usesDefaultHero(hero?.image_url)
     const heroTitle = showDefaultHero ? fallbackHero.title : (hero?.title || fallbackHero.title)
     const heroDescription = showDefaultHero ? fallbackHero.description : (hero?.description || fallbackHero.description)
-    const heroArtwork = showDefaultHero ? defaultHeroArtwork : (isRenderableImage(hero?.image_url) ? hero!.image_url! : defaultHeroArtwork)
+    const heroVisualImage = showDefaultHero ? defaultHeroStorePhoto : (isRenderableImage(hero?.image_url) ? hero!.image_url! : defaultHeroStorePhoto)
     const faqSections = visibleSections.filter(section => section.section_type === 'faq' || section.title?.includes('注意事項'))
     const supplementalSections = visibleSections.filter(section => (
         section.id !== hero?.id
@@ -311,17 +333,13 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                             </div>
                         </div>
 
-                        <div className={styles.heroVisual} aria-label="農家の素材と売り場の要望を、実際の商品へつなぐイメージ">
-                            <Image className={styles.heroArtwork} src={heroArtwork} alt="農家と地域の売り場をつなぐ食品OEMのイラスト" fill priority sizes="(max-width: 900px) 100vw, 54vw" />
+                        <div className={styles.heroVisual} aria-label={showDefaultHero ? '会津ブランド館の実際の売り場' : heroTitle}>
+                            <Image className={styles.heroStorePhoto} src={heroVisualImage} alt={showDefaultHero ? '会津ブランド館の実際の売り場に並ぶ地域商品' : heroTitle} fill priority sizes="(max-width: 900px) calc(100vw - 30px), 58vw" />
                             {showDefaultHero && (
-                                <>
-                                    <div className={styles.heroOriginLabel}><Sprout size={15} aria-hidden="true" /><span>原料から</span><strong>農家・生産者</strong></div>
-                                    <div className={styles.heroShopLabel}><Store size={15} aria-hidden="true" /><span>売り場から</span><strong>道の駅・観光施設</strong></div>
-                                    <div className={styles.heroProductStage} aria-label="会津ブランド館で販売している実商品">
-                                        <span className={styles.heroActualBadge}><BadgeCheck size={14} aria-hidden="true" />実際に販売中の商品</span>
-                                        <Image className={styles.heroProductPhoto} src="/images/btob/oem-hero-real-products-v3.webp" alt="会津たかだうめふりかけと南会津産トマトドレッシングなどの実商品" fill sizes="(max-width: 760px) 34vw, 240px" />
-                                    </div>
-                                </>
+                                <div className={styles.heroPhotoCaption}>
+                                    <span><BadgeCheck size={15} aria-hidden="true" />会津ブランド館の実際の売り場</span>
+                                    <strong>商品をつくるだけでなく、<br />棚で選ばれる形まで。</strong>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -330,11 +348,36 @@ export default function BtobLandingPage({ sections, formSteps, products, pageId 
                     </div>
                 </section>
 
+                <section className={styles.salesFloorSection} aria-labelledby="sales-floor-title">
+                    <div className={styles.salesFloorIntro}>
+                        <div>
+                            <p className={styles.eyebrow}>REAL SALES FLOOR</p>
+                            <h2 id="sales-floor-title">売る現場があるから、<br />棚から逆算できる。</h2>
+                        </div>
+                        <p>商品は、完成した瞬間ではなく、棚に並んで手に取られて初めて価値になります。価格、サイズ、包材、並べ方まで、実際の販売現場を基準に考えます。</p>
+                    </div>
+                    <div className={styles.salesFloorGallery}>
+                        {salesFloorPhotos.map((photo, index) => (
+                            <figure className={index === 0 ? styles.salesFloorPrimary : undefined} key={photo.image}>
+                                <Image src={photo.image} alt={photo.alt} fill sizes={index === 0 ? '(max-width: 760px) 100vw, 58vw' : '(max-width: 760px) 50vw, 27vw'} />
+                                <figcaption><span>{photo.label}</span><strong>{photo.title}</strong></figcaption>
+                            </figure>
+                        ))}
+                    </div>
+                    <p className={styles.salesFloorNote}><Store size={18} aria-hidden="true" />写真は会津ブランド館の実際の売り場です。商品化実績は、下の事例で個別にご紹介します。</p>
+                </section>
+
                 <section className={styles.routeSection} id="audience" aria-labelledby="audience-title">
                     <div className={styles.sectionHeading}>
                         <p className={styles.eyebrow}>TWO WAYS TO START</p>
                         <h2 id="audience-title">入口は二つ。<br />原料からでも、売り場からでも。</h2>
                         <p>持っている強みが違えば、最初に聞くことも違います。二つの道筋を分けて整理します。</p>
+                    </div>
+                    <div className={styles.routeStoryVisual} aria-label="原料または売り場から商品化へ進む二つの入口">
+                        <Image src={defaultRouteArtwork} alt="農家の原料と地域の売り場を会津ブランド館の商品化につなぐイラスト" fill sizes="(max-width: 760px) 100vw, 1080px" />
+                        <div className={styles.routeStoryOrigin}><Sprout size={17} aria-hidden="true" /><span>原料から</span><strong>農家・生産者</strong></div>
+                        <div className={styles.routeStoryCenter}><Sparkles size={20} aria-hidden="true" /><span>二つの入口を</span><strong>商品化へつなぐ</strong></div>
+                        <div className={styles.routeStoryShop}><Store size={17} aria-hidden="true" /><span>売り場から</span><strong>道の駅・観光施設</strong></div>
                     </div>
                     <div className={styles.routeDiagram}>
                         <div className={styles.routeGrid}>
