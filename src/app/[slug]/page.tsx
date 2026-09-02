@@ -2,9 +2,7 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { LpSection, Product } from '@/types/database'
 import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
-import type { FormStepWithItems } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
-import BtobLandingPage from '@/components/BtobLandingPage'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Facebook, Instagram, Youtube, MapPin, Phone, Clock, CalendarDays } from 'lucide-react'
@@ -215,7 +213,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function HomePage({ params }: { params: { slug: string } }) {
   const { slug } = await params
   let sections: LpSection[] = []
-  let formSteps: FormStepWithItems[] = []
+  let formSteps: any[] = []
   let products: Product[] = []
   let currentPageId = ''
 
@@ -254,17 +252,6 @@ export default async function HomePage({ params }: { params: { slug: string } })
 
   } catch {
     // Supabase未設定時はデフォルト表示
-  }
-
-  if (slug === 'btob') {
-    return (
-      <BtobLandingPage
-        sections={sections}
-        formSteps={formSteps}
-        products={products}
-        pageId={currentPageId}
-      />
-    )
   }
 
   return (
