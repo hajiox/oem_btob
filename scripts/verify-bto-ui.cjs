@@ -16,10 +16,17 @@ const base = process.argv[2] || 'http://localhost:3107'
         { product:'ラーメン', choices:['あっさり系','中太ちぢれ麺（140g）','透明袋＋シール'], total:244000, yes:false },
         { product:'ラーメン', choices:['こってり系','オーション麺（200g）','箱＋巻紙'], total:336000, yes:true },
       ]) {
+        if (process.env.QA_SINGLE && (mobile || !spec.yes || spec.product !== 'レトルトカレー')) continue
         await page.goto(`${base}/btob?qa=${Date.now()}#bto-form`, { waitUntil: 'domcontentloaded' })
         await page.addStyleTag({content:'html { scroll-behavior: auto !important; }'})
         const form = page.locator('#bto-form')
         const next = async () => { await page.waitForTimeout(450); await form.getByRole('button', {name: /次のステップへ|結果を見る/}).click() }
+        const back = async () => {
+          const button = form.getByRole('button', {name:'戻る', exact:true})
+          await button.focus()
+          await button.press('Enter')
+          await page.waitForTimeout(450)
+        }
         await form.locator('input[type=number]').fill('800')
         await next()
         await form.getByRole('button', {name: new RegExp(`^${spec.product}`)}).click()
@@ -56,8 +63,12 @@ const base = process.argv[2] || 'http://localhost:3107'
         assert(!overflow, 'Form horizontal overflow')
         await form.screenshot({path:`.bto-backups/qa/${mobile?'mobile':'desktop'}-${spec.product}-${spec.yes?'premium':'basic'}-result.png`})
         // Switching the ingredient branch must not retain the old ingredient answer.
-        await form.getByRole('button',{name:'戻る',exact:true}).click()
-        if(spec.yes) await form.getByRole('button',{name:'戻る',exact:true}).click()
+        await back()
+        if(spec.yes) {
+          await form.locator('input[type=text]').waitFor()
+          await page.waitForTimeout(450)
+          await back()
+        }
         await form.getByText('ない',{exact:true}).click()
         await next()
         await form.getByRole('button',{name:/この内容で仮申込/}).click()
@@ -68,5 +79,11 @@ const base = process.argv[2] || 'http://localhost:3107'
       assert.deepEqual(errors, [])
       await page.close()
     }
+  } catch (error) {
+    for (const context of browser.contexts()) for (const page of context.pages()) {
+      console.error('Failure screen:', (await page.locator('#bto-form').innerText()).slice(-3500))
+      await page.screenshot({path:'.bto-backups/qa/failure.png'})
+    }
+    throw error
   } finally { await browser.close() }
 })().catch(e=>{console.error(e);process.exitCode=1})

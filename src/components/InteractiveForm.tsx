@@ -206,8 +206,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     }
 
     const navigateTo = (nextStep: number) => {
+        if (isFixedLotProduct && nextStep === currentStep) return
         setDirection(1)
-        setNavigationHistory(history => [...history, currentStep])
+        setNavigationHistory(history => isFixedLotProduct && history[history.length - 1] === currentStep ? history : [...history, currentStep])
         setCurrentStep(nextStep)
     }
 
@@ -228,6 +229,13 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     }
     const handlePrev = () => {
         setDirection(-1)
+        if (isFixedLotProduct) {
+            // Routes move forward; a repeated click must not create a same-screen back entry.
+            const previousIndex = navigationHistory.findLastIndex(step => step < currentStep)
+            setCurrentStep(previousIndex >= 0 ? navigationHistory[previousIndex] : Math.max(0, currentStep - 1))
+            setNavigationHistory(history => previousIndex >= 0 ? history.slice(0, previousIndex) : [])
+            return
+        }
         const previousStep = navigationHistory[navigationHistory.length - 1]
         setCurrentStep(previousStep ?? Math.max(0, currentStep - 1))
         if (previousStep !== undefined) setNavigationHistory(history => history.slice(0, -1))
