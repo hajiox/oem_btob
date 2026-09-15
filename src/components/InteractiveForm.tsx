@@ -17,6 +17,13 @@ const shouldShowExtraInput = (label: string | null | undefined) => {
     return !EXTRA_EXCLUSION_KEYWORDS.some(k => normalized.includes(k))
 }
 
+// このLPだけは、カレー・ラーメンを固定ロットで概算する。
+const BTOB_QUOTE_PAGE_ID = '35e7d402-0443-4703-94a4-fc2873b8f933'
+const FIXED_LOT_PRODUCT_IDS = new Set([
+    'c0000001-0000-0000-0000-000000000001',
+    'c0000001-0000-0000-0000-000000000002',
+])
+
 export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
     const [currentStep, setCurrentStep] = useState(0)
     const [direction, setDirection] = useState(1)
@@ -42,6 +49,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         () => selectedProduct ? allSteps.filter(step => step.product_id === selectedProduct) : [],
         [allSteps, selectedProduct],
     )
+    const isBtoBQuotePage = pageId === BTOB_QUOTE_PAGE_ID
+    const isFixedLotProduct = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(selectedProduct || '')
+    const isRamenProduct = isBtoBQuotePage && selectedProduct === 'c0000001-0000-0000-0000-000000000002'
+    const quantityUnit = isRamenProduct ? 'セット' : '個'
+    const quantityLabel = isFixedLotProduct ? `${oemQuantity}${quantityUnit}（固定ロット）` : `${oemQuantity}${quantityUnit}`
     const usesExplicitRouting = useMemo(
         () => productSteps.some(step => step.questions.some(question => (
             question.options.some(option => option.next_step_id || option.go_to_estimate)
@@ -152,7 +164,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     // バリデーション
     const isCurrentStepValid = () => {
-        if (currentStep === 0) return oemQuantity >= 400 && oemQuantity <= 800
+        if (currentStep === 0) return isFixedLotProduct ? oemQuantity === 400 : oemQuantity >= 400 && oemQuantity <= 800
         if (currentStep === PRODUCT_STEP) return selectedProduct !== null
         if (currentStep >= FORM_START && currentStep < RESULT_STEP) {
             const stepData = activeSteps[currentStep - FORM_START]
@@ -160,7 +172,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             for (const q of stepData.questions) {
                 if (q.is_required) {
                     const val = answers[q.id]
-                    if (!val || (Array.isArray(val) && val.length === 0)) return false
+                    if (!val || (typeof val === 'string' && val.trim() === '') || (Array.isArray(val) && val.length === 0)) return false
                     if (typeof val === 'object' && !Array.isArray(val) && !val.selected) return false
                 }
             }
@@ -225,6 +237,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const handleProductSelect = (productId: string) => {
         if (productId !== selectedProduct) setAnswers({})
         setSelectedProduct(productId)
+        if (isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(productId)) setOemQuantity(400)
     }
 
     const handleAnswerChange = (questionId: string, value: any, type: string) => {
@@ -252,10 +265,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         const selectedProd = products.find(p => p.id === selectedProduct)
         
         const selectedOptionsDetails = [
-            { question: 'OEM製造数', answer: `${oemQuantity}個`, type: 'number' },
+            { question: 'OEM製造数', answer: quantityLabel, type: 'number' },
             { question: '商品', answer: selectedProd?.name || '', type: 'text' },
             { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
-            { question: '1個あたり仕入原価(税抜)', answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
+            { question: `1${quantityUnit}あたり仕入原価(税抜)`, answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
+            ...(isFixedLotProduct ? [{ question: '見積条件', answer: `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）${quantityUnit === 'セット' ? '／賞味期限：製造から60日' : '／内容量200g'} `, type: 'text' }] : []),
             ...Object.entries(answers).map(([qId, val]) => {
                 const q = activeSteps.flatMap(s => s.questions).find(q => q.id === qId)
                 if (!q) return null
@@ -274,7 +288,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 return { question: q.question_text || qId, answer: displayValue, type: q.input_type }
             }).filter(Boolean)
         ]
-        const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: contactInfo.notes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails })
+        const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: contactInfo.notes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails, quoteProductId: selectedProduct || undefined })
         if (res.success) setIsSuccess(true)
         else { setErrorData(res.error || 'エラー'); setIsSubmitting(false) }
     }
@@ -297,7 +311,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 return (
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: isMobile ? '1fr' : (hasImages ? 'repeat(auto-fill, minmax(160px, 1fr))' : 'repeat(auto-fill, minmax(240px, 1fr))'), 
+                        gridTemplateColumns: isMobile ? '1fr' : (hasImages && isFixedLotProduct ? `repeat(${Math.min(q.options.length, 3)}, minmax(0, 1fr))` : hasImages ? 'repeat(auto-fill, minmax(160px, 1fr))' : 'repeat(auto-fill, minmax(240px, 1fr))'),
                         gap: '12px', 
                         marginTop: '16px' 
                     }}>
@@ -307,7 +321,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                 <label key={opt.id} style={{ display: 'flex', flexDirection: hasImages ? 'column' : 'row', alignItems: hasImages ? 'stretch' : 'center', justifyContent: hasImages ? 'flex-start' : 'space-between', padding: hasImages ? '0' : '16px', borderRadius: '16px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s ease', overflow: 'hidden', boxShadow: isSelected ? '0 0 20px rgba(99,102,241,0.2)' : 'none' }}>
                                     {hasImages && opt.image_url && (
                                         <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
-                                            <Image src={opt.image_url} alt={opt.label} width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <Image src={opt.image_url} alt={opt.label} width={400} height={400} style={{ width: '100%', height: '100%', objectFit: isFixedLotProduct ? 'contain' : 'cover' }} />
                                             {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>✓</div>}
                                         </div>
                                     )}
@@ -315,7 +329,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                         <input type="radio" name={q.id} value={opt.id} checked={isSelected} onChange={() => handleAnswerChange(q.id, opt.id, 'radio')} style={{ display: hasImages ? 'none' : 'block', width: '16px', height: '16px', accentColor: '#818cf8' }} />
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: hasImages ? 'center' : 'flex-start' }}>
                                             <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '15px' : '16px', textAlign: hasImages ? 'center' : 'left', lineHeight: 1.3 } as React.CSSProperties}>{opt.label}</span>
-                                            {opt.description && <span style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.7)', textAlign: hasImages ? 'center' : 'left', marginTop: '6px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-line' } as React.CSSProperties}>{opt.description}</span>}
+                                            {opt.description && <span style={{ fontSize: isFixedLotProduct ? '14px' : '11.5px', color: 'rgba(255,255,255,0.7)', textAlign: hasImages ? 'center' : 'left', marginTop: '6px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-line' } as React.CSSProperties}>{opt.description}</span>}
                                         </div>
                                     </div>
                                     {priceLabel(opt) && <div style={{ padding: hasImages ? '0 12px 12px' : '0', textAlign: hasImages ? 'center' : 'right' } as React.CSSProperties}><span style={{ fontSize: '13px', fontWeight: 700, color: opt.price_modifier_type === 'percentage' ? '#fbbf24' : '#818cf8' }}>{priceLabel(opt)}</span></div>}
@@ -358,7 +372,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     }
 
     if (isSuccess) {
-        return (<div style={{ width: '100%', maxWidth: '768px', margin: '0 auto', position: 'relative', zIndex: 1 }}><div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '64px 32px', textAlign: 'center' }}><div style={{ width: '80px', height: '80px', margin: '0 auto 24px', background: 'rgba(34,197,94,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle2 style={{ width: '48px', height: '48px', color: '#22c55e' }} /></div><h2 style={{ fontSize: '30px', fontWeight: 800, color: '#fff', marginBottom: '16px' }}>お問い合わせが完了しました</h2><p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, marginBottom: '32px' }}>お見積もりのご依頼ありがとうございます。<br />担当者より【3営業日以内】にご連絡させていただきます。</p><div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px' }}><div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>概算お見積り金額 ({oemQuantity}個)</div><div style={{ fontSize: '30px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</div></div></div></div>)
+        return (<div style={{ width: '100%', maxWidth: '768px', margin: '0 auto', position: 'relative', zIndex: 1 }}><div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '64px 32px', textAlign: 'center' }}><div style={{ width: '80px', height: '80px', margin: '0 auto 24px', background: 'rgba(34,197,94,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle2 style={{ width: '48px', height: '48px', color: '#22c55e' }} /></div><h2 style={{ fontSize: '30px', fontWeight: 800, color: '#fff', marginBottom: '16px' }}>お問い合わせが完了しました</h2><p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, marginBottom: '32px' }}>お見積もりのご依頼ありがとうございます。<br />担当者より【3営業日以内】にご連絡させていただきます。</p><div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px' }}><div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>概算お見積り金額 ({quantityLabel})</div><div style={{ fontSize: '30px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</div></div></div></div>)
     }
 
     return (
@@ -445,13 +459,13 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 )}
 
                 {/* 見積もりバー */}
-                {currentStep < RESULT_STEP && currentStep >= FORM_START && (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}><span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({oemQuantity}個)</span><span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}〜</span></div>)}
+                {currentStep < RESULT_STEP && currentStep >= FORM_START && (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}><span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({quantityLabel})</span><span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</span></div>)}
 
                 {/* メインフォーム */}
                 <div style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px' }}>
                     <AnimatePresence mode="wait" initial={false}>
                         {/* 数量入力 */}
-                        {currentStep === 0 && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご希望の製造数をご入力ください（400個〜800個）</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>個</span></div>{(oemQuantity < 400 || oemQuantity > 800) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
+                        {currentStep === 0 && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `カレー・ラーメンは${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメンは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
 
                         {/* 商品選択 */}
                         {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>商品に応じた見積もりフォームが表示されます</p></div><div style={{ 
@@ -459,12 +473,12 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                             gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', 
                             gap: '16px' 
                         }}>
-                        {products.map(p => { const isSelected = selectedProduct === p.id; return (
+                        {products.map(p => { const isSelected = selectedProduct === p.id; const isFixedLotCard = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(p.id); return (
                             <button key={p.id} onClick={() => handleProductSelect(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
                                 {/* 商品画像 or フォールバックアイコン */}
                                 {p.image_url ? (
                                     <div style={{ width: '100%', aspectRatio: isMobile ? '16/9' : '1/1', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
-                                        <Image src={p.image_url} alt={p.name} fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 200px" />
+                                        <Image src={p.image_url} alt={p.name} fill style={{ objectFit: isFixedLotCard ? 'contain' : 'cover' }} sizes="(max-width: 768px) 100vw, 200px" />
                                         {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>✓</div>}
                                     </div>
                                 ) : (
@@ -477,7 +491,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                 {/* テキスト部 */}
                                 <div style={{ padding: '16px 20px 20px', textAlign: 'center', width: '100%' }}>
                                     <span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>
-                                    {p.description && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{p.description}</span>}
+                                    {p.description && <span style={{ fontSize: isFixedLotCard ? '14px' : '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{p.description}</span>}
                                 </div>
                             </button>
                         ) })}</div></motion.div>)}
@@ -522,15 +536,24 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                     <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>ご回答内容に基づく概算金額です</p>
                                 </div>
                                 <div style={{ textAlign: 'center', padding: '32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))', border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px' }}>
-                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>概算お見積り金額 ({oemQuantity}個)</div>
-                                    <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}〜</div>
-                                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>
-                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>概算お見積り金額 ({quantityLabel})</div>
+                                    <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</div>
+                                    {isFixedLotProduct ? <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>税抜・概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）{quantityUnit === 'セット' ? '／賞味期限：製造から60日' : '／内容量200g'}</div> : <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>}
+                                    {!isFixedLotProduct && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>}
                                     
                                     <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+                                        {isFixedLotProduct && <div style={{ fontSize: '15px', lineHeight: 1.8 }}>
+                                            <p style={{ color: '#fff', fontWeight: 700 }}>1{quantityUnit}あたりの内訳（税別）{isRamenProduct ? '・2食入り' : ''}</p>
+                                            <p>製造手数料：{products.find(p => p.id === selectedProduct)?.base_price.toLocaleString()}円</p>
+                                            {activeSteps.flatMap(s => s.questions).map(q => {
+                                                const opt = q.options.find(o => o.id === answers[q.id])
+                                                return opt && opt.price_modifier > 0 ? <p key={q.id}>{opt.label}：{opt.price_modifier.toLocaleString()}円</p> : null
+                                            })}
+                                            <p style={{ marginTop: '8px' }}>原料持ち込みによる調整は含みません。正式見積もりで確認します。</p>
+                                        </div>}
                                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
-                                                <span>📦</span> 1個あたり仕入原価
+                                                <span>📦</span> 1{quantityUnit}あたり仕入原価
                                             </div>
                                             <div style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>
                                                 ¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}
@@ -558,7 +581,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                                                 <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 700, color: '#fff' }}>¥{sellingPrice.toLocaleString()}</div>
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>1個あたり利益</div>
+                                                                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>1{quantityUnit}あたり利益</div>
                                                                 <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 700, color: '#4ade80' }}>+¥{profit.toLocaleString()}</div>
                                                             </div>
                                                         </div>

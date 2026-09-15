@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/.bto-backups/
 
 # next.js
 /.next/

@@ -118,9 +118,13 @@ export async function submitLead(formData: {
     phone: string
     selectedOptions: any
     estimatedTotalPrice: number
+    quoteProductId?: string
     notes: string
 }) {
     const supabase = await createClient()
+
+    const isFixedLotQuote = formData.pageId === '35e7d402-0443-4703-94a4-fc2873b8f933' &&
+        ['c0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000002'].includes(formData.quoteProductId || '')
 
     const { error } = await supabase.from('leads').insert([{
         page_id: formData.pageId || null,
@@ -183,7 +187,7 @@ export async function submitLead(formData: {
                     ${introHtml}
                     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                     <h3 style="color: #6366f1;">概算お見積り内容</h3>
-                    <p><strong>概算総額:</strong> ¥${formData.estimatedTotalPrice.toLocaleString()}（税込）</p>
+                    <p><strong>概算総額:</strong> ¥${formData.estimatedTotalPrice.toLocaleString()}（${isFixedLotQuote ? '税別' : '税込'}）</p>
                     <p><strong>ご回答内容の抜粋:</strong></p>
                     <ul style="padding-left: 20px;">
                         ${formData.selectedOptions.map((opt: any) => `<li><strong>${opt.question}:</strong> ${opt.answer}</li>`).join('')}
