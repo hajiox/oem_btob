@@ -24,20 +24,28 @@ const viewports = [
       await page.goto(`${base}/btob?qa=${Date.now()}#bto-form`, { waitUntil: 'domcontentloaded' })
       await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
       const form = page.locator('#bto-form')
+      // Only text-entry steps retain an explicit Next button. Product and radio
+      // options advance as soon as they are clicked.
       const next = async () => {
         await page.waitForTimeout(450)
         await form.getByRole('button', { name: /次のステップへ|結果を見る/ }).click()
         await page.waitForTimeout(450)
       }
+      const assertAutoAdvanceStep = async label => {
+        const advance = form.getByRole('button', { name: /次のステップへ|結果を見る/ })
+        assert.equal(await advance.count(), 0, `${label}: explicit next must be hidden`)
+      }
       const button = name => form.getByRole('button', { name: new RegExp(`^${name}`) })
       const choose = async name => {
+        await assertAutoAdvanceStep(`Radio step (${name})`)
         const option = form.getByText(name, { exact: true })
         await option.scrollIntoViewIfNeeded()
         await option.click()
       }
       const selectProduct = async name => {
+        await assertAutoAdvanceStep('Product step')
         await button(name).click()
-        await next()
+        await page.waitForTimeout(450)
       }
       const assertNoOverflow = async label => {
         assert(!(await form.evaluate(el => el.scrollWidth > el.clientWidth + 2)), `${label}: horizontal overflow`)
@@ -64,9 +72,9 @@ const viewports = [
         await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
         await selectProduct('瓶詰め（ジャム・ご飯のお供）')
         await choose(label)
-        await next()
+        await page.waitForTimeout(450)
         await choose('ない')
-        await next()
+        await page.waitForTimeout(450)
         const result = await form.innerText()
         assert(result.includes(`¥${total.toLocaleString('en-US')}`), `Jar ${label}: wrong total`)
         assert(result.includes('400個'), `Jar ${label}: quantity label missing`)
@@ -82,9 +90,9 @@ const viewports = [
         await page.goto(`${base}/btob?qa=${Date.now()}#bto-form`, { waitUntil: 'domcontentloaded' })
         await selectProduct('瓶詰め（ジャム・ご飯のお供）')
         await choose('丸瓶大120g・標準')
-        await next()
+        await page.waitForTimeout(450)
         await choose('ある')
-        await next()
+        await page.waitForTimeout(450)
         const ingredient = form.locator('input[type=text]')
         await ingredient.fill('福島県産りんご（QA入力・送信しません）')
         await next()
@@ -96,7 +104,7 @@ const viewports = [
       await selectProduct('お茶（ティーバッグ）')
       await choose('ない')
       const teaNext = form.getByRole('button', { name: '次のステップへ' })
-      assert(await teaNext.isDisabled(), 'Tea without supplied material must not proceed')
+      assert.equal(await teaNext.count(), 0, 'Tea without supplied material must not show next')
       assert((await form.getByRole('alert').innerText()).includes('原料をご支給'), 'Tea decline alert missing')
       assert(!(await form.innerText()).includes('お見積り結果'), 'Tea without supplied material must not reach result')
 
@@ -106,13 +114,13 @@ const viewports = [
       await page.waitForTimeout(450)
       await selectProduct('お茶（ティーバッグ）')
       await choose('ある')
-      await next()
+      await page.waitForTimeout(450)
       const teaIngredient = form.locator('input[type=text]')
       assert(await teaIngredient.count() > 0, 'Tea ingredient input missing')
       await teaIngredient.fill('会津産茶葉（QA入力・送信しません）')
       await next()
       await choose('50包×100袋（5000包）')
-      await next()
+      await page.waitForTimeout(450)
       let result = await form.innerText()
       assert(result.includes('¥250,000'), 'Tea bulk plan total missing')
       assert(result.includes('50包×100袋'), 'Tea bulk quantity label missing')
@@ -123,7 +131,7 @@ const viewports = [
       await back.click()
       await page.waitForTimeout(450)
       await choose('4包×400個')
-      await next()
+      await page.waitForTimeout(450)
       result = await form.innerText()
       assert(result.includes('¥100,000'), 'Tea retail plan total missing')
       assert(result.includes('4包×400個'), 'Tea retail quantity label missing')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, Package } from 'lucide-react'
 import Image from 'next/image'
@@ -50,6 +50,21 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
     const [isMobile, setIsMobile] = useState(false)
     const [navigationHistory, setNavigationHistory] = useState<number[]>([])
+    const panelRef = useRef<HTMLDivElement>(null)
+    const previousScreen = useRef(currentStep)
+
+    useEffect(() => {
+        if (pageId !== BTOB_QUOTE_PAGE_ID || previousScreen.current === currentStep) return
+        previousScreen.current = currentStep
+        const timer = window.setTimeout(() => {
+            const panel = panelRef.current
+            if (!panel) return
+            if (panel.contains(document.activeElement) && document.activeElement?.matches('input, textarea, select')) return
+            panel.focus({ preventScroll: true })
+            if (panel.getBoundingClientRect().top < 0) panel.scrollIntoView({ block: 'start', behavior: 'instant' })
+        }, 650)
+        return () => window.clearTimeout(timer)
+    }, [currentStep, pageId])
 
     // モバイル判定
     useEffect(() => {
@@ -229,14 +244,14 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     const isContactInfoValid = () => contactInfo.companyName.trim() !== '' && contactInfo.contactName.trim() !== '' && contactInfo.email.includes('@')
 
-    const getNextScreen = () => {
+    const getNextScreen = (currentAnswers = answers) => {
         if (currentStep < FORM_START || currentStep >= RESULT_STEP) return Math.min(currentStep + 1, CONTACT_STEP)
 
         const stepData = activeSteps[currentStep - FORM_START]
         const question = stepData?.questions[0]
         if (!question || question.input_type === 'checkbox') return Math.min(currentStep + 1, RESULT_STEP)
 
-        const answer = answers[question.id]
+        const answer = currentAnswers[question.id]
         const selectedOptionId = typeof answer === 'object' && answer !== null && !Array.isArray(answer)
             ? answer.selected
             : answer
@@ -293,6 +308,20 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         if (productId !== selectedProduct) setAnswers({})
         setSelectedProduct(productId)
         if (isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(productId)) setOemQuantity(400)
+        if (isBtoBQuotePage) navigateTo(FORM_START)
+    }
+
+    const isInstantChoice = isBtoBQuotePage && currentStep >= FORM_START && currentStep < RESULT_STEP
+        && activeSteps[currentStep - FORM_START]?.questions.length === 1
+        && activeSteps[currentStep - FORM_START]?.questions[0].input_type === 'radio'
+
+    const handleInstantChoice = (questionId: string, optionId: string) => {
+        // Route from the new answer, not the previous render's state.
+        const laterIds = new Set(activeSteps.slice(currentStep - FORM_START + 1).flatMap(s => s.questions.map(q => q.id)))
+        const nextAnswers = { ...Object.fromEntries(Object.entries(answers).filter(([id]) => !laterIds.has(id))), [questionId]: optionId }
+        setAnswers(nextAnswers)
+        if (isTeaProduct && optionId === 'b2026091-6001-4000-8000-000000000203') return
+        navigateTo(getNextScreen(nextAnswers))
     }
 
     const handleAnswerChange = (questionId: string, value: any, type: string) => {
@@ -362,6 +391,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         const val = answers[q.id] || (q.input_type === 'checkbox' ? [] : (q.input_type === 'select_text' || q.input_type === 'select_number') ? { selected: '', extra: '' } : '')
         switch (q.input_type) {
             case 'radio': {
+                const Choice = isInstantChoice ? 'button' : 'label'
                 const hasImages = q.options.some((o: any) => packageSamplePhoto(pageId, o.id, o.image_url))
                 return (
                     <div style={{ 
@@ -373,7 +403,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         {q.options.map((opt: any) => {
                             const isSelected = val === opt.id
                             return (
-                                <label key={opt.id} style={{ display: 'flex', flexDirection: hasImages ? 'column' : 'row', alignItems: hasImages ? 'stretch' : 'center', justifyContent: hasImages ? 'flex-start' : 'space-between', padding: hasImages ? '0' : '16px', borderRadius: '16px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s ease', overflow: 'hidden', boxShadow: isSelected ? '0 0 20px rgba(99,102,241,0.2)' : 'none' }}>
+                                <Choice key={opt.id} onClick={isInstantChoice ? () => handleInstantChoice(q.id, opt.id) : undefined} style={{ display: 'flex', flexDirection: hasImages ? 'column' : 'row', alignItems: hasImages ? 'stretch' : 'center', justifyContent: hasImages ? 'flex-start' : 'space-between', padding: hasImages ? '0' : '16px', borderRadius: '16px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s ease', overflow: 'hidden', boxShadow: isSelected ? '0 0 20px rgba(99,102,241,0.2)' : 'none' }}>
                                     {hasImages && packageSamplePhoto(pageId, opt.id, opt.image_url) && (
                                         <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
                                             <Image src={packageSamplePhoto(pageId, opt.id, opt.image_url)!} alt={opt.label + (isBtoBQuotePage ? 'の包装サンプル' : '')} width={400} height={400} style={{ width: '100%', height: '100%', objectFit: isFixedLotProduct ? 'contain' : 'cover' }} />
@@ -381,14 +411,14 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                         </div>
                                     )}
                                     <div style={{ padding: hasImages ? '12px' : '0', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: hasImages ? 'center' : 'flex-start' }}>
-                                        <input type="radio" name={q.id} value={opt.id} checked={isSelected} onChange={() => handleAnswerChange(q.id, opt.id, 'radio')} style={{ display: hasImages ? 'none' : 'block', width: '16px', height: '16px', accentColor: '#818cf8' }} />
+                                        {!isInstantChoice && <input type="radio" name={q.id} value={opt.id} checked={isSelected} onChange={() => handleAnswerChange(q.id, opt.id, 'radio')} style={{ display: hasImages ? 'none' : 'block', width: '16px', height: '16px', accentColor: '#818cf8' }} />}
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: hasImages ? 'center' : 'flex-start' }}>
                                             <span style={{ fontWeight: 600, color: '#fff', fontSize: hasImages ? '15px' : '16px', textAlign: hasImages ? 'center' : 'left', lineHeight: 1.3 } as React.CSSProperties}>{opt.label}</span>
                                             {opt.description && <span style={{ fontSize: isFixedLotProduct ? '14px' : '11.5px', color: 'rgba(255,255,255,0.7)', textAlign: hasImages ? 'center' : 'left', marginTop: '6px', lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-line' } as React.CSSProperties}>{opt.description}</span>}
                                         </div>
                                     </div>
                                     {priceLabel(opt) && <div style={{ padding: hasImages ? '0 12px 12px' : '0', textAlign: hasImages ? 'center' : 'right' } as React.CSSProperties}><span style={{ fontSize: '13px', fontWeight: 700, color: opt.price_modifier_type === 'percentage' ? '#fbbf24' : '#818cf8' }}>{priceLabel(opt)}</span></div>}
-                                </label>
+                                </Choice>
                             )
                         })}
                     </div>
@@ -435,7 +465,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             <div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)' }}>
 
                 {/* ステップインジケーター */}
-                {isMobile ? (
+                {isBtoBQuotePage ? (
+                    <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: '#c7d2fe', fontSize: 16 }}>
+                        {currentStep === PRODUCT_STEP ? '商品を選ぶ → 仕様を選ぶ → 概算を見る' : currentStep < RESULT_STEP ? products.find(p => p.id === selectedProduct)?.name : currentStep === RESULT_STEP ? '概算お見積もり' : 'ご相談・仮申込'}
+                    </div>
+                ) : isMobile ? (
                     /* モバイル版: プログレスバー＋ステップ名 */
                     <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -517,13 +551,13 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 {currentStep < RESULT_STEP && currentStep >= FORM_START && (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}><span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({quantityLabel})</span><span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</span></div>)}
 
                 {/* メインフォーム */}
-                <div style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px' }}>
+                <div ref={panelRef} tabIndex={-1} aria-label="商品仕様と概算見積もり" style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px', scrollMarginTop: 90 }}>
                     <AnimatePresence mode="wait" initial={false}>
                         {/* 数量入力 */}
                         {currentStep === 0 && !isBtoBQuotePage && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
 
                         {/* 商品選択 */}
-                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? 'まずは画像から商品を選択。約400個の小ロット。お茶は専用の2プランをご用意しています。' : '商品に応じた見積もりフォームが表示されます'}</p></div><div style={{
+                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? '画像を押すと、その商品の仕様を選べます。約400個の小ロット。お茶は専用の2プランをご用意しています。' : '商品に応じた見積もりフォームが表示されます'}</p></div><div style={{
                             display: 'grid', 
                             gridTemplateColumns: isBtoBQuotePage ? `repeat(${isMobile ? 2 : 3}, minmax(0, 1fr))` : isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))',
                             gap: '16px' 
@@ -570,10 +604,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                             <div style={{ marginBottom: '24px' }}>
                                                 <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                     {stepData.step_title}
-                                                    {q.is_required && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}
+                                                    {q.is_required && !isInstantChoice && <span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span>}
                                                 </h2>
                                                 {stepData.step_description && <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{stepData.step_description}</p>}
                                                 {q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}
+                                                {isInstantChoice && <p style={{ fontSize: 14, color: '#c7d2fe', marginTop: 8 }}>選択肢を押すと進みます。あとから戻って変更できます。</p>}
                                             </div>
                                             <div>{renderQuestionInput(q)}</div>
                                         </>
@@ -713,7 +748,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                     {isTeaDeclined && <p role="alert" style={{ color: '#fecaca', fontSize: 16, lineHeight: 1.8, marginTop: 24 }}>お茶は原料をご支給いただける場合のみ承ります。原料のご支給がない場合はお見積もりできません。「戻る」で別の商品をお選びいただけます。</p>}
                     <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <button onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', visibility: currentStep === firstStep ? 'hidden' : 'visible' }}><ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る</button>
-                        {currentStep < RESULT_STEP ? (
+                        {currentStep < RESULT_STEP && !(isBtoBQuotePage && currentStep === PRODUCT_STEP) && !isInstantChoice ? (
                             <button onClick={handleNext} disabled={!isCurrentStepValid()} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed', opacity: isCurrentStepValid() ? 1 : 0.4, boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.2s' }}>{currentStep >= FORM_START && getNextScreen() === RESULT_STEP ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} /></button>
                         ) : currentStep === CONTACT_STEP ? (
                             <button onClick={handleSubmit} disabled={!isContactInfoValid() || isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isContactInfoValid() ? 'linear-gradient(135deg, #22c55e, #10b981)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isContactInfoValid() ? 'pointer' : 'not-allowed', opacity: isContactInfoValid() && !isSubmitting ? 1 : 0.5, boxShadow: isContactInfoValid() ? '0 8px 24px rgba(34,197,94,0.3)' : 'none' }}>{isSubmitting ? <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 style={{ width: '20px', height: '20px' }} />}{isSubmitting ? '送信中...' : 'この内容で送信する'}</button>
