@@ -25,13 +25,18 @@ const FIXED_LOT_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000002',
     'c0000001-0000-0000-0000-000000000003',
     'c0000001-0000-0000-0000-000000000004',
+    'c0000001-0000-0000-0000-000000000005',
+    'c0000001-0000-0000-0000-000000000006',
 ])
 const RAMEN_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000002'
 const CURRY_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000001'
+const TEA_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000006'
+const TEA_CAVEAT = '表示価格は概算です。食材の種類・状態、乾燥や焙煎などの加工内容により金額が変わります。食材によっては乾燥加工をお引き受けできない場合があります。原料確認後に対応可否と正式見積もりをご案内します。'
 const ONE_YEAR_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
     'c0000001-0000-0000-0000-000000000003',
     'c0000001-0000-0000-0000-000000000004',
+    'c0000001-0000-0000-0000-000000000005',
 ])
 
 export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
@@ -41,7 +46,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [errorData, setErrorData] = useState<string | null>(null)
-    const [oemQuantity, setOemQuantity] = useState<number>(400)
+    const [enteredQuantity, setOemQuantity] = useState<number>(400)
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
     const [isMobile, setIsMobile] = useState(false)
     const [navigationHistory, setNavigationHistory] = useState<number[]>([])
@@ -63,8 +68,15 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const isBtoBQuotePage = pageId === BTOB_QUOTE_PAGE_ID
     const isFixedLotProduct = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(selectedProduct || '')
     const isRamenProduct = isBtoBQuotePage && selectedProduct === RAMEN_PRODUCT_ID
-    const quantityUnit = isRamenProduct ? 'セット' : '個'
-    const quantityLabel = isFixedLotProduct ? `${oemQuantity}${quantityUnit}（固定ロット）` : `${oemQuantity}${quantityUnit}`
+    const isTeaProduct = isBtoBQuotePage && selectedProduct === TEA_PRODUCT_ID
+    const teaSelectedOptions = isTeaProduct ? productSteps.flatMap(s => s.questions).flatMap(q => q.options.filter(o => answers[q.id] === o.id)) : []
+    const isTeaBulk = answers['b2026091-6001-4000-8000-000000000221'] === 'b2026091-6001-4000-8000-000000000222'
+    const isTeaDeclined = isTeaProduct && answers['b2026091-6001-4000-8000-000000000201'] === 'b2026091-6001-4000-8000-000000000203'
+    const oemQuantity = isTeaProduct ? (isTeaBulk ? 100 : 400) : enteredQuantity
+    const quantityUnit = isTeaBulk ? '袋' : isRamenProduct ? 'セット' : '個'
+    const quantityLabel = isTeaProduct
+        ? (isTeaBulk ? '50包×100袋（5,000包）' : teaSelectedOptions.some(o => o.label.includes('4包')) ? '4包×400個（1,600包）' : 'プラン選択後に確定')
+        : isFixedLotProduct ? `${oemQuantity}${quantityUnit}（固定ロット）` : `${oemQuantity}${quantityUnit}`
     const usesExplicitRouting = useMemo(
         () => productSteps.some(step => step.questions.some(question => (
             question.options.some(option => option.next_step_id || option.go_to_estimate)
@@ -122,7 +134,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         if (!capacityLabel) return null
         return capacityLabel.match(/\d+(?:\.\d+)?(?:[〜～-]\d+(?:\.\d+)?)?\s?(?:kg|g|ml|cc|l)/i)?.[0] || capacityLabel
     }, [activeSteps, answers, selectedProduct])
-    const fixedLotConditionNote = isRamenProduct
+    const fixedLotConditionNote = isTeaProduct ? TEA_CAVEAT : isRamenProduct
         ? '概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から60日'
         : `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から1年${selectedProduct === CURRY_PRODUCT_ID ? '／内容量200g' : packagingCapacity ? `／容量：${packagingCapacity}` : ''}`
 
@@ -197,6 +209,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     // バリデーション
     const isCurrentStepValid = () => {
+        if (isTeaDeclined) return false
         if (currentStep === 0) return isFixedLotProduct ? oemQuantity === 400 : oemQuantity >= 400 && oemQuantity <= 800
         if (currentStep === PRODUCT_STEP) return selectedProduct !== null
         if (currentStep >= FORM_START && currentStep < RESULT_STEP) {
@@ -300,7 +313,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault()
-        if (!isContactInfoValid()) return
+        if (!isContactInfoValid() || isTeaDeclined) return
         setIsSubmitting(true)
         setErrorData(null)
         const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
@@ -510,9 +523,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         {currentStep === 0 && !isBtoBQuotePage && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
 
                         {/* 商品選択 */}
-                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? 'まずは画像から商品を選択。1ロット約400個（ラーメンは400セット）で概算します。' : '商品に応じた見積もりフォームが表示されます'}</p></div><div style={{
+                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? 'まずは画像から商品を選択。約400個の小ロット。お茶は専用の2プランをご用意しています。' : '商品に応じた見積もりフォームが表示されます'}</p></div><div style={{
                             display: 'grid', 
-                            gridTemplateColumns: isMobile ? (isBtoBQuotePage ? 'repeat(2, minmax(0, 1fr))' : '1fr') : 'repeat(auto-fill, minmax(200px, 1fr))',
+                            gridTemplateColumns: isBtoBQuotePage ? `repeat(${isMobile ? 2 : 3}, minmax(0, 1fr))` : isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))',
                             gap: '16px' 
                         }}>
                         {products.map(p => { const isSelected = selectedProduct === p.id; const isFixedLotCard = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(p.id); return (
@@ -533,7 +546,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                 {/* テキスト部 */}
                                 <div style={{ padding: isBtoBQuotePage && isMobile ? '12px 8px 16px' : '16px 20px 20px', textAlign: 'center', width: '100%' }}>
                                     <span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>
-                                    {p.description && <span style={{ fontSize: isFixedLotCard ? '14px' : '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{isBtoBQuotePage && isMobile ? ({ 'c0000001-0000-0000-0000-000000000001': '200g基準・約400個', 'c0000001-0000-0000-0000-000000000002': '2食入り・約400セット', 'c0000001-0000-0000-0000-000000000003': '瓶・袋／35g・50g', 'c0000001-0000-0000-0000-000000000004': '瓶・パウチから選択' }[p.id] || p.description) : p.description}</span>}
+                                    {p.description && <span style={{ fontSize: isFixedLotCard ? '14px' : '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{isBtoBQuotePage && isMobile ? ({ 'c0000001-0000-0000-0000-000000000001': '200g基準・約400個', 'c0000001-0000-0000-0000-000000000002': '2食入り・約400セット', 'c0000001-0000-0000-0000-000000000003': '瓶・袋／35g・50g', 'c0000001-0000-0000-0000-000000000004': '瓶・パウチから選択', 'c0000001-0000-0000-0000-000000000005': 'ジャム・ご飯のお供／大小2種', 'c0000001-0000-0000-0000-000000000006': '原料支給必須／2プラン' }[p.id] || p.description) : p.description}</span>}
                                 </div>
                             </button>
                         ) })}</div></motion.div>)}
@@ -586,7 +599,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                     <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
                                         {isFixedLotProduct && <div style={{ fontSize: '15px', lineHeight: 1.8 }}>
                                             <p style={{ color: '#fff', fontWeight: 700 }}>1{quantityUnit}あたりの内訳（税別）{isRamenProduct ? '・2食入り' : ''}</p>
-                                            <p>製造手数料：{products.find(p => p.id === selectedProduct)?.base_price.toLocaleString()}円</p>
+                                            {isTeaProduct ? <p>乾燥・必要に応じた焙煎・製造・包装を含む概算です。製造手数料の別途加算はありません。</p> : <p>製造手数料：{products.find(p => p.id === selectedProduct)?.base_price.toLocaleString()}円</p>}
                                             {activeSteps.flatMap(s => s.questions).map(q => {
                                                 const answer = answers[q.id]
                                                 const selectedId = typeof answer === 'object' && answer !== null && !Array.isArray(answer) ? answer.selected : answer
@@ -594,7 +607,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                                 const hasCombinedMaterialPackaging = ONE_YEAR_PRODUCT_IDS.has(selectedProduct || '') && selectedProduct !== CURRY_PRODUCT_ID
                                                 return opt && opt.price_modifier > 0 ? <p key={q.id}>{hasCombinedMaterialPackaging ? `材料・包装：${opt.label}` : opt.label}：{opt.price_modifier.toLocaleString()}円</p> : null
                                             })}
-                                            <p style={{ marginTop: '8px' }}>原料持ち込みによる調整は含みません。正式見積もりで確認します。</p>
+                                            <p style={{ marginTop: '8px' }}>{isTeaProduct ? 'お客様からの原料支給が必要です。' : '原料持ち込みによる調整は含みません。正式見積もりで確認します。'}</p>
                                         </div>}
                                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
@@ -697,6 +710,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                     </AnimatePresence>
 
                     {/* ナビゲーションボタン */}
+                    {isTeaDeclined && <p role="alert" style={{ color: '#fecaca', fontSize: 16, lineHeight: 1.8, marginTop: 24 }}>お茶は原料をご支給いただける場合のみ承ります。原料のご支給がない場合はお見積もりできません。「戻る」で別の商品をお選びいただけます。</p>}
                     <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <button onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', visibility: currentStep === firstStep ? 'hidden' : 'visible' }}><ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る</button>
                         {currentStep < RESULT_STEP ? (

@@ -11,4 +11,5 @@ for (const style of ['photo','illustration']) {
   // User approved the same jar silhouette at a smaller display size for 35g.
   await sharp(`output/package-samples-20260916/furikake-jar-${style}.png`).resize(640,640).extend({top:80,bottom:80,left:80,right:80,background:'#ffffff'}).webp({quality:86}).toFile(`${dir}/furikake-small-${style}.webp`)
 }
-console.log('Prepared 28 sample images; source originals preserved.')
+await sharp('output/tea-samples-20260916/tea-bulk-photo.png').resize(800,800).webp({quality:86}).toFile(`${dir}/tea-bulk-photo.webp`)
+console.log('Prepared 29 sample images; source originals preserved.')

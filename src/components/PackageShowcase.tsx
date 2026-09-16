@@ -78,7 +78,7 @@ export default function PackageShowcase() {
           ))}
         </div>
 
-        <p className={styles.note}>サンプルイラストです。仕様・対応可否はご相談ください。<br />瓶詰め・お茶は個別にご相談ください。</p>
+        <p className={styles.note}>サンプルイラストです。仕様・対応可否はご相談ください。お茶は原料のご支給が必要です。</p>
         <a className={styles.cta} href="#bto-form">包装を見て、概算を確認</a>
       </div>
     </section>

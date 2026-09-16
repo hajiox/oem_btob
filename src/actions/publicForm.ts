@@ -129,7 +129,16 @@ export async function submitLead(formData: {
             'c0000001-0000-0000-0000-000000000002',
             'c0000001-0000-0000-0000-000000000003',
             'c0000001-0000-0000-0000-000000000004',
+            'c0000001-0000-0000-0000-000000000005',
+            'c0000001-0000-0000-0000-000000000006',
         ].includes(formData.quoteProductId || '')
+
+    if (isFixedLotQuote && formData.quoteProductId === 'c0000001-0000-0000-0000-000000000006') {
+        const selections = Array.isArray(formData.selectedOptions) ? formData.selectedOptions : []
+        const supplied = selections.some((s: { question?: string; answer?: string }) => s.question === 'お茶の原料をご支給いただけますか？' && s.answer === 'ある')
+        const ingredient = selections.some((s: { question?: string; answer?: string }) => s.question === '原料名をご入力ください' && typeof s.answer === 'string' && s.answer.trim())
+        if (!supplied || !ingredient) return { success: false, error: 'お茶は原料支給と原料名の確認が必要です。' }
+    }
 
     const { error } = await supabase.from('leads').insert([{
         page_id: formData.pageId || null,

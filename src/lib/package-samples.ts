@@ -14,6 +14,8 @@ const optionSamples: Record<string, string> = {
   'b2026091-6000-4000-8000-000000000224': 'sauce-pouch',
 }
 const productSamples: Record<string, string> = {
+  'c0000001-0000-0000-0000-000000000005': 'jar-small',
+  'c0000001-0000-0000-0000-000000000006': 'tea-retail',
   'c0000001-0000-0000-0000-000000000001': 'curry-box',
   'c0000001-0000-0000-0000-000000000002': 'ramen-bag',
   'c0000001-0000-0000-0000-000000000003': 'furikake-jar',
