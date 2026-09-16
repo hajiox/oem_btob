@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, Package } from 'lucide-react'
 import Image from 'next/image'
+import { packageSamplePhoto } from '@/lib/package-samples'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
@@ -346,7 +347,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         const val = answers[q.id] || (q.input_type === 'checkbox' ? [] : (q.input_type === 'select_text' || q.input_type === 'select_number') ? { selected: '', extra: '' } : '')
         switch (q.input_type) {
             case 'radio': {
-                const hasImages = q.options.some((o: any) => o.image_url)
+                const hasImages = q.options.some((o: any) => packageSamplePhoto(pageId, o.id, o.image_url))
                 return (
                     <div style={{ 
                         display: 'grid', 
@@ -358,9 +359,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                             const isSelected = val === opt.id
                             return (
                                 <label key={opt.id} style={{ display: 'flex', flexDirection: hasImages ? 'column' : 'row', alignItems: hasImages ? 'stretch' : 'center', justifyContent: hasImages ? 'flex-start' : 'space-between', padding: hasImages ? '0' : '16px', borderRadius: '16px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s ease', overflow: 'hidden', boxShadow: isSelected ? '0 0 20px rgba(99,102,241,0.2)' : 'none' }}>
-                                    {hasImages && opt.image_url && (
+                                    {hasImages && packageSamplePhoto(pageId, opt.id, opt.image_url) && (
                                         <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.3)' }}>
-                                            <Image src={opt.image_url} alt={opt.label} width={400} height={400} style={{ width: '100%', height: '100%', objectFit: isFixedLotProduct ? 'contain' : 'cover' }} />
+                                            <Image src={packageSamplePhoto(pageId, opt.id, opt.image_url)!} alt={opt.label + (isBtoBQuotePage ? 'の包装サンプル' : '')} width={400} height={400} style={{ width: '100%', height: '100%', objectFit: isFixedLotProduct ? 'contain' : 'cover' }} />
                                             {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '24px', height: '24px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>✓</div>}
                                         </div>
                                     )}
@@ -515,9 +516,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                         {products.map(p => { const isSelected = selectedProduct === p.id; const isFixedLotCard = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(p.id); return (
                             <button key={p.id} onClick={() => handleProductSelect(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
                                 {/* 商品画像 or フォールバックアイコン */}
-                                {p.image_url ? (
+                                {packageSamplePhoto(pageId, p.id, p.image_url) ? (
                                     <div style={{ width: '100%', aspectRatio: isMobile ? '16/9' : '1/1', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
-                                        <Image src={p.image_url} alt={p.name} fill style={{ objectFit: isFixedLotCard ? 'contain' : 'cover' }} sizes="(max-width: 768px) 100vw, 200px" />
+                                        <Image src={packageSamplePhoto(pageId, p.id, p.image_url)!} alt={p.name} fill style={{ objectFit: isFixedLotCard ? 'contain' : 'cover' }} sizes="(max-width: 768px) 100vw, 200px" />
                                         {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>✓</div>}
                                     </div>
                                 ) : (

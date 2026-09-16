@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { LpSection, Product } from '@/types/database'
 import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
+import PackageShowcase from '@/components/PackageShowcase'
+import { SAMPLE_PAGE_ID } from '@/lib/package-samples'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Facebook, Instagram, Youtube, MapPin, Phone, Clock, CalendarDays } from 'lucide-react'
@@ -300,6 +302,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   </div>
                 )}
 
+                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <PackageShowcase />}
               </div>
             ))
           ) : (
@@ -316,6 +319,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                   priority={i === 0}
                 />
+                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <PackageShowcase />}
               </div>
             ))
           )}
@@ -356,6 +360,25 @@ export default async function HomePage({ params }: { params: { slug: string } })
           </p>
         </div>
 
+        {currentPageId === SAMPLE_PAGE_ID && (
+          <div style={{ position: 'relative', maxWidth: 900, margin: '0 auto 32px', color: '#e2e8f0', fontSize: 14, lineHeight: 1.8 }}>
+            <p>包装画像は実際の容器を参考にしたAI生成の写真風サンプルです。実物写真・実寸比較ではありません。色味・内容物・ラベルは見本で、最終仕様は正式見積もり時に確認します。</p>
+            <details style={{ marginTop: 16, padding: 16, border: '1px solid #64748b', borderRadius: 12 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 16 }}>瓶詰め・お茶の包装見本を見る（個別相談）</summary>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
+                {[
+                  ['jar-large', '瓶詰め・丸瓶大120g'],
+                  ['jar-small', '瓶詰め・丸瓶小90g'],
+                  ['tea-retail', 'お茶4包入り・コート紙＋縦帯'],
+                ].map(([id, label]) => <figure key={id}>
+                  <Image src={`/images/package-samples/${id}-photo.webp`} alt={label + 'の包装サンプル'} width={400} height={400} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
+                  <figcaption style={{ marginTop: 8 }}>{label}</figcaption>
+                </figure>)}
+              </div>
+              <p style={{ marginTop: 16 }}>瓶詰め・お茶は現在、自動見積もりの選択対象外です。お茶は原料のご支給が必要です。食材によって乾燥加工をお引き受けできない場合があります。</p>
+            </details>
+          </div>
+        )}
         <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} />
       </section>
 
