@@ -124,7 +124,12 @@ export async function submitLead(formData: {
     const supabase = await createClient()
 
     const isFixedLotQuote = formData.pageId === '35e7d402-0443-4703-94a4-fc2873b8f933' &&
-        ['c0000001-0000-0000-0000-000000000001', 'c0000001-0000-0000-0000-000000000002'].includes(formData.quoteProductId || '')
+        [
+            'c0000001-0000-0000-0000-000000000001',
+            'c0000001-0000-0000-0000-000000000002',
+            'c0000001-0000-0000-0000-000000000003',
+            'c0000001-0000-0000-0000-000000000004',
+        ].includes(formData.quoteProductId || '')
 
     const { error } = await supabase.from('leads').insert([{
         page_id: formData.pageId || null,

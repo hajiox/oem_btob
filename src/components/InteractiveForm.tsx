@@ -17,11 +17,20 @@ const shouldShowExtraInput = (label: string | null | undefined) => {
     return !EXTRA_EXCLUSION_KEYWORDS.some(k => normalized.includes(k))
 }
 
-// このLPだけは、カレー・ラーメンを固定ロットで概算する。
+// このLPだけは、全商品を固定ロット（400個、ラーメンは400セット）で概算する。
 const BTOB_QUOTE_PAGE_ID = '35e7d402-0443-4703-94a4-fc2873b8f933'
 const FIXED_LOT_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
     'c0000001-0000-0000-0000-000000000002',
+    'c0000001-0000-0000-0000-000000000003',
+    'c0000001-0000-0000-0000-000000000004',
+])
+const RAMEN_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000002'
+const CURRY_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000001'
+const ONE_YEAR_PRODUCT_IDS = new Set([
+    'c0000001-0000-0000-0000-000000000001',
+    'c0000001-0000-0000-0000-000000000003',
+    'c0000001-0000-0000-0000-000000000004',
 ])
 
 export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
@@ -51,7 +60,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     )
     const isBtoBQuotePage = pageId === BTOB_QUOTE_PAGE_ID
     const isFixedLotProduct = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(selectedProduct || '')
-    const isRamenProduct = isBtoBQuotePage && selectedProduct === 'c0000001-0000-0000-0000-000000000002'
+    const isRamenProduct = isBtoBQuotePage && selectedProduct === RAMEN_PRODUCT_ID
     const quantityUnit = isRamenProduct ? 'セット' : '個'
     const quantityLabel = isFixedLotProduct ? `${oemQuantity}${quantityUnit}（固定ロット）` : `${oemQuantity}${quantityUnit}`
     const usesExplicitRouting = useMemo(
@@ -92,6 +101,28 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     }, [selectedProduct, productSteps, answers, usesExplicitRouting])
 
     const activeSteps = filteredActiveSteps
+
+    // ふりかけ・ソースは包装の選択肢ラベルに容量が含まれるため、見積条件にも反映する。
+    const packagingCapacity = useMemo(() => {
+        if (!selectedProduct || !ONE_YEAR_PRODUCT_IDS.has(selectedProduct)) return null
+        const selectedLabels: string[] = []
+        activeSteps.forEach(step => step.questions.forEach(question => {
+            const answer = answers[question.id]
+            const ids = Array.isArray(answer)
+                ? answer
+                : [typeof answer === 'object' && answer !== null ? answer.selected : answer]
+            ids.forEach(id => {
+                const option = question.options.find(option => option.id === id)
+                if (option) selectedLabels.push(option.label)
+            })
+        }))
+        const capacityLabel = selectedLabels.find(label => /(?:容量|内容量|\d+(?:\.\d+)?\s?(?:g|kg|ml|l|cc))/i.test(label))
+        if (!capacityLabel) return null
+        return capacityLabel.match(/\d+(?:\.\d+)?(?:[〜～-]\d+(?:\.\d+)?)?\s?(?:kg|g|ml|cc|l)/i)?.[0] || capacityLabel
+    }, [activeSteps, answers, selectedProduct])
+    const fixedLotConditionNote = isRamenProduct
+        ? '概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から60日'
+        : `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から1年${selectedProduct === CURRY_PRODUCT_ID ? '／内容量200g' : packagingCapacity ? `／容量：${packagingCapacity}` : ''}`
 
     // 0=数量, 1=商品選択, 2~N+1=フォーム, N+2=結果, N+3=お客様情報
     const PRODUCT_STEP = 1
@@ -277,7 +308,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             { question: '商品', answer: selectedProd?.name || '', type: 'text' },
             { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
             { question: `1${quantityUnit}あたり仕入原価(税抜)`, answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
-            ...(isFixedLotProduct ? [{ question: '見積条件', answer: `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）${quantityUnit === 'セット' ? '／賞味期限：製造から60日' : '／内容量200g'} `, type: 'text' }] : []),
+            ...(isFixedLotProduct ? [{ question: '見積条件', answer: fixedLotConditionNote, type: 'text' }] : []),
             ...Object.entries(answers).map(([qId, val]) => {
                 const q = activeSteps.flatMap(s => s.questions).find(q => q.id === qId)
                 if (!q) return null
@@ -473,7 +504,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 <div style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px' }}>
                     <AnimatePresence mode="wait" initial={false}>
                         {/* 数量入力 */}
-                        {currentStep === 0 && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `カレー・ラーメンは${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメンは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
+                        {currentStep === 0 && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
 
                         {/* 商品選択 */}
                         {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>商品に応じた見積もりフォームが表示されます</p></div><div style={{ 
@@ -546,7 +577,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                 <div style={{ textAlign: 'center', padding: '32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.1))', border: '1px solid rgba(99,102,241,0.2)', marginBottom: '32px' }}>
                                     <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>概算お見積り金額 ({quantityLabel})</div>
                                     <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</div>
-                                    {isFixedLotProduct ? <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>税抜・概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）{quantityUnit === 'セット' ? '／賞味期限：製造から60日' : '／内容量200g'}</div> : <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>}
+                                    {isFixedLotProduct ? <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>税抜・{fixedLotConditionNote}</div> : <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>}
                                     {!isFixedLotProduct && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>}
                                     
                                     <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
@@ -554,8 +585,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                             <p style={{ color: '#fff', fontWeight: 700 }}>1{quantityUnit}あたりの内訳（税別）{isRamenProduct ? '・2食入り' : ''}</p>
                                             <p>製造手数料：{products.find(p => p.id === selectedProduct)?.base_price.toLocaleString()}円</p>
                                             {activeSteps.flatMap(s => s.questions).map(q => {
-                                                const opt = q.options.find(o => o.id === answers[q.id])
-                                                return opt && opt.price_modifier > 0 ? <p key={q.id}>{opt.label}：{opt.price_modifier.toLocaleString()}円</p> : null
+                                                const answer = answers[q.id]
+                                                const selectedId = typeof answer === 'object' && answer !== null && !Array.isArray(answer) ? answer.selected : answer
+                                                const opt = q.options.find(o => o.id === selectedId)
+                                                const hasCombinedMaterialPackaging = ONE_YEAR_PRODUCT_IDS.has(selectedProduct || '') && selectedProduct !== CURRY_PRODUCT_ID
+                                                return opt && opt.price_modifier > 0 ? <p key={q.id}>{hasCombinedMaterialPackaging ? `材料・包装：${opt.label}` : opt.label}：{opt.price_modifier.toLocaleString()}円</p> : null
                                             })}
                                             <p style={{ marginTop: '8px' }}>原料持ち込みによる調整は含みません。正式見積もりで確認します。</p>
                                         </div>}
