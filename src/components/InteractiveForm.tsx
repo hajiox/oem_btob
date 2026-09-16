@@ -209,7 +209,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     // バリデーション
     const isCurrentStepValid = () => {
-        if (isTeaDeclined) return false
+        if (isTeaDeclined && currentStep >= FORM_START) return false
         if (currentStep === 0) return isFixedLotProduct ? oemQuantity === 400 : oemQuantity >= 400 && oemQuantity <= 800
         if (currentStep === PRODUCT_STEP) return selectedProduct !== null
         if (currentStep >= FORM_START && currentStep < RESULT_STEP) {
