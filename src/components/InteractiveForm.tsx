@@ -533,7 +533,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                 {/* テキスト部 */}
                                 <div style={{ padding: isBtoBQuotePage && isMobile ? '12px 8px 16px' : '16px 20px 20px', textAlign: 'center', width: '100%' }}>
                                     <span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>
-                                    {p.description && <span style={{ fontSize: isFixedLotCard ? '14px' : '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{p.description}</span>}
+                                    {p.description && <span style={{ fontSize: isFixedLotCard ? '14px' : '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{isBtoBQuotePage && isMobile ? ({ 'c0000001-0000-0000-0000-000000000001': '200g基準・約400個', 'c0000001-0000-0000-0000-000000000002': '2食入り・約400セット', 'c0000001-0000-0000-0000-000000000003': '瓶・袋／35g・50g', 'c0000001-0000-0000-0000-000000000004': '瓶・パウチから選択' }[p.id] || p.description) : p.description}</span>}
                                 </div>
                             </button>
                         ) })}</div></motion.div>)}
@@ -710,7 +710,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
             {/* フローティング見積もりボタン（フォーム開始前のみ表示） */}
             <AnimatePresence>
-                {currentStep === firstStep && (
+                {currentStep === firstStep && !isBtoBQuotePage && (
                     <motion.a
                         key="floating-cta"
                         href="#bto-form"
