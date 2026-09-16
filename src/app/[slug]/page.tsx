@@ -360,8 +360,9 @@ export default async function HomePage({ params }: { params: { slug: string } })
           </p>
         </div>
 
+        <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} />
         {currentPageId === SAMPLE_PAGE_ID && (
-          <div style={{ position: 'relative', maxWidth: 900, margin: '0 auto 32px', color: '#e2e8f0', fontSize: 14, lineHeight: 1.8 }}>
+          <div style={{ position: 'relative', maxWidth: 900, margin: '32px auto 0', color: '#e2e8f0', fontSize: 14, lineHeight: 1.8 }}>
             <p>包装画像は実際の容器を参考にしたAI生成の写真風サンプルです。実物写真・実寸比較ではありません。色味・内容物・ラベルは見本で、最終仕様は正式見積もり時に確認します。</p>
             <details style={{ marginTop: 16, padding: 16, border: '1px solid #64748b', borderRadius: 12 }}>
               <summary style={{ cursor: 'pointer', fontSize: 16 }}>瓶詰め・お茶の包装見本を見る（個別相談）</summary>
@@ -379,7 +380,6 @@ export default async function HomePage({ params }: { params: { slug: string } })
             </details>
           </div>
         )}
-        <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} />
       </section>
 
       {/* 店舗情報セクション */}

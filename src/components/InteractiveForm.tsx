@@ -35,7 +35,8 @@ const ONE_YEAR_PRODUCT_IDS = new Set([
 ])
 
 export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
-    const [currentStep, setCurrentStep] = useState(0)
+    const firstStep = pageId === BTOB_QUOTE_PAGE_ID ? 1 : 0
+    const [currentStep, setCurrentStep] = useState(firstStep)
     const [direction, setDirection] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
@@ -133,23 +134,23 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
     // 進捗インジケーターの計算（動的なステップ数に対応）
     const visualSteps = useMemo(() => {
-        const labels = ['製造数', '商品']
+        const labels = isBtoBQuotePage ? ['商品'] : ['製造数', '商品']
         activeSteps.forEach(s => labels.push(s.step_title))
         labels.push('概算金額')
         labels.push('お客様情報')
         return labels
-    }, [activeSteps])
+    }, [activeSteps, isBtoBQuotePage])
 
     const currentVisualIdx = useMemo(() => {
-        if (currentStep <= PRODUCT_STEP) return currentStep
+        if (currentStep <= PRODUCT_STEP) return currentStep - firstStep
         if (currentStep >= RESULT_STEP) {
             if (currentStep === RESULT_STEP) return visualSteps.length - 2
             return visualSteps.length - 1 // CONTACT_STEP
         }
         // フォーム領域内: currentStep - FORM_START がフォーム内のインデックス
         const formIdx = currentStep - FORM_START
-        return FORM_START + Math.min(formIdx, activeSteps.length - 1)
-    }, [currentStep, visualSteps, RESULT_STEP, PRODUCT_STEP, activeSteps.length])
+        return FORM_START - firstStep + Math.min(formIdx, activeSteps.length - 1)
+    }, [currentStep, visualSteps, RESULT_STEP, PRODUCT_STEP, activeSteps.length, firstStep])
 
     // 金額計算
     const unitPrice = useMemo(() => {
@@ -260,16 +261,17 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         navigateTo(getNextScreen())
     }
     const handlePrev = () => {
+        if (currentStep <= firstStep) return
         setDirection(-1)
         if (isFixedLotProduct) {
             // Routes move forward; a repeated click must not create a same-screen back entry.
             const previousIndex = navigationHistory.findLastIndex(step => step < currentStep)
-            setCurrentStep(previousIndex >= 0 ? navigationHistory[previousIndex] : Math.max(0, currentStep - 1))
+            setCurrentStep(Math.max(firstStep, previousIndex >= 0 ? navigationHistory[previousIndex] : currentStep - 1))
             setNavigationHistory(history => previousIndex >= 0 ? history.slice(0, previousIndex) : [])
             return
         }
         const previousStep = navigationHistory[navigationHistory.length - 1]
-        setCurrentStep(previousStep ?? Math.max(0, currentStep - 1))
+        setCurrentStep(Math.max(firstStep, previousStep ?? currentStep - 1))
         if (previousStep !== undefined) setNavigationHistory(history => history.slice(0, -1))
     }
     const handleApply = () => navigateTo(CONTACT_STEP)
@@ -505,19 +507,19 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 <div style={{ padding: '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px' }}>
                     <AnimatePresence mode="wait" initial={false}>
                         {/* 数量入力 */}
-                        {currentStep === 0 && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
+                        {currentStep === 0 && !isBtoBQuotePage && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
 
                         {/* 商品選択 */}
-                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>商品に応じた見積もりフォームが表示されます</p></div><div style={{ 
+                        {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? 'まずは画像から商品を選択。1ロット約400個（ラーメンは400セット）で概算します。' : '商品に応じた見積もりフォームが表示されます'}</p></div><div style={{
                             display: 'grid', 
-                            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', 
+                            gridTemplateColumns: isMobile ? (isBtoBQuotePage ? 'repeat(2, minmax(0, 1fr))' : '1fr') : 'repeat(auto-fill, minmax(200px, 1fr))',
                             gap: '16px' 
                         }}>
                         {products.map(p => { const isSelected = selectedProduct === p.id; const isFixedLotCard = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(p.id); return (
                             <button key={p.id} onClick={() => handleProductSelect(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
                                 {/* 商品画像 or フォールバックアイコン */}
                                 {packageSamplePhoto(pageId, p.id, p.image_url) ? (
-                                    <div style={{ width: '100%', aspectRatio: isMobile ? '16/9' : '1/1', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
+                                    <div style={{ width: '100%', aspectRatio: isBtoBQuotePage ? '1/1' : isMobile ? '16/9' : '1/1', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
                                         <Image src={packageSamplePhoto(pageId, p.id, p.image_url)!} alt={p.name} fill style={{ objectFit: isFixedLotCard ? 'contain' : 'cover' }} sizes="(max-width: 768px) 100vw, 200px" />
                                         {isSelected && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', background: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>✓</div>}
                                     </div>
@@ -529,7 +531,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                     </div>
                                 )}
                                 {/* テキスト部 */}
-                                <div style={{ padding: '16px 20px 20px', textAlign: 'center', width: '100%' }}>
+                                <div style={{ padding: isBtoBQuotePage && isMobile ? '12px 8px 16px' : '16px 20px 20px', textAlign: 'center', width: '100%' }}>
                                     <span style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'block' }}>{p.name}</span>
                                     {p.description && <span style={{ fontSize: isFixedLotCard ? '14px' : '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px', display: 'block' }}>{p.description}</span>}
                                 </div>
@@ -696,9 +698,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
                     {/* ナビゲーションボタン */}
                     <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <button onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', visibility: currentStep === 0 ? 'hidden' : 'visible' }}><ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る</button>
+                        <button onClick={handlePrev} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', visibility: currentStep === firstStep ? 'hidden' : 'visible' }}><ChevronLeft style={{ width: '16px', height: '16px' }} /> 戻る</button>
                         {currentStep < RESULT_STEP ? (
-                            <button onClick={handleNext} disabled={!isCurrentStepValid()} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed', opacity: isCurrentStepValid() ? 1 : 0.4, boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.2s' }}>{getNextScreen() === RESULT_STEP ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} /></button>
+                            <button onClick={handleNext} disabled={!isCurrentStepValid()} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed', opacity: isCurrentStepValid() ? 1 : 0.4, boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.2s' }}>{currentStep >= FORM_START && getNextScreen() === RESULT_STEP ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} /></button>
                         ) : currentStep === CONTACT_STEP ? (
                             <button onClick={handleSubmit} disabled={!isContactInfoValid() || isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isContactInfoValid() ? 'linear-gradient(135deg, #22c55e, #10b981)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isContactInfoValid() ? 'pointer' : 'not-allowed', opacity: isContactInfoValid() && !isSubmitting ? 1 : 0.5, boxShadow: isContactInfoValid() ? '0 8px 24px rgba(34,197,94,0.3)' : 'none' }}>{isSubmitting ? <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 style={{ width: '20px', height: '20px' }} />}{isSubmitting ? '送信中...' : 'この内容で送信する'}</button>
                         ) : <div />}
@@ -708,7 +710,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
 
             {/* フローティング見積もりボタン（フォーム開始前のみ表示） */}
             <AnimatePresence>
-                {currentStep === 0 && (
+                {currentStep === firstStep && (
                     <motion.a
                         key="floating-cta"
                         href="#bto-form"

@@ -34,8 +34,31 @@ const base = process.argv[2] || 'http://localhost:3107'
           await button.press('Enter')
           await page.waitForTimeout(450)
         }
-        await form.locator('input[type=number]').fill('800')
+        // /btob starts at product selection; quantity is fixed by the selected product.
+        const assertProductStep = async (label) => {
+          const productStepText = await form.innerText()
+          assert(productStepText.includes('作りたい商品を選んでください'), `${label}: step must be product selection`)
+          assert(!productStepText.includes('製造数'), `${label}: quantity must be excluded from visual labels`)
+          assert(!productStepText.includes('OEM製造数の入力'), `${label}: quantity heading must not be shown`)
+          assert(!productStepText.includes('製造予定数量'), `${label}: quantity field heading must not be shown`)
+          assert.equal(await form.locator('input[type=number]').count(), 0, `${label}: quantity input must not be shown`)
+          const productImages = form.locator('button img')
+          await productImages.first().waitFor()
+          assert(await productImages.count() > 0, `${label}: product option images must be present`)
+          for (let i = 0; i < await productImages.count(); i++) {
+            assert(await productImages.nth(i).isVisible(), `${label}: product option image ${i + 1} must be visible`)
+          }
+        }
+        await assertProductStep('Initial')
+        await form.screenshot({path:`.bto-backups/qa/product-first-${mobile?'mobile':'desktop'}.png`})
+        await form.getByRole('button', {name: new RegExp(`^${spec.product}`)}).click()
         await next()
+        // Product selection is step 1: going back must not expose a removed step 0.
+        await back()
+        await assertProductStep('Back from first form')
+        const productBack = form.getByRole('button', {name:'戻る', exact:true})
+        const productBackCount = await productBack.count()
+        assert(productBackCount === 0 || await productBack.first().evaluate(el => getComputedStyle(el).visibility === 'hidden'), 'Back must not navigate before product step')
         await form.getByRole('button', {name: new RegExp(`^${spec.product}`)}).click()
         await next()
         for (let i=0; i<spec.choices.length; i++) {
