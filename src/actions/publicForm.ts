@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { FormStep, FormQuestion, FormOption } from '@/types/database'
 import { Resend } from 'resend'
 import { OEM_PAGE_ID, OEM_PRODUCT_IDS, validateContactInfo, validateOemQuote, type ContactInfo } from '@/lib/oem-quote-validation'
+import { reserveOemLead } from '@/lib/oem-intake'
+import { buildOemMailPayloads, dispatchOemLeadMail } from '@/lib/oem-mail'
 
 export type FormStepWithItems = FormStep & {
     questions: (FormQuestion & {
@@ -121,6 +123,7 @@ export async function submitLead(formData: {
     estimatedTotalPrice: number
     quoteProductId?: string
     rawAnswers?: Record<string, unknown>
+    idempotencyKey?: string
     notes: string
 }) {
     const supabase = await createClient()
@@ -164,7 +167,7 @@ export async function submitLead(formData: {
         estimatedTotalPrice = checked.total
     }
 
-    const { error } = await supabase.from('leads').insert([{
+    const leadRow = {
         page_id: formData.pageId || null,
         company_name: formData.companyName,
         contact_name: formData.contactName,
@@ -174,7 +177,30 @@ export async function submitLead(formData: {
         estimated_total_price: estimatedTotalPrice,
         notes: formData.notes || null,
         status: 'new' // 初期ステータス
-    }])
+    }
+
+    if (isFixedLotQuote) {
+        try {
+            if (!formData.idempotencyKey) return { success: false, error: 'ページを再読み込みしてから、もう一度ご相談内容を送信してください。' }
+            const mailPayloads = await buildOemMailPayloads({ ...formData, pageId: OEM_PAGE_ID, selectedOptions, estimatedTotalPrice })
+            const reservation = await reserveOemLead({ idempotencyKey: formData.idempotencyKey, payload: leadRow, email: formData.email, lead: leadRow, mailPayloads })
+            if (reservation.status === 'rejected' || !reservation.leadId) {
+                const message = reservation.reason === 'rate_limited'
+                    ? `短時間に複数のご相談を受け付けました。約${Math.ceil((reservation.retryAfterSeconds || 3600) / 60)}分後にお試しください。`
+                    : '送信内容を確認できませんでした。ページを再読み込みしてお試しください。'
+                return { success: false, error: message }
+            }
+            // The durable queue survives a provider/network failure. Never ask the
+            // customer to submit a second lead just because notification failed.
+            try { await dispatchOemLeadMail(reservation.leadId) } catch { console.error('OEM mail dispatch pending', { leadId: reservation.leadId }) }
+            return { success: true }
+        } catch {
+            console.error('OEM intake unavailable')
+            return { success: false, error: '受付結果を確認できませんでした。少し時間をおいて同じ内容で再試行してください。' }
+        }
+    }
+
+    const { error } = await supabase.from('leads').insert([leadRow])
 
     if (error) {
         console.error('Lead Submission Error:', error)

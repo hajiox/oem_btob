@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { updateLeadStatus } from '@/actions/dashboard'
 import type { Lead } from '@/types/database'
 
-export function LeadStatusSelect({ leadId, currentStatus }: { leadId: string, currentStatus: Lead['status'] }) {
+export function LeadStatusSelect({ leadId, currentStatus, onChanged }: { leadId: string, currentStatus: Lead['status']; onChanged?: () => void | Promise<void> }) {
     const [status, setStatus] = useState<Lead['status']>(currentStatus)
     const [isPending, startTransition] = useTransition()
     const [error, setError] = useState<string | null>(null)
@@ -19,7 +19,7 @@ export function LeadStatusSelect({ leadId, currentStatus }: { leadId: string, cu
             if (result.success === false && result.error) {
                 setError(result.error)
                 setStatus(currentStatus) // エラー時は元に戻す
-            }
+            } else await onChanged?.()
         })
     }
 

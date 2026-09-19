@@ -35,6 +35,22 @@ const RAMEN_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000002'
 const CURRY_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000001'
 const TEA_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000006'
 const TEA_CAVEAT = '表示価格は概算です。食材の種類・状態、乾燥や焙煎などの加工内容により金額が変わります。食材によっては乾燥加工をお引き受けできない場合があります。原料確認後に対応可否と正式見積もりをご案内します。'
+const OEM_IDEMPOTENCY_STORAGE_KEY = 'oem-intake-idempotency-v1'
+
+async function getOemIdempotencyKey(payload: Record<string, unknown>, currentKey: string | null): Promise<string> {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload))
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    const fingerprint = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('')
+    try {
+        const stored = JSON.parse(localStorage.getItem(OEM_IDEMPOTENCY_STORAGE_KEY) || 'null') as { fingerprint?: string; key?: string; createdAt?: number } | null
+        if (stored?.fingerprint === fingerprint && stored.key && stored.createdAt && Date.now() - stored.createdAt < 86400000) return stored.key
+        const key = crypto.randomUUID()
+        localStorage.setItem(OEM_IDEMPOTENCY_STORAGE_KEY, JSON.stringify({ fingerprint, key, createdAt: Date.now() }))
+        return key
+    } catch {
+        return currentKey || crypto.randomUUID()
+    }
+}
 const ONE_YEAR_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
     'c0000001-0000-0000-0000-000000000003',
@@ -55,6 +71,8 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const [navigationHistory, setNavigationHistory] = useState<number[]>([])
     const panelRef = useRef<HTMLDivElement>(null)
     const submittingRef = useRef(false)
+    // Reuse a key for identical retries; persistent digest expires after 24h.
+    const idempotencyKeyRef = useRef<string | null>(null)
     const contactFormId = useId()
     const previousScreen = useRef(currentStep)
 
@@ -403,7 +421,20 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                 return { question: q.question_text || qId, answer: displayValue, type: q.input_type }
             }).filter(Boolean)
         ]
-        const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: consultationNotes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails, quoteProductId: selectedProduct || undefined, ...(isBtoBQuotePage ? { rawAnswers: answers } : {}) })
+        if (isBtoBQuotePage) {
+            idempotencyKeyRef.current = await getOemIdempotencyKey({
+                pageId,
+                companyName: contactInfo.companyName.trim(),
+                contactName: contactInfo.contactName.trim(),
+                email: contactInfo.email.trim().toLowerCase(),
+                phone: contactInfo.phone.trim(),
+                notes: consultationNotes.trim(),
+                quoteProductId: selectedProduct,
+                selectedOptions: selectedOptionsDetails,
+                rawAnswers: answers,
+            }, idempotencyKeyRef.current)
+        }
+        const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: consultationNotes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails, quoteProductId: selectedProduct || undefined, ...(isBtoBQuotePage ? { rawAnswers: answers, idempotencyKey: idempotencyKeyRef.current as string } : {}) })
         if (res.success) setIsSuccess(true)
         else setErrorData(res.error || '送信に失敗しました。入力内容を確認してください。')
         } catch {
@@ -774,9 +805,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                     </div>}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
-                                            貴社名 / 屋号 <span style={{ color: '#f87171' }}>*</span>
+                                            {isBtoBQuotePage ? '会社名・農園名・屋号' : '貴社名 / 屋号'} <span style={{ color: '#f87171' }}>*</span>
                                         </label>
-                                        <input required type="text" value={contactInfo.companyName} onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="株式会社〇〇" />
+                                        <input required type="text" value={contactInfo.companyName} onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder={isBtoBQuotePage ? '例：会津〇〇農園' : '株式会社〇〇'} />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>

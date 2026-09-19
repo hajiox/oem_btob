@@ -2,11 +2,15 @@
 
 import React, { useState } from 'react'
 import type { Lead } from '@/types/database'
+import type { EnrichedLead } from '@/actions/leads'
 import { LeadStatusSelect } from './LeadStatusSelect'
 import { ChevronDown, ChevronUp, Trash2, Mail, User, Phone, ClipboardList } from 'lucide-react'
 import { deleteLead } from '@/actions/dashboard'
+import { OEM_PAGE_ID } from '@/lib/oem-quote-validation'
+import { OemLeadCasePanel } from './OemLeadCasePanel'
+import { OemMailPanel } from './OemMailPanel'
 
-export function LeadRow({ lead }: { lead: Lead }) {
+export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: () => void | Promise<void> }) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const options = lead.selected_options as any[] | null
@@ -20,7 +24,7 @@ export function LeadRow({ lead }: { lead: Lead }) {
         if (!res.success) {
             alert(res.error || '削除に失敗しました')
             setIsDeleting(false)
-        }
+        } else await onChanged?.()
     }
 
     return (
@@ -40,7 +44,7 @@ export function LeadRow({ lead }: { lead: Lead }) {
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </span>
                         <span style={{ opacity: isDeleting ? 0.5 : 1 }}>
-                            {lead.company_name}
+                            {lead.company_name} {lead.followupOverdue && <span style={{ color: '#f87171', fontSize: 12, marginLeft: 8 }}>フォロー期限超過</span>} {lead.followupAt && !lead.followupOverdue && <span style={{ color: 'var(--admin-accent)', fontSize: 12, marginLeft: 8 }}>次回 {new Date(lead.followupAt).toLocaleDateString('ja-JP')}</span>} {lead.mailAttention && <span style={{ color: '#fbbf24', fontSize: 12, marginLeft: 8 }}>メール要確認</span>}
                         </span>
                     </div>
                 </td>
@@ -60,7 +64,7 @@ export function LeadRow({ lead }: { lead: Lead }) {
                     ¥{(lead.estimated_total_price || 0).toLocaleString()}
                 </td>
                 <td style={{ padding: '16px 24px' }} onClick={(e) => e.stopPropagation()}>
-                    <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} />
+                    <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} onChanged={onChanged} />
                 </td>
                 <td style={{ padding: '16px 32px', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -165,6 +169,7 @@ export function LeadRow({ lead }: { lead: Lead }) {
                                 </div>
                             </div>
                         </div>
+                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><OemMailPanel leadId={lead.id} /></>}
                     </td>
                 </tr>
             )}

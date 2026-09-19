@@ -95,20 +95,35 @@ async function runSubmitMocks(snapshots, all) {
   }
   const fakeDb = { from(table) { if (table === 'leads') return { insert(values) { inserted.push(...values); return Promise.resolve({ error: null }) } }; return query(table) } }
   const fakeResend = { Resend: class { constructor() {} get emails() { return { send: async payload => { sent.push(payload); return { data: { id: 'mock' }, error: null } } } } } }
+  // Keep idempotency/rate-limit integration in memory when publicForm imports it.
+  const intakeCalls = []
+  const reservedKeys = new Set()
+  const fakeIntake = { reserveOemLead: async input => { intakeCalls.push(input); if (reservedKeys.has(input.idempotencyKey)) return { status: 'duplicate', leadId: 'mock-lead-id' }; reservedKeys.add(input.idempotencyKey); inserted.push(input.lead); return { status: 'reserved', leadId: 'mock-lead-id' } } }
+  const dispatchCalls = []
+  const fakeOemMail = {
+    buildOemMailPayloads: async input => ({ customer: { to: input.email, html: '<p>mock customer</p>' }, admin: { to: 'admin@example.com', html: '<p>mock admin</p>' } }),
+    dispatchOemLeadMail: async leadId => { dispatchCalls.push(leadId); throw new Error('provider unavailable') },
+  }
   const oldResend = require.cache[require.resolve('resend')]; require.cache[require.resolve('resend')] = { exports: fakeResend }
   const source = ts.transpileModule(fs.readFileSync('src/actions/publicForm.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
   const mod = new Module(require.resolve('../package.json')); mod.filename = require('path').resolve('src/actions/publicForm.ts'); mod.paths = Module._nodeModulePaths(process.cwd())
-  const helper = loadValidator(); mod.require = id => id === '@/lib/supabase/server' ? { createClient: async () => fakeDb } : id === '@/lib/oem-quote-validation' ? helper : id === 'resend' ? fakeResend : require(id)
+  const helper = loadValidator(); mod.require = id => id === '@/lib/supabase/server' ? { createClient: async () => fakeDb } : id === '@/lib/oem-quote-validation' ? helper : id === '@/lib/oem-intake' ? fakeIntake : id === '@/lib/oem-mail' ? fakeOemMail : id === 'resend' ? fakeResend : require(id)
   mod._compile(source, mod.filename); const { submitLead } = mod.exports
   const candidate = all.find(x => x.s.product.id !== TEA_ID && x.s.product.id === 'c0000001-0000-0000-0000-000000000001') || all[0]
   const exp = expected(candidate.s, candidate.answers)
-  const common = { pageId: PAGE_ID, companyName: '<会社>', contactName: '担当&名', email: 'buyer@example.com', phone: '', selectedOptions: [{ question: '偽装', answer: '偽装価格', type: 'text' }], estimatedTotalPrice: exp.total, quoteProductId: candidate.s.product.id, rawAnswers: candidate.answers, notes: '<script>alert(1)</script>' }
+  const common = { pageId: PAGE_ID, companyName: '<会社>', contactName: '担当&名', email: 'buyer@example.com', phone: '', selectedOptions: [{ question: '偽装', answer: '偽装価格', type: 'text' }], estimatedTotalPrice: exp.total, quoteProductId: candidate.s.product.id, rawAnswers: candidate.answers, idempotencyKey: '11111111-1111-4111-8111-111111111111', notes: '<script>alert(1)</script>' }
   const ok = await submitLead(common); assert.equal(ok.success, true, 'valid mocked submit rejected'); assert.equal(inserted.length, 1)
-  const lead = inserted[0]; assert.equal(lead.estimated_total_price, exp.total); assert(lead.selected_options.some(x => x.question === '商品')); assert(!lead.selected_options.some(x => x.answer === '偽装価格')); assert.equal(sent.length, 2); assert(sent.every(x => !x.html.includes('<script>alert(1)</script>'))); assert(sent.some(x => x.html.includes('&lt;script&gt;alert(1)&lt;/script&gt;')))
+  if (intakeCalls.length) { assert.equal(intakeCalls.length, 1, 'valid submit must reserve intake once'); assert.match(intakeCalls[0].idempotencyKey, /^[0-9a-f-]{36}$/i, 'idempotency key contract') }
+  const lead = inserted[0]; assert.equal(lead.estimated_total_price, exp.total); assert(lead.selected_options.some(x => x.question === '商品')); assert(!lead.selected_options.some(x => x.answer === '偽装価格')); assert.equal(sent.length, 0, 'OEM queue path must not send directly from publicForm')
+  assert.equal(dispatchCalls.length, 1, 'accepted lead attempts queued mail once even when provider fails')
+  // A crash after atomic lead/queue creation may leave pending rows; an
+  // idempotent retry is allowed to re-attempt that durable queue. The claim RPC
+  // (covered by verify-oem-mail.cjs) prevents a sent row from being sent again.
+  const duplicateResult = await submitLead(common); assert.equal(duplicateResult.success, true, 'idempotent retry should remain accepted'); assert.equal(inserted.length, 1, 'duplicate retry must not insert another lead'); assert.equal(dispatchCalls.length, 2, 'duplicate retry may re-attempt pending mail rows')
   const teaCase = all.find(x => x.s.product.id === TEA_ID && Object.values(x.answers).some(v => typeof v === 'string' && v.includes('202')))
   assert(teaCase, 'tea valid path missing')
   const teaExp = expected(teaCase.s, teaCase.answers)
-  const teaResult = await submitLead({ ...common, quoteProductId: TEA_ID, rawAnswers: teaCase.answers, estimatedTotalPrice: teaExp.total, selectedOptions: [] })
+  const teaResult = await submitLead({ ...common, quoteProductId: TEA_ID, rawAnswers: teaCase.answers, estimatedTotalPrice: teaExp.total, selectedOptions: [], idempotencyKey: '22222222-2222-4222-8222-222222222222' })
   assert.equal(teaResult.success, true, 'valid tea mocked submit rejected')
   const teaLead = inserted[1]; assert.equal(teaLead.estimated_total_price, teaExp.total); assert(teaLead.selected_options.some(x => x.question === 'OEM製造数' && String(x.answer).includes(String(teaExp.quantity))))
   const before = inserted.length; const reject = async (data, label) => { const r = await submitLead({ ...common, ...data }); assert.equal(r.success, false, `${label}: accepted`); assert.equal(inserted.length, before, `${label}: inserted before rejection`) }

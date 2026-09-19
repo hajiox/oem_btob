@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Lead } from '@/types/database'
 import type { Page } from '@/types/database'
 import { LeadRow } from '@/components/admin/LeadRow'
@@ -45,40 +45,41 @@ function StatCard({
 export default function DashboardClient() {
     const [pages, setPages] = useState<Page[]>([])
     const [selectedPageId, setSelectedPageId] = useState<string | null>(null) // null = 全ページ
-    const [leads, setLeads] = useState<Lead[]>([])
+    const [leads, setLeads] = useState<import('@/actions/leads').EnrichedLead[]>([])
     const [totalLeads, setTotalLeads] = useState(0)
+    const [serverStats, setServerStats] = useState({ total: 0, new: 0, negotiating: 0, totalEstimate: 0 })
+    const [search, setSearch] = useState('')
+    const [statusFilter, setStatusFilter] = useState<'all' | Lead['status']>('all')
+    const [currentPage, setCurrentPage] = useState(1)
     const [isLoading, setIsLoading] = useState(true)
+    const [loadError, setLoadError] = useState('')
+    const requestSequence = useRef(0)
 
     // ページ一覧の取得（初回のみ）
     useEffect(() => {
-        getPages().then(setPages)
+        getPages().then(setPages).catch(() => setLoadError('ページ一覧を取得できませんでした。ログイン状態を確認してください。'))
     }, [])
 
     // リードの取得（ページ切替時に再取得）
     const loadData = useCallback(async () => {
-        setIsLoading(true)
-        const result = await getLeads(selectedPageId)
-        setLeads(result.leads)
-        setTotalLeads(result.total)
-        setIsLoading(false)
-    }, [selectedPageId])
+        const sequence = ++requestSequence.current
+        setIsLoading(true); setLoadError('')
+        try { const result = await getLeads({ pageId: selectedPageId, page: currentPage, pageSize: 50, search, status: statusFilter }); if (sequence !== requestSequence.current) return; setLeads(result.leads); setTotalLeads(result.total); setServerStats(result.stats); if (currentPage > 1 && result.leads.length === 0) setCurrentPage(Math.max(1, Math.ceil(result.total / 50))) } catch { if (sequence === requestSequence.current) { setLeads([]); setTotalLeads(0); setServerStats({ total: 0, new: 0, negotiating: 0, totalEstimate: 0 }); setLoadError('案件を取得できませんでした。ログイン状態を確認して再試行してください。') } } finally { if (sequence === requestSequence.current) setIsLoading(false) }
+    }, [selectedPageId, currentPage, search, statusFilter])
 
     useEffect(() => {
-        loadData()
+        const timer = setTimeout(() => { void loadData() }, 250)
+        return () => { clearTimeout(timer); requestSequence.current++ }
     }, [loadData])
 
     // 統計をleadsデータから直接計算
-    const stats = useMemo(() => ({
-        total: totalLeads,
-        new: leads.filter(l => l.status === 'new').length,
-        negotiating: leads.filter(l => l.status === 'negotiating').length,
-        totalEstimate: leads.reduce((sum, l) => sum + (l.estimated_total_price || 0), 0),
-    }), [leads, totalLeads])
+    const stats = serverStats
 
     const selectedPage = pages.find(p => p.id === selectedPageId)
 
     return (
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            {loadError && <p role="alert" style={{ color: '#fca5a5', marginBottom: 20 }}>{loadError} <button type="button" onClick={loadData}>再試行</button></p>}
             {/* ページヘッダー */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
                 <div>
@@ -89,6 +90,13 @@ export default function DashboardClient() {
                         OEM開発コンサルティング・製品管理システム
                     </p>
                 </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                <input value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1) }} placeholder="会社名・担当者・メールで検索" style={{ flex: 1, padding: '10px 12px', background: 'var(--admin-card)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 6 }} />
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as typeof statusFilter); setCurrentPage(1) }} style={{ padding: '10px 12px', background: 'var(--admin-card)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 6 }}>
+                    <option value="all">全ステータス</option><option value="new">新規</option><option value="contacted">連絡済</option><option value="quoted">見積済</option><option value="negotiating">交渉中</option><option value="won">受注</option><option value="lost">失注</option>
+                </select>
             </div>
 
             {/* ページフィルター */}
@@ -184,7 +192,7 @@ export default function DashboardClient() {
                         {selectedPage ? `${selectedPage.title} のリード` : '最新の獲得リード'}
                     </h2>
                     <div style={{ fontSize: '12px', color: 'var(--admin-text-muted)' }}>
-                        全 {totalLeads} 件中 {Math.min(50, totalLeads)} 件を表示
+                        全 {totalLeads} 件中 {leads.length} 件を表示
                     </div>
                 </div>
 
@@ -209,7 +217,7 @@ export default function DashboardClient() {
                                 </tr>
                             ) : leads.length > 0 ? (
                                 leads.map((lead) => (
-                                    <LeadRow key={lead.id} lead={lead} />
+                                    <LeadRow key={lead.id} lead={lead} onChanged={loadData} />
                                 ))
                             ) : (
                                 <tr>
@@ -221,7 +229,10 @@ export default function DashboardClient() {
                         </tbody>
                     </table>
                 </div>
+                {totalLeads > 50 && <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: 16 }}><button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(page => page - 1)} style={pagerStyle}>前へ</button><span style={{ color: 'var(--admin-text-muted)', fontSize: 13, padding: 8 }}>{currentPage} / {Math.ceil(totalLeads / 50)}</span><button type="button" disabled={currentPage >= Math.ceil(totalLeads / 50)} onClick={() => setCurrentPage(page => page + 1)} style={pagerStyle}>次へ</button></div>}
             </div>
         </div>
     )
 }
+
+const pagerStyle = { padding: '7px 14px', border: '1px solid var(--admin-border)', borderRadius: 5, background: 'var(--admin-card)', color: 'var(--admin-text)', cursor: 'pointer' }
