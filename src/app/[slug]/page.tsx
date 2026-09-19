@@ -332,7 +332,8 @@ export default async function HomePage({ params }: { params: { slug: string } })
         padding: '80px 20px 96px',
         position: 'relative',
         background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #1e1b4b 100%)',
-        overflow: 'hidden',
+        // Clip decoration without creating a programmatically scrollable parent.
+        overflow: currentPageId === SAMPLE_PAGE_ID ? 'clip' : 'hidden',
       }}>
         {/* 背景装飾 */}
         <div style={{

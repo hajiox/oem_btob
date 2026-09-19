@@ -70,6 +70,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const [isMobile, setIsMobile] = useState(false)
     const [navigationHistory, setNavigationHistory] = useState<number[]>([])
     const panelRef = useRef<HTMLDivElement>(null)
+    const formCardRef = useRef<HTMLDivElement>(null)
     const submittingRef = useRef(false)
     // Reuse a key for identical retries; persistent digest expires after 24h.
     const idempotencyKeyRef = useRef<string | null>(null)
@@ -84,7 +85,15 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             if (!panel) return
             if (panel.contains(document.activeElement) && document.activeElement?.matches('input, textarea, select')) return
             panel.focus({ preventScroll: true })
-            if (panel.getBoundingClientRect().top < 0) panel.scrollIntoView({ block: 'start', behavior: 'instant' })
+            // scrollIntoView also scrolls overflow:hidden ancestors, clipping the
+            // section heading and product name. Move only the document viewport.
+            const card = formCardRef.current
+            if (card) {
+                const top = card.getBoundingClientRect().top
+                if (top < 24 || top > window.innerHeight / 2) {
+                    window.scrollTo({ top: Math.max(0, window.scrollY + top - 24), behavior: 'instant' })
+                }
+            }
         }, 650)
         return () => window.clearTimeout(timer)
     }, [currentStep, pageId])
@@ -529,7 +538,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     }
 
     return (
-        <div style={{ width: '100%', maxWidth: '960px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div ref={formCardRef} style={{ width: '100%', maxWidth: '960px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <div style={{ borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)' }}>
 
                 {/* ステップインジケーター */}
@@ -621,7 +630,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                     : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}><span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({quantityLabel})</span><span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</span></div>)}
 
                 {/* メインフォーム */}
-                <div ref={panelRef} tabIndex={-1} aria-label="商品仕様と概算見積もり" style={{ padding: isBtoBQuotePage && isMobile ? '20px 16px' : '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px', scrollMarginTop: 90 }}>
+                <div ref={panelRef} tabIndex={-1} aria-label="商品仕様と概算見積もり" style={{ padding: isBtoBQuotePage && isMobile ? '20px 16px' : '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px', outline: isBtoBQuotePage ? 'none' : undefined }}>
                     <AnimatePresence mode="wait" initial={false}>
                         {/* 数量入力 */}
                         {currentStep === 0 && !isBtoBQuotePage && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
