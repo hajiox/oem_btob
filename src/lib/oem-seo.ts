@@ -29,6 +29,6 @@ export const OEM_METADATA: Metadata = {
     description: OEM_OG_DESCRIPTION,
     images: [`${OEM_SITE_URL}${OEM_OG_IMAGE}`],
   },
-  icons: { icon: OEM_FAVICON },
+  icons: { icon: { url: OEM_FAVICON, type: 'image/png', sizes: '256x256' } },
   robots: { index: true, follow: true },
 }
