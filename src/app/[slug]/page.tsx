@@ -3,9 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import type { LpSection, Product } from '@/types/database'
 import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
+import OemAnalytics from '@/components/OemAnalytics'
 import PackageShowcase from '@/components/PackageShowcase'
 import { SAMPLE_PAGE_ID } from '@/lib/package-samples'
 import { oemLpImage, oemLpNotes, oemMetadataCopy } from '@/lib/oem-lp-copy'
+import { OEM_METADATA } from '@/lib/oem-seo'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Facebook, Instagram, Youtube, MapPin, Phone, Clock, CalendarDays } from 'lucide-react'
@@ -23,6 +25,7 @@ const LP_IMAGES = [
 function OemExplanation() {
   return (
     <section aria-labelledby="oem-explanation-title" style={{ width: '100%', padding: 'clamp(24px, 5vw, 40px)', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', textAlign: 'left', color: '#1e293b' }}>
+      <h1 style={{ fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 800, lineHeight: 1.4, marginBottom: '20px' }}>福島の食品OEM・小ロット商品開発</h1>
       <h2 id="oem-explanation-title" style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 700, lineHeight: 1.5, marginBottom: '16px' }}>OEMとは？</h2>
       <p style={{ fontSize: 'clamp(18px, 3vw, 22px)', fontWeight: 700, lineHeight: 1.8, marginBottom: '12px' }}>あなたのブランドの商品を、代わりに製造することです。</p>
       <p style={{ fontSize: '17px', lineHeight: 1.9 }}>例えば、農園で育てた果物をジャムにしたり、お店のオリジナルのカレーやたれを作ったり。会津ブランド館が食品の製造を担い、あなたの農園名・店名・ブランド名で販売できる商品に仕上げます。</p>
@@ -188,6 +191,8 @@ import { Metadata } from 'next'
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const { slug } = await params
 
+  if (slug === 'btob') return OEM_METADATA
+
   try {
     const supabase = await createClient()
     const { data: pageData } = await supabase
@@ -242,7 +247,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
       .from('pages')
       .select('id')
       .eq('slug', slug)
-      .single()
+      .maybeSingle()
 
     if (!pageData) {
       notFound()
@@ -267,7 +272,12 @@ export default async function HomePage({ params }: { params: { slug: string } })
     // 4. 商品一覧の取得
     products = await getPublicProducts(pageId)
 
-  } catch {
+  } catch (error) {
+    // notFound() uses a control-flow exception. It must reach Next.js so unknown
+    // slugs return 404 instead of rendering the fallback LP with a 200 status.
+    if (typeof error === 'object' && error !== null && 'digest' in error && error.digest === 'NEXT_HTTP_ERROR_FALLBACK;404') {
+      throw error
+    }
     // Supabase未設定時はデフォルト表示
   }
 
@@ -384,6 +394,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
 
       {/* フッター */}
       <Footer />
+      {currentPageId === SAMPLE_PAGE_ID && <OemAnalytics measurementId={process.env.NEXT_PUBLIC_OEM_GA_MEASUREMENT_ID} />}
 
     </main>
   )

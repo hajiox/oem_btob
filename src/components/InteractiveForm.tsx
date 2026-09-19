@@ -11,6 +11,7 @@ import OemQuoteResult from '@/components/OemQuoteResult'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
+import { trackOemEvent } from '@/lib/oem-analytics'
 
 // 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
 const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'いいえ', '否', 'none', 'null', 'n/a']
@@ -192,6 +193,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const RESULT_STEP = FORM_START + activeSteps.length
     const CONTACT_STEP = RESULT_STEP + 1
 
+    useEffect(() => {
+        if (isBtoBQuotePage && currentStep === RESULT_STEP) trackOemEvent('oem_view_quote')
+    }, [currentStep, isBtoBQuotePage, RESULT_STEP])
+
     // 進捗インジケーターの計算（動的なステップ数に対応）
     const visualSteps = useMemo(() => {
         const labels = isBtoBQuotePage ? ['商品'] : ['製造数', '商品']
@@ -354,11 +359,15 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         setCurrentStep(Math.max(firstStep, previousStep ?? currentStep - 1))
         if (previousStep !== undefined) setNavigationHistory(history => history.slice(0, -1))
     }
-    const handleApply = () => navigateTo(CONTACT_STEP)
+    const handleApply = () => {
+        if (isBtoBQuotePage) trackOemEvent('oem_start_consultation')
+        navigateTo(CONTACT_STEP)
+    }
 
     const handleProductSelect = (productId: string) => {
         if (productId !== selectedProduct) { setAnswers({}); setDesiredProduct('') }
         setSelectedProduct(productId)
+        if (isBtoBQuotePage) trackOemEvent('oem_select_product', productId)
         if (isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(productId)) setOemQuantity(400)
         if (isBtoBQuotePage) navigateTo(FORM_START)
     }
@@ -444,7 +453,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             }, idempotencyKeyRef.current)
         }
         const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: consultationNotes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails, quoteProductId: selectedProduct || undefined, ...(isBtoBQuotePage ? { rawAnswers: answers, idempotencyKey: idempotencyKeyRef.current as string } : {}) })
-        if (res.success) setIsSuccess(true)
+        if (res.success) {
+            if (isBtoBQuotePage) trackOemEvent('generate_lead')
+            setIsSuccess(true)
+        }
         else setErrorData(res.error || '送信に失敗しました。入力内容を確認してください。')
         } catch {
             setErrorData('通信エラーが発生しました。入力内容は保持しています。受付済みの可能性があるため、確認メールをご確認のうえ、届いていなければ再度お試しください。')
