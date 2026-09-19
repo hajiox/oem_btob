@@ -19,6 +19,16 @@ const LP_IMAGES = [
 ]
 
 // LP セクションスケルトン
+function OemExplanation() {
+  return (
+    <section aria-labelledby="oem-explanation-title" style={{ width: '100%', padding: 'clamp(24px, 5vw, 40px)', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '20px', textAlign: 'left', color: '#1e293b' }}>
+      <h2 id="oem-explanation-title" style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 700, lineHeight: 1.5, marginBottom: '16px' }}>OEMとは？</h2>
+      <p style={{ fontSize: 'clamp(18px, 3vw, 22px)', fontWeight: 700, lineHeight: 1.8, marginBottom: '12px' }}>あなたのブランドの商品を、代わりに製造することです。</p>
+      <p style={{ fontSize: '17px', lineHeight: 1.9 }}>例えば、農園で育てた果物をジャムにしたり、お店のオリジナルのカレーやたれを作ったり。会津ブランド館が食品の製造を担い、あなたの農園名・店名・ブランド名で販売できる商品に仕上げます。</p>
+    </section>
+  )
+}
+
 function SectionSkeleton() {
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-8">
@@ -302,7 +312,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   </div>
                 )}
 
-                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <PackageShowcase />}
+                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><PackageShowcase /></>}
               </div>
             ))
           ) : (
@@ -319,7 +329,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                   priority={i === 0}
                 />
-                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <PackageShowcase />}
+                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><PackageShowcase /></>}
               </div>
             ))
           )}
