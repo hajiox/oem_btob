@@ -182,7 +182,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         if (!capacityLabel) return null
         return capacityLabel.match(/\d+(?:\.\d+)?(?:[〜～-]\d+(?:\.\d+)?)?\s?(?:kg|g|ml|cc|l)/i)?.[0] || capacityLabel
     }, [activeSteps, answers, selectedProduct])
-    const fixedLotConditionNote = isTeaProduct ? TEA_CAVEAT : isRamenProduct
+    const fixedLotConditionNote = isTeaProduct ? `${TEA_CAVEAT}／賞味期限：製造から1年` : isRamenProduct
         ? '概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から60日'
         : `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から1年${selectedProduct === CURRY_PRODUCT_ID ? '／内容量200g' : packagingCapacity ? `／容量：${packagingCapacity}` : ''}`
 
@@ -746,7 +746,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                             <div style={{ fontSize: '15px', color: '#fcd34d', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
                                                 <span>💡</span> 販売プランシミュレーション
                                             </div>
-                                            {shippingPackingFee > 0 && <p style={{ fontSize: 14, color: '#fde68a', marginBottom: 16 }}>送料・発送梱包手数料を除く商品単価での参考計算です。</p>}
+                                            {shippingPackingFee > 0 && <p style={{ fontSize: 14, color: '#fde68a', marginBottom: 16 }}>商品原価ベースの粗利率による参考計算です。送料・発送梱包手数料、販売手数料、消費税などは含みません。</p>}
                                             
                                             <div style={{ display: 'grid', gap: '12px' }}>
                                                 {[30, 40, 50].map(margin => {
@@ -757,14 +757,14 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                                     return (
                                                         <div key={margin} style={{ display: 'grid', gridTemplateColumns: isMobile ? '70px 1fr 1fr' : '80px 1fr 1fr', alignItems: 'center', gap: isMobile ? '8px' : '16px', padding: isMobile ? '12px' : '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                             <div style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.15)', padding: '4px 0', borderRadius: '6px', textAlign: 'center' }}>
-                                                                利益 {margin}%
+                                                                粗利率 {margin}%
                                                             </div>
                                                             <div>
                                                                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>想定売価</div>
                                                                 <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 700, color: '#fff' }}>¥{sellingPrice.toLocaleString()}</div>
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>1{quantityUnit}あたり利益</div>
+                                                                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>1{quantityUnit}あたり粗利</div>
                                                                 <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 700, color: '#4ade80' }}>+¥{profit.toLocaleString()}</div>
                                                             </div>
                                                         </div>

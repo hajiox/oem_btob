@@ -105,7 +105,7 @@ export function validateOemQuote(snapshot: QuoteSnapshot, rawAnswers: Record<str
     const quantityLabel = product.id === teaId ? (quantity === 100 ? '50包×100袋（5,000包）' : '4包×400個（1,600包）') : `400${quantityUnit}（固定ロット）`
     const capacity = selectedRows.map(x => x.o.label).join(' ').match(/\d+(?:[〜～-]\d+)?\s?(?:kg|g|ml|cc)/i)?.[0]
     const conditionNote = product.id === teaId
-        ? '表示価格は概算です。乾燥・必要に応じた焙煎・製造・包装込み。食材の種類・状態や加工内容により金額が変わります。乾燥加工をお引き受けできない食材もあります。原料確認後に対応可否と正式見積もりをご案内します。'
+        ? '表示価格は概算です。乾燥・必要に応じた焙煎・製造・包装込み。食材の種類・状態や加工内容により金額が変わります。乾燥加工をお引き受けできない食材もあります。賞味期限：製造から1年。原料確認後に対応可否と正式見積もりをご案内します。'
         : `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から${isRamen ? '60日／1セット2食入り' : '1年'}${product.id.endsWith('000001') ? '／内容量200g' : !isRamen && capacity ? `／容量：${capacity}` : ''}`
     return { selectedOptions: canonical, subtotal, total: subtotal + SHIPPING_PACKING_FEE, quantity, quantityLabel, quantityUnit, conditionNote }
 }

@@ -29,6 +29,7 @@ export type OemQuoteResultProps = {
 }
 
 const yen = (amount: number) => `¥${Math.round(amount).toLocaleString('ja-JP')}`
+const INITIAL_FREE_ESTIMATE_NOTE = '初回無料適用時の概算です。1企業（個人は1名）につき1回限り、試作は2回まで無料です。初回無料特典が適用されない場合の試作・表示作成・デザイン費、および追加試作費は別途となります。'
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -88,6 +89,7 @@ export default function OemQuoteResult({
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)', fontSize: 14 }}>概算合計（税抜）</p>
         <p style={{ margin: '2px 0 2px', fontSize: 'clamp(32px, 9vw, 46px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em' }}>{yen(total)}</p>
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>送料・発送梱包手数料込み／消費税別</p>
+        <p style={{ margin: '10px 0 0', color: '#fde68a', fontSize: 14 }}>{INITIAL_FREE_ESTIMATE_NOTE}</p>
         <div data-testid="quote-order-breakdown" style={{ marginTop: 16 }}>
           <div style={rowStyle}><span>商品小計（税別）</span><strong>{yen(productSubtotal)}</strong></div>
           <div style={rowStyle}><span>送料・発送梱包手数料<br /><small>税別・1注文につき</small></span><strong style={{ whiteSpace: 'nowrap' }}>{yen(shippingFee)}</strong></div>
@@ -133,11 +135,11 @@ export default function OemQuoteResult({
       <details style={{ marginTop: 12, padding: '14px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
         <summary style={{ cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#fcd34d' }}>販売シミュレーションを見る</summary>
         <div style={{ marginTop: 12 }}>
-          <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.75)', fontSize: 14 }}>商品単価（送料等別）を原価として計算しています。</p>
+          <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.75)', fontSize: 14 }}>商品原価ベースの粗利率です。商品単価（送料等別）を原価としており、送料・発送梱包手数料、販売手数料、消費税などは含まない参考値です。</p>
           {[30, 40, 50].map((margin) => {
             const sellingPrice = Math.ceil(unitCost * 100 / (100 - margin))
             const profit = sellingPrice - unitCost
-            return <div key={margin} style={{ ...rowStyle, fontSize: 15 }}><span>利益率 {margin}%</span><strong>{yen(sellingPrice)}（利益 {yen(profit)} / {quantityUnit}）</strong></div>
+            return <div key={margin} style={{ ...rowStyle, fontSize: 15 }}><span>粗利率 {margin}%</span><strong>{yen(sellingPrice)}（粗利 {yen(profit)} / {quantityUnit}）</strong></div>
           })}
         </div>
       </details>

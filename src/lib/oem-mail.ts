@@ -14,7 +14,7 @@ export async function buildOemMailPayloads(input: {
     const fromAddress = page.email_from_address || 'staff@aizu-tv.com'
     const paragraphs = (text: string) => escapeHtml(text).split('\n').map(line => `<p>${line}</p>`).join('')
     const answers = (Array.isArray(input.selectedOptions) ? input.selectedOptions : []).map(opt => `<li><strong>${escapeHtml(opt.question ?? opt.question_text ?? opt.step_title)}:</strong> ${escapeHtml(opt.answer ?? opt.selected_label)}</li>`).join('')
-    const details = `<h3>概算お見積り内容</h3><p>概算総額：¥${input.estimatedTotalPrice.toLocaleString()}（税別）</p><ul>${answers}</ul><p>ご要望：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p>`
+    const details = `<h3>概算お見積り内容</h3><p>概算総額：¥${input.estimatedTotalPrice.toLocaleString()}（税別）</p><p>初回無料適用時の概算です。1企業（個人は1名）につき1回限り、試作は2回まで無料です。初回無料特典が適用されない場合の試作・表示作成・デザイン費、および追加試作費は別途となります。</p><p>販売シミュレーションの粗利率・粗利は商品原価ベースの参考値で、送料・発送梱包手数料、販売手数料、消費税などを含みません。</p><ul>${answers}</ul><p>ご要望：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p>`
     return {
         customer: {
             from: `${page.email_from_name || 'OEM自動見積り'} <${fromAddress}>`, to: input.email,

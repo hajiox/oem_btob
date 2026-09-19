@@ -5,6 +5,7 @@ import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
 import PackageShowcase from '@/components/PackageShowcase'
 import { SAMPLE_PAGE_ID } from '@/lib/package-samples'
+import { oemLpImage, oemLpNotes, oemMetadataCopy } from '@/lib/oem-lp-copy'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Facebook, Instagram, Youtube, MapPin, Phone, Clock, CalendarDays } from 'lucide-react'
@@ -17,9 +18,6 @@ const LP_IMAGES = [
   { src: '/images/lp-reasons.jpg', alt: '福島専門のOEMプロ集団が企画から販売までフルサポート' },
   { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
 ]
-
-const OEM_OFFER_IMAGE = '/images/btob/oem-first-order-offer-v2.png'
-const OEM_OFFER_ALT = '初回限定：1企業（個人は1名）につき1回限り。試作費（2回まで）10,000円、原材料表示作成5,000円、栄養成分作成（計算値）5,000円、簡易パッケージデザイン30,000円。通常合計50,000円が初回0円。追加試作は1回につき3,000円。'
 
 // LP セクションスケルトン
 function OemExplanation() {
@@ -200,6 +198,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
     if (!pageData) return {}
 
+    for (const key of ['seo_title', 'title', 'seo_description', 'description', 'og_title', 'og_description']) {
+      if (typeof pageData[key] === 'string') pageData[key] = oemMetadataCopy(pageData.id, pageData[key])
+    }
+
     return {
       title: pageData.seo_title || pageData.title || 'フォームLP作成ツール',
       description: pageData.seo_description || pageData.description || 'LP・フォーム',
@@ -305,10 +307,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                     }}
                   >
                     <Image
-                      src={currentPageId === SAMPLE_PAGE_ID && section.image_url === '/images/lp-cta.jpg' ? OEM_OFFER_IMAGE : section.image_url}
-                      alt={currentPageId === SAMPLE_PAGE_ID && section.image_url === '/images/lp-cta.jpg' ? OEM_OFFER_ALT : section.title || ''}
-                      width={1200}
-                      height={currentPageId === SAMPLE_PAGE_ID && section.image_url === '/images/lp-cta.jpg' ? 1500 : 1600}
+                      {...oemLpImage(currentPageId, section.image_url, section.title || '')}
                       style={{ width: '100%', height: 'auto', display: 'block' }}
                       priority={i === 0 || section.section_type === 'hero'}
                     />
@@ -316,6 +315,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                 )}
 
                 {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><PackageShowcase /></>}
+                {section.image_url && oemLpNotes(currentPageId, section.image_url).map(note => <p key={note} style={{ margin: 0, width: '100%', textAlign: 'left', color: '#334155', fontSize: 16, lineHeight: 1.9 }}>{note}</p>)}
               </div>
             ))
           ) : (
@@ -325,10 +325,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                 style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
               >
                 <Image
-                  src={currentPageId === SAMPLE_PAGE_ID && img.src === '/images/lp-cta.jpg' ? OEM_OFFER_IMAGE : img.src}
-                  alt={currentPageId === SAMPLE_PAGE_ID && img.src === '/images/lp-cta.jpg' ? OEM_OFFER_ALT : img.alt}
-                  width={1200}
-                  height={currentPageId === SAMPLE_PAGE_ID && img.src === '/images/lp-cta.jpg' ? 1500 : 1600}
+                  {...oemLpImage(currentPageId, img.src, img.alt)}
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                   priority={i === 0}
                 />
