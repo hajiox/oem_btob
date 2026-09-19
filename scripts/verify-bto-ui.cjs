@@ -92,7 +92,16 @@ const base = process.argv[2] || 'http://localhost:3107'
         await form.getByRole('button',{name:/この内容で仮申込/}).waitFor()
         await page.waitForTimeout(450)
         const text=await form.innerText()
-        assert(text.includes(`¥${spec.total.toLocaleString('en-US')}`), `Wrong total: ${spec.product} ${spec.total}`)
+        const finalTotal = spec.total + 6000
+        assert(text.includes(`¥${finalTotal.toLocaleString('en-US')}`), `Wrong total: ${spec.product} ${finalTotal}`)
+        const breakdown = form.getByTestId('quote-order-breakdown')
+        const subtotalRow = breakdown.locator(':scope > div').filter({hasText: '商品小計'}).first()
+        assert((await subtotalRow.innerText()).includes(`¥${spec.total.toLocaleString('en-US')}`), `${spec.product}: subtotal changed`)
+        const shippingRow = breakdown.locator(':scope > div').filter({hasText: '送料・発送梱包手数料'}).first()
+        assert((await shippingRow.innerText()).includes('¥6,000'), `${spec.product}: shipping/packing fee line missing`)
+        const quantityUnit = spec.product === 'ラーメン' ? 'セット' : '個'
+        const unitCostRow = form.getByText(`1${quantityUnit}あたり仕入原価`, {exact: false}).locator('..')
+        assert((await unitCostRow.innerText()).includes(`¥${Math.ceil(spec.total / 400).toLocaleString('en-US')}`), `${spec.product}: unit cost includes shipping fee`)
         assert(text.includes('400'), 'Fixed quantity missing')
         assert(!text.includes('800個'), 'Quantity not forced to 400')
         assert(!text.includes('うち消費税'), 'Tax-inclusive label on ex-tax quote')

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, ChevronDown, Package } from 'lucide-react'
 import Image from 'next/image'
 import { packageSamplePhoto } from '@/lib/package-samples'
+import { oemShippingPackingFee } from '@/lib/oem-shipping'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
@@ -219,7 +220,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     }, [answers, activeSteps, selectedProduct, products])
 
     const basePrice = unitPrice.fixed * oemQuantity
-    const estimatedPrice = Math.ceil(basePrice * (1 + unitPrice.percentage / 100))
+    const productSubtotal = Math.ceil(basePrice * (1 + unitPrice.percentage / 100))
+    const shippingPackingFee = oemShippingPackingFee(pageId, selectedProduct)
+    const estimatedPrice = productSubtotal + shippingPackingFee
     const estimatedTax = Math.round(estimatedPrice * 10 / 110)
 
     // バリデーション
@@ -345,7 +348,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         if (!isContactInfoValid() || isTeaDeclined) return
         setIsSubmitting(true)
         setErrorData(null)
-        const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
+        const unitCost = Math.ceil(productSubtotal / (oemQuantity || 1))
         const selectedProd = products.find(p => p.id === selectedProduct)
         
         const selectedOptionsDetails = [
@@ -353,6 +356,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
             { question: '商品', answer: selectedProd?.name || '', type: 'text' },
             { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
             { question: `1${quantityUnit}あたり仕入原価(税抜)`, answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
+            ...(shippingPackingFee ? [
+                { question: '商品小計(税抜)', answer: `¥${productSubtotal.toLocaleString()}`, type: 'number' },
+                { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: `¥${shippingPackingFee.toLocaleString()}`, type: 'number' },
+            ] : []),
             ...(isFixedLotProduct ? [{ question: '見積条件', answer: fixedLotConditionNote, type: 'text' }] : []),
             ...Object.entries(answers).map(([qId, val]) => {
                 const q = activeSteps.flatMap(s => s.questions).find(q => q.id === qId)
@@ -630,6 +637,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                     <div style={{ fontSize: '42px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</div>
                                     {isFixedLotProduct ? <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>税抜・{fixedLotConditionNote}</div> : <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' }}>(うち消費税 ¥{estimatedTax.toLocaleString()})</div>}
                                     {!isFixedLotProduct && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>※ 最終金額は個別にお見積りいたします</div>}
+                                    {shippingPackingFee > 0 && <div data-testid="quote-order-breakdown" style={{ marginTop: 24, textAlign: 'left', fontSize: 16, lineHeight: 1.8, color: '#fff' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}><span>商品小計（税別）</span><strong>¥{productSubtotal.toLocaleString()}</strong></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginTop: 8 }}><span>送料・発送梱包手数料<br /><small>税別・1注文につき</small></span><strong style={{ whiteSpace: 'nowrap' }}>¥{shippingPackingFee.toLocaleString()}</strong></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 12, paddingTop: 12 }}><strong>概算合計（税別）</strong><strong>¥{estimatedPrice.toLocaleString()}</strong></div>
+                                    </div>}
                                     
                                     <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
                                         {isFixedLotProduct && <div style={{ fontSize: '15px', lineHeight: 1.8 }}>
@@ -646,10 +658,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                         </div>}
                                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
-                                                <span>📦</span> 1{quantityUnit}あたり仕入原価
+                                                <span>📦</span> 1{quantityUnit}あたり仕入原価{shippingPackingFee > 0 ? '（送料等別）' : ''}
                                             </div>
                                             <div style={{ fontSize: '28px', fontWeight: 800, color: '#fff' }}>
-                                                ¥{Math.ceil(estimatedPrice / (oemQuantity || 1)).toLocaleString()}
+                                                ¥{Math.ceil(productSubtotal / (oemQuantity || 1)).toLocaleString()}
                                             </div>
                                         </div>
 
@@ -657,10 +669,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                             <div style={{ fontSize: '15px', color: '#fcd34d', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
                                                 <span>💡</span> 販売プランシミュレーション
                                             </div>
+                                            {shippingPackingFee > 0 && <p style={{ fontSize: 14, color: '#fde68a', marginBottom: 16 }}>送料・発送梱包手数料を除く商品単価での参考計算です。</p>}
                                             
                                             <div style={{ display: 'grid', gap: '12px' }}>
                                                 {[30, 40, 50].map(margin => {
-                                                    const unitCost = Math.ceil(estimatedPrice / (oemQuantity || 1))
+                                                    const unitCost = Math.ceil(productSubtotal / (oemQuantity || 1))
                                                     const sellingPrice = Math.ceil(unitCost / (1 - margin / 100))
                                                     const profit = sellingPrice - unitCost
                                                     
@@ -700,6 +713,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
                                     <div style={{ display: 'inline-block', marginTop: '12px', padding: '8px 16px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
                                         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>お見積り金額: </span>
                                         <span style={{ fontSize: '16px', fontWeight: 700, color: '#818cf8' }}>¥{estimatedPrice.toLocaleString()}〜</span>
+                                        {shippingPackingFee > 0 && <p style={{ fontSize: 14, color: '#e0e7ff', marginTop: 8 }}>送料・発送梱包手数料 ¥{shippingPackingFee.toLocaleString()}（税別）を含みます。</p>}
                                     </div>
                                 </div>
                                 <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}>
