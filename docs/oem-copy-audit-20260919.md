@@ -1,6 +1,6 @@
 # OEM copy correction — 2026-09-19
 
-Status: final corrections prepared for deployment. Tea database copy correction applied; prices unchanged.
+Status: deployed and verified on production (implementation commit ffb81b9, deployment oem-pqsre5gj8-hajioxs-projects.vercel.app). Tea database copy correction applied; prices unchanged.
 
 ## Confirmed business conditions
 
@@ -22,7 +22,8 @@ Status: final corrections prepared for deployment. Tea database copy correction 
 - npm run build: PASS
 - node scripts/verify-oem-security.cjs: PASS, 94 paths; no submission/email
 - node scripts/verify-oem-mail.cjs: PASS, mocks only
-- Production visual verification pending deployment.
+- Production visual verification: desktop and 390px mobile screenshots checked. All five replacement images loaded; no horizontal page overflow. Readable HTML notes verified under packaging/notice images.
+- Tea 4-pack result verified on production: product subtotal 100,000 + shipping/packing 6,000 = 106,000 yen before tax; one-year shelf life, initial-free scope and gross-margin notes confirmed. No inquiry submitted or live email sent.
 
 ## Final image prompts
 
