@@ -22,7 +22,7 @@
 - Event and user retention: 14 months; reset on new activity disabled.
 - Search Console URL-prefix property `https://oem.aizubrandhall.com/` verified with `public/google7ab12a6960fdc81b.html` (user manually downloaded file after browser restart). Keep verification file deployed.
 - Sitemap submitted and successfully processed: 1 URL. `/btob` inspection showed discovered/not indexed; indexing request accepted and queued. This is not a guarantee of indexing or ranking.
-- GA4/Search Console optional cross-service link awaits the user's confirmation because it exposes search data to GA property viewers.
+- GA4/Search Console cross-service link explicitly approved by the user and created successfully on 2026-09-19. Verified link row: OEM URL-prefix property → stream 15806719797; UI status リンク作成済み.
 
 ## Verification
 
