@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { FormStep, FormQuestion, FormOption } from '@/types/database'
 import { Resend } from 'resend'
+import { OEM_PAGE_ID, OEM_PRODUCT_IDS, validateContactInfo, validateOemQuote, type ContactInfo } from '@/lib/oem-quote-validation'
 
 export type FormStepWithItems = FormStep & {
     questions: (FormQuestion & {
@@ -119,25 +120,48 @@ export async function submitLead(formData: {
     selectedOptions: any
     estimatedTotalPrice: number
     quoteProductId?: string
+    rawAnswers?: Record<string, unknown>
     notes: string
 }) {
     const supabase = await createClient()
 
-    const isFixedLotQuote = formData.pageId === '35e7d402-0443-4703-94a4-fc2873b8f933' &&
-        [
-            'c0000001-0000-0000-0000-000000000001',
-            'c0000001-0000-0000-0000-000000000002',
-            'c0000001-0000-0000-0000-000000000003',
-            'c0000001-0000-0000-0000-000000000004',
-            'c0000001-0000-0000-0000-000000000005',
-            'c0000001-0000-0000-0000-000000000006',
-        ].includes(formData.quoteProductId || '')
+    const contactError = validateContactInfo(formData as ContactInfo)
+    if (contactError) return { success: false, error: contactError }
+    formData = { ...formData, companyName: formData.companyName.trim(), contactName: formData.contactName.trim(), email: formData.email.trim(), phone: formData.phone?.trim() || '', notes: formData.notes?.trim() || '' }
 
-    if (isFixedLotQuote && formData.quoteProductId === 'c0000001-0000-0000-0000-000000000006') {
-        const selections = Array.isArray(formData.selectedOptions) ? formData.selectedOptions : []
-        const supplied = selections.some((s: { question?: string; answer?: string }) => s.question === 'お茶の原料をご支給いただけますか？' && s.answer === 'ある')
-        const ingredient = selections.some((s: { question?: string; answer?: string }) => s.question === '原料名をご入力ください' && typeof s.answer === 'string' && s.answer.trim())
-        if (!supplied || !ingredient) return { success: false, error: 'お茶は原料支給と原料名の確認が必要です。' }
+    if (formData.pageId === OEM_PAGE_ID && !OEM_PRODUCT_IDS.has(formData.quoteProductId || '')) return { success: false, error: '商品を確認できません。' }
+    if (OEM_PRODUCT_IDS.has(formData.quoteProductId || '') && formData.pageId !== OEM_PAGE_ID) return { success: false, error: '商品のページが一致しません。' }
+    const isFixedLotQuote = formData.pageId === OEM_PAGE_ID
+
+    let selectedOptions = formData.selectedOptions
+    let estimatedTotalPrice = formData.estimatedTotalPrice
+    if (isFixedLotQuote) {
+        if (!formData.rawAnswers) return { success: false, error: '回答内容を確認してください。' }
+        const { data: product } = await supabase.from('products').select('*').eq('id', formData.quoteProductId!).eq('page_id', OEM_PAGE_ID).eq('is_visible', true).single()
+        if (!product) return { success: false, error: '商品を確認できません。' }
+        const { data: steps } = await supabase.from('form_steps').select('*').eq('page_id', OEM_PAGE_ID).eq('product_id', product.id).eq('is_visible', true).order('order_index')
+        const stepRows = steps || []
+        const stepIds = stepRows.map(step => step.id)
+        const { data: questions } = stepIds.length ? await supabase.from('form_questions').select('*').in('step_id', stepIds).order('order_index') : { data: [] }
+        const questionRows = questions || []
+        const questionIds = questionRows.map(q => q.id)
+        const { data: options } = questionIds.length ? await supabase.from('form_options').select('*').in('question_id', questionIds).order('order_index') : { data: [] }
+        const snapshot = { product, steps: stepRows.map(step => ({ ...step, questions: questionRows.filter(q => q.step_id === step.id).map(q => ({ ...q, options: (options || []).filter(o => o.question_id === q.id) })) })) }
+        const checked = validateOemQuote(snapshot, formData.rawAnswers)
+        if ('error' in checked) return { success: false, error: checked.error }
+        if (!Number.isSafeInteger(formData.estimatedTotalPrice) || formData.estimatedTotalPrice !== checked.total) return { success: false, error: '見積金額が一致しません。' }
+        selectedOptions = checked.selectedOptions
+        selectedOptions = [
+            { question: '商品', answer: product.name, type: 'text' },
+            { question: 'OEM製造数', answer: checked.quantityLabel, type: 'number' },
+            { question: '商品小計(税抜)', answer: `¥${checked.subtotal.toLocaleString()}`, type: 'number' },
+            { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: '¥6,000', type: 'number' },
+            { question: '概算お見積り金額(税抜)', answer: `¥${checked.total.toLocaleString()}`, type: 'number' },
+            { question: `1${checked.quantityUnit}あたり仕入原価(税抜・送料等別)`, answer: `¥${Math.ceil(checked.subtotal / checked.quantity).toLocaleString()}`, type: 'number' },
+            ...selectedOptions,
+            { question: '見積条件', answer: checked.conditionNote, type: 'text' },
+        ]
+        estimatedTotalPrice = checked.total
     }
 
     const { error } = await supabase.from('leads').insert([{
@@ -146,8 +170,8 @@ export async function submitLead(formData: {
         contact_name: formData.contactName,
         email: formData.email,
         phone: formData.phone || null,
-        selected_options: formData.selectedOptions,
-        estimated_total_price: formData.estimatedTotalPrice,
+        selected_options: selectedOptions,
+        estimated_total_price: estimatedTotalPrice,
         notes: formData.notes || null,
         status: 'new' // 初期ステータス
     }])
@@ -186,9 +210,10 @@ export async function submitLead(formData: {
         }
         
         // 改行をHTMLのbrタグに変換
-        const introHtml = customerIntro.split('\n').map(line => `<p>${line}</p>`).join('')
-        const closingHtml = customerClosing.split('\n').map(line => `<p>${line}</p>`).join('')
-        const adminIntroHtml = adminIntro.split('\n').map(line => `<p>${line}</p>`).join('')
+        const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char))
+        const introHtml = escapeHtml(customerIntro).split('\n').map(line => `<p>${line}</p>`).join('')
+        const closingHtml = escapeHtml(customerClosing).split('\n').map(line => `<p>${line}</p>`).join('')
+        const adminIntroHtml = escapeHtml(adminIntro).split('\n').map(line => `<p>${line}</p>`).join('')
 
         // 1. お客様への自動返信
         const customerResult = await resend.emails.send({
@@ -197,16 +222,16 @@ export async function submitLead(formData: {
             subject: customerSubject,
             html: `
                 <div style="font-family: sans-serif; color: #333; line-height: 1.6;">
-                    <p>${formData.companyName} ${formData.contactName} 様</p>
+                    <p>${escapeHtml(formData.companyName)} ${escapeHtml(formData.contactName)} 様</p>
                     ${introHtml}
                     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                     <h3 style="color: #6366f1;">概算お見積り内容</h3>
-                    <p><strong>概算総額:</strong> ¥${formData.estimatedTotalPrice.toLocaleString()}（${isFixedLotQuote ? '税別' : '税込'}）</p>
+                    <p><strong>概算総額:</strong> ¥${estimatedTotalPrice.toLocaleString()}（${isFixedLotQuote ? '税別' : '税込'}）</p>
                     <p><strong>ご回答内容の抜粋:</strong></p>
                     <ul style="padding-left: 20px;">
-                        ${formData.selectedOptions.map((opt: any) => `<li><strong>${opt.question}:</strong> ${opt.answer}</li>`).join('')}
+                        ${(Array.isArray(selectedOptions) ? selectedOptions : []).map((opt: any) => `<li><strong>${escapeHtml(opt.question ?? opt.question_text ?? opt.step_title)}:</strong> ${escapeHtml(opt.answer ?? opt.selected_label)}</li>`).join('')}
                     </ul>
-                    <p><strong>備考事項:</strong><br>${formData.notes || 'なし'}</p>
+                    <p><strong>備考事項:</strong><br>${escapeHtml(formData.notes || 'なし')}</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                     <p style="font-size: 12px; color: #999;">${closingHtml}</p>
                 </div>
@@ -226,12 +251,12 @@ export async function submitLead(formData: {
                 <div style="font-family: sans-serif; color: #333;">
                     ${adminIntroHtml}
                     <table style="width: 100%; border-collapse: collapse;">
-                        <tr><td style="padding: 8px; border: 1px solid #eee;">会社名</td><td style="padding: 8px; border: 1px solid #eee;">${formData.companyName}</td></tr>
-                        <tr><td style="padding: 8px; border: 1px solid #eee;">担当者</td><td style="padding: 8px; border: 1px solid #eee;">${formData.contactName}</td></tr>
-                        <tr><td style="padding: 8px; border: 1px solid #eee;">メール</td><td style="padding: 8px; border: 1px solid #eee;">${formData.email}</td></tr>
-                        <tr><td style="padding: 8px; border: 1px solid #eee;">概算見積額</td><td style="padding: 8px; border: 1px solid #eee;">¥${formData.estimatedTotalPrice.toLocaleString()}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #eee;">会社名</td><td style="padding: 8px; border: 1px solid #eee;">${escapeHtml(formData.companyName)}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #eee;">担当者</td><td style="padding: 8px; border: 1px solid #eee;">${escapeHtml(formData.contactName)}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #eee;">メール</td><td style="padding: 8px; border: 1px solid #eee;">${escapeHtml(formData.email)}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #eee;">概算見積額</td><td style="padding: 8px; border: 1px solid #eee;">¥${estimatedTotalPrice.toLocaleString()}</td></tr>
                     </table>
-                    <p><a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://oem.aizubrandhall.com'}/admin/dashboard" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 20px;">管理画面で確認する</a></p>
+                    <p><a href="${escapeHtml(process.env.NEXT_PUBLIC_BASE_URL || 'https://oem.aizubrandhall.com')}/admin/dashboard" style="display: inline-block; padding: 10px 20px; background: #6366f1; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 20px;">管理画面で確認する</a></p>
                 </div>
             `
         })
