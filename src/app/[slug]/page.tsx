@@ -18,6 +18,9 @@ const LP_IMAGES = [
   { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
 ]
 
+const OEM_OFFER_IMAGE = '/images/btob/oem-first-order-offer-v2.png'
+const OEM_OFFER_ALT = '初回限定：1企業（個人は1名）につき1回限り。試作費（2回まで）10,000円、原材料表示作成5,000円、栄養成分作成（計算値）5,000円、簡易パッケージデザイン30,000円。通常合計50,000円が初回0円。追加試作は1回につき3,000円。'
+
 // LP セクションスケルトン
 function OemExplanation() {
   return (
@@ -302,10 +305,10 @@ export default async function HomePage({ params }: { params: { slug: string } })
                     }}
                   >
                     <Image
-                      src={section.image_url}
-                      alt={section.title || ''}
+                      src={currentPageId === SAMPLE_PAGE_ID && section.image_url === '/images/lp-cta.jpg' ? OEM_OFFER_IMAGE : section.image_url}
+                      alt={currentPageId === SAMPLE_PAGE_ID && section.image_url === '/images/lp-cta.jpg' ? OEM_OFFER_ALT : section.title || ''}
                       width={1200}
-                      height={1600}
+                      height={currentPageId === SAMPLE_PAGE_ID && section.image_url === '/images/lp-cta.jpg' ? 1500 : 1600}
                       style={{ width: '100%', height: 'auto', display: 'block' }}
                       priority={i === 0 || section.section_type === 'hero'}
                     />
@@ -322,10 +325,10 @@ export default async function HomePage({ params }: { params: { slug: string } })
                 style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
               >
                 <Image
-                  src={img.src}
-                  alt={img.alt}
+                  src={currentPageId === SAMPLE_PAGE_ID && img.src === '/images/lp-cta.jpg' ? OEM_OFFER_IMAGE : img.src}
+                  alt={currentPageId === SAMPLE_PAGE_ID && img.src === '/images/lp-cta.jpg' ? OEM_OFFER_ALT : img.alt}
                   width={1200}
-                  height={1600}
+                  height={currentPageId === SAMPLE_PAGE_ID && img.src === '/images/lp-cta.jpg' ? 1500 : 1600}
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                   priority={i === 0}
                 />
