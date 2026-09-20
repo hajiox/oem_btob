@@ -24,4 +24,12 @@ assert.match(oemLpImage(PAGE, '/images/lp-cta.jpg', '').alt, /栄養成分表示
 assert.match(fs.readFileSync('src/components/OemQuoteResult.tsx', 'utf8'), /初回無料適用時の概算/)
 assert.match(oemLpNotes(PAGE, '/images/lp-problems.jpg').join(''), /予備100枚/)
 assert.deepEqual(oemLpNotes('another-page', '/images/lp-problems.jpg'), [])
-console.log('OEM copy checks: PASS (asset existence, page isolation, metadata and initial-free scope)')
+const guide = fs.readFileSync('src/components/OemServiceGuide.tsx', 'utf8')
+for (const id of ['oem-cost', 'oem-materials', 'oem-process']) {
+  assert.equal(guide.split(`id="${id}"`).length - 1, 1)
+  assert.ok(guide.includes(`href="#${id}"`))
+}
+assert.equal((guide.match(/<li><h3>/g) || []).length, 6)
+assert.match(guide, /商品の製造代金や送料まで無料になる特典ではありません/)
+assert.match(guide, /製造手数料の別途加算はありません/)
+console.log('OEM copy checks: PASS (assets, isolation, metadata, fee scope and process sections)')

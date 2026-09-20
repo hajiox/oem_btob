@@ -23,7 +23,21 @@
 .questions > div + div { border-top: 1px solid #e2e8f0; padding-top: 24px; }
 .link { display: inline-block; margin-top: 24px; font-size: 17px; font-weight: 700; line-height: 1.8; color: #315844; text-decoration: underline; text-underline-offset: 4px; }
 .link:focus-visible { outline: 3px solid #315844; outline-offset: 5px; }
+.topics { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.topics a { padding: 8px 14px; border: 1px solid #c6d6ca; border-radius: 8px; color: #315844; font-size: 17px; text-decoration: underline; text-underline-offset: 4px; }
+.topics a:focus-visible { outline: 3px solid #315844; outline-offset: 3px; }
+.panel [id] { scroll-margin-top: 32px; }
+.panel .followup { margin-top: 14px; }
+.costs { margin: 20px 0 0; }
+.costs > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid #e2e8f0; }
+.costs dt { font-size: 17px; font-weight: 700; line-height: 1.8; }
+.costs dd { margin: 0; font-size: 17px; line-height: 1.9; }
+.process { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; counter-reset: process; margin: 24px 0 0; padding: 0; }
+.process li { counter-increment: process; padding: 20px; border: 1px solid #d8e4da; border-radius: 12px; background: #f5f8f5; }
+.process li::before { content: counter(process, decimal-leading-zero); display: block; color: #315844; font-size: 24px; font-weight: 800; margin-bottom: 12px; }
 
 @media (max-width: 640px) {
   .audiences { grid-template-columns: 1fr; }
+  .process { grid-template-columns: 1fr; }
+  .costs > div { grid-template-columns: 1fr; gap: 6px; }
 }
