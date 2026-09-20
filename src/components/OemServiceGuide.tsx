@@ -3,11 +3,11 @@ import styles from './OemServiceGuide.module.css'
 // Server-rendered copy for the OEM page only; quote rules remain in the BTO.
 export function OemExplanation() {
   return (
-    <section className={styles.panel} aria-labelledby="oem-service-title">
-      <h1 id="oem-service-title">あなたの農園・お店のオリジナル商品を作りませんか？</h1>
+    <section className={`${styles.panel} ${styles.intro}`} aria-labelledby="oem-service-title">
+      <h1 id="oem-service-title"><span className={styles.headingLine}>あなたの農園・お店の</span><span className={styles.headingLine}><span className={styles.phrase}>オリジナル商品を</span><span className={styles.phrase}>作りませんか？</span></span></h1>
       <p>育てた農産物を加工品にしたい。自分の売り場だけの商品を作りたい。会津ブランド館が製造・包装を担い、あなたの農園名・店名で販売できる食品に仕上げます。</p>
-      <p className={styles.followup}>こうした「自分のブランドの商品を、他社に製造してもらう仕組み」が <strong>OEM</strong> です。</p>
-      <a className={styles.link} href="#bto-form">作りたい商品を選んで、概算費用を見る →</a>
+      <p className={styles.definition}>こうした「自分のブランドの商品を、他社に製造してもらう仕組み」が <strong>OEM</strong> です。</p>
+      <a className={styles.introButton} href="#bto-form"><span>作りたい商品を選んで、<wbr />概算費用を見る</span><span aria-hidden="true">→</span></a>
     </section>
   )
 }
