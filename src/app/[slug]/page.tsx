@@ -5,6 +5,7 @@ import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
 import OemAnalytics from '@/components/OemAnalytics'
 import PackageShowcase from '@/components/PackageShowcase'
+import OemRankingProof from '@/components/OemRankingProof'
 import { OemExplanation, OemServiceQuestions } from '@/components/OemServiceGuide'
 import { SAMPLE_PAGE_ID } from '@/lib/package-samples'
 import { oemLpImage, oemLpNotes, oemMetadataCopy } from '@/lib/oem-lp-copy'
@@ -314,7 +315,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   </div>
                 )}
 
-                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><PackageShowcase /></>}
+                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><OemRankingProof /><PackageShowcase /></>}
                 {section.image_url && oemLpNotes(currentPageId, section.image_url).map(note => <p key={note} style={{ margin: 0, width: '100%', textAlign: 'left', color: '#334155', fontSize: 16, lineHeight: 1.9 }}>{note}</p>)}
               </div>
             ))
@@ -329,7 +330,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                   priority={i === 0}
                 />
-                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><PackageShowcase /></>}
+                {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><OemRankingProof /><PackageShowcase /></>}
               </div>
             ))
           )}
