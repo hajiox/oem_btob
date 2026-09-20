@@ -1,9 +1,12 @@
+import Image from 'next/image'
 import styles from './OemServiceGuide.module.css'
 
 // Server-rendered copy for the OEM page only; quote rules remain in the BTO.
 export function OemExplanation() {
   return (
-    <section className={styles.panel} aria-labelledby="oem-service-title">
+    <section className={`${styles.panel} ${styles.illustrated}`} aria-labelledby="oem-service-title">
+      <Image src="/images/oem-explanation-illustration-v1.png" alt="農園の素材や売り場の企画を、会津ブランド館が製造・包装し、あなたの農園名・店名で販売できる商品にする流れのイラスト" width={1448} height={1086} sizes="(max-width: 900px) 100vw, 860px" className={styles.explanationImage} />
+      <div className={styles.srOnly}>
       <h1 id="oem-service-title">福島の食品OEM・農産物の加工委託</h1>
       <p className={styles.lead}>地域の素材を、あなたの農園・売り場のオリジナル商品に。</p>
       <h2>OEMとは？</h2>
@@ -19,6 +22,7 @@ export function OemExplanation() {
         </div>
       </div>
       <p className={styles.note}>素材によって加工方法や対応可否が異なります。まずは下の商品・包装例をご覧ください。</p>
+      </div>
       <a className={styles.link} href="#bto-form">作りたい商品を選んで、概算費用を見る →</a>
     </section>
   )
