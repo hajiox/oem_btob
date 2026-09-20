@@ -1,28 +1,12 @@
-import Image from 'next/image'
 import styles from './OemServiceGuide.module.css'
 
 // Server-rendered copy for the OEM page only; quote rules remain in the BTO.
 export function OemExplanation() {
   return (
-    <section className={`${styles.panel} ${styles.illustrated}`} aria-labelledby="oem-service-title">
-      <Image src="/images/oem-explanation-illustration-v1.png" alt="農園の素材や売り場の企画を、会津ブランド館が製造・包装し、あなたの農園名・店名で販売できる商品にする流れのイラスト" width={1448} height={1086} sizes="(max-width: 900px) 100vw, 860px" className={styles.explanationImage} />
-      <div className={styles.srOnly}>
-      <h1 id="oem-service-title">福島の食品OEM・農産物の加工委託</h1>
-      <p className={styles.lead}>地域の素材を、あなたの農園・売り場のオリジナル商品に。</p>
-      <h2>OEMとは？</h2>
-      <p>あなたのブランドの商品を、代わりに製造することです。会津ブランド館が食品の製造を担い、あなたの農園名・店名・ブランド名で販売できる商品に仕上げます。</p>
-      <div className={styles.audiences}>
-        <div>
-          <h3>育てた農産物を商品にしたい方</h3>
-          <p>福島の農家・農園の皆さまへ。例えば、桃などの果物をジャムやドレッシングに。支給いただく原料の特徴に合わせて、小ロットでの商品化をご相談いただけます。</p>
-        </div>
-        <div>
-          <h3>自分の売り場の商品を作りたい方</h3>
-          <p>道の駅・観光施設のおみやげ売り場、地域のお店の皆さまへ。ご当地カレーやたれ、ご飯のお供など、自店で販売するオリジナル食品の製造をお手伝いします。</p>
-        </div>
-      </div>
-      <p className={styles.note}>素材によって加工方法や対応可否が異なります。まずは下の商品・包装例をご覧ください。</p>
-      </div>
+    <section className={styles.panel} aria-labelledby="oem-service-title">
+      <h1 id="oem-service-title">あなたの農園・お店のオリジナル商品を作りませんか？</h1>
+      <p>育てた農産物を加工品にしたい。自分の売り場だけの商品を作りたい。会津ブランド館が製造・包装を担い、あなたの農園名・店名で販売できる食品に仕上げます。</p>
+      <p className={styles.followup}>こうした「自分のブランドの商品を、他社に製造してもらう仕組み」が <strong>OEM</strong> です。</p>
       <a className={styles.link} href="#bto-form">作りたい商品を選んで、概算費用を見る →</a>
     </section>
   )
