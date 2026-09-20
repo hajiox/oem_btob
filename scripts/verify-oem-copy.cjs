@@ -27,9 +27,10 @@ assert.deepEqual(oemLpNotes('another-page', '/images/lp-problems.jpg'), [])
 const guide = fs.readFileSync('src/components/OemServiceGuide.tsx', 'utf8')
 for (const id of ['oem-cost', 'oem-materials', 'oem-process']) {
   assert.equal(guide.split(`id="${id}"`).length - 1, 1)
-  assert.ok(guide.includes(`href="#${id}"`))
 }
-assert.equal((guide.match(/<li><h3>/g) || []).length, 6)
+assert.equal((guide.match(/<details\b/g) || []).length, 6)
+assert.equal((guide.match(/<summary\b/g) || []).length, 6)
+assert.doesNotMatch(guide, /<details\b[^>]*\bopen(?:\s|=|>)/)
 assert.match(guide, /商品の製造代金や送料まで無料になる特典ではありません/)
 assert.match(guide, /製造手数料の別途加算はありません/)
 console.log('OEM copy checks: PASS (assets, isolation, metadata, fee scope and process sections)')

@@ -28,26 +28,24 @@ export function OemServiceQuestions() {
   return (
     <section className={styles.panel} aria-labelledby="oem-questions-title">
       <h2 id="oem-questions-title">食品の加工委託・商品づくりのよくあるご質問</h2>
-      <nav className={styles.topics} aria-label="商品づくりのご案内">
-        <a href="#oem-cost">費用</a><a href="#oem-materials">原料の支給</a><a href="#oem-process">製造の流れ</a>
-      </nav>
+      <p className={styles.note}>気になる項目を押すと、詳しい説明が開きます。</p>
       <div className={styles.questions}>
-        <div>
-          <h3>どんな食品を作れますか？</h3>
+        <details className={styles.disclosure}>
+          <summary>どんな食品を作れますか？</summary>
           <p>レトルトカレー、2食入りラーメン、たれ・ソース・ドレッシング、ふりかけ、ジャム・ご飯のお供などの瓶詰め、お茶のティーバッグに対応しています。商品と包装を選ぶと、概算費用を確認できます。</p>
-        </div>
-        <div>
-          <h3>小ロットは何個ですか？</h3>
+        </details>
+        <details className={styles.disclosure}>
+          <summary>小ロットは何個ですか？</summary>
           <p>基本は1ロット約400個、ラーメンは2食入り約400セットです。製造数量は多少前後し、完成した全数をお買い取りいただき、実際の数量で精算します。お茶は「4包入り×400個」または「50包入り×100袋」の専用プランです。</p>
-        </div>
-        <div>
-          <h3 id="oem-materials">自分の農産物を持ち込めますか？</h3>
+        </details>
+        <details className={styles.disclosure} id="oem-materials">
+          <summary>自分の農産物を持ち込めますか？</summary>
           <p>原料をご支給いただく商品づくりをご相談いただけます。種類・状態・数量により対応可否を確認します。お茶は原料のご支給が必須で、乾燥・必要に応じた焙煎も行いますが、乾燥をお引き受けできない食材もあります。</p>
           <p className={styles.followup}>ご相談時に、使いたい原料名・状態・用意できる量をお知らせください。原料は1種類まで、弊社への発送は元払いでお願いしています。必要な量や受け入れ方法は、原料を送る前にご確認ください。</p>
           <p className={styles.followup}>原料を支給した場合の価格調整は、自動見積もりには反映せず、正式見積もりで確認します。お茶以外は原料支給がなくてもご相談いただけますが、特殊な食材などは調達できない場合があります。キャップ付きパウチは、粘度が高すぎる配合では充填できません。</p>
-        </div>
-        <div>
-          <h3 id="oem-cost">食品OEMの費用には、何が含まれますか？</h3>
+        </details>
+        <details className={styles.disclosure} id="oem-cost">
+          <summary>食品OEMの費用には、何が含まれますか？</summary>
           <p>自動見積もりの金額は概算です。食材や仕様によって金額は変わり、正式見積もりで確定します。商品・包装の費用と送料・発送梱包手数料6,000円（税別・1注文につき）を含む内訳は、下の自動見積もりで確認できます。初回無料特典の対象・追加費用も見積もり画面に表示します。</p>
           <dl className={styles.costs}>
             <div><dt>商品・製造・包装</dt><dd>選んだ材料・包装と製造手数料を含みます。お茶は乾燥・必要に応じた焙煎・製造・包装を含む専用プランで、製造手数料の別途加算はありません。</dd></div>
@@ -55,13 +53,13 @@ export function OemServiceQuestions() {
             <div><dt>試作・表示・デザイン</dt><dd>通常は試作費（2回まで）10,000円、原材料表示作成5,000円、栄養成分表示作成（計算値）5,000円、簡易パッケージデザイン30,000円（すべて税別）。この合計50,000円が、1企業（個人は1名）につき初回1回のみ無料です。追加試作は1回3,000円（税別）、特典対象外の費用は別途となります。</dd></div>
           </dl>
           <p className={styles.note}>初回無料は上記の試作・表示・デザイン費が対象です。商品の製造代金や送料まで無料になる特典ではありません。</p>
-        </div>
-        <div>
-          <h3>道の駅での販売や、ふるさと納税向けの商品も相談できますか？</h3>
+        </details>
+        <details className={styles.disclosure}>
+          <summary>道の駅・ふるさと納税向けの商品も相談できますか？</summary>
           <p>それらの販売先を想定した商品の製造をご相談いただけます。販路について多少のアドバイスはできますが、道の駅への商談・紹介、ふるさと納税への登録代行は行っていません。</p>
-        </div>
-      </div>
-      <h2 id="oem-process">ご相談から製造・納品までの流れ</h2>
+        </details>
+      <details className={styles.disclosure} id="oem-process">
+      <summary>ご相談から製造・納品までの流れ</summary>
       <ol className={styles.process}>
         <li><h3>概算を見る</h3><p>商品・材料・包装を選び、ご予算の目安を確認します。この時点では発注になりません。</p></li>
         <li><h3>商品について相談</h3><p>使いたい原料、目指す味、販売する場所、希望時期をお知らせください。対応できる内容を確認します。</p></li>
@@ -71,6 +69,8 @@ export function OemServiceQuestions() {
         <li><h3>納品・実数精算</h3><p>完成した全数をお買い取りいただき、実際の製造数量で精算します。</p></li>
       </ol>
       <p className={styles.note}>納期は、試作・原料の準備・包装仕様・製造状況によって異なります。販売したい時期が決まっている場合は、ご相談時にお知らせください。</p>
+      </details>
+      </div>
       <a className={styles.link} href="#bto-form">商品・包装を選んで、概算見積もりへ →</a>
     </section>
   )
