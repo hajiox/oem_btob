@@ -194,8 +194,8 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const CONTACT_STEP = RESULT_STEP + 1
 
     useEffect(() => {
-        if (isBtoBQuotePage && currentStep === RESULT_STEP) trackOemEvent('oem_view_quote')
-    }, [currentStep, isBtoBQuotePage, RESULT_STEP])
+        if (isBtoBQuotePage && currentStep === RESULT_STEP) trackOemEvent('oem_view_quote', selectedProduct)
+    }, [currentStep, isBtoBQuotePage, RESULT_STEP, selectedProduct])
 
     // 進捗インジケーターの計算（動的なステップ数に対応）
     const visualSteps = useMemo(() => {
@@ -360,7 +360,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         if (previousStep !== undefined) setNavigationHistory(history => history.slice(0, -1))
     }
     const handleApply = () => {
-        if (isBtoBQuotePage) trackOemEvent('oem_start_consultation')
+        if (isBtoBQuotePage) trackOemEvent('oem_start_consultation', selectedProduct)
         navigateTo(CONTACT_STEP)
     }
 
@@ -454,7 +454,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
         }
         const res = await submitLead({ pageId, companyName: contactInfo.companyName, contactName: contactInfo.contactName, email: contactInfo.email, phone: contactInfo.phone, notes: consultationNotes, estimatedTotalPrice: estimatedPrice, selectedOptions: selectedOptionsDetails, quoteProductId: selectedProduct || undefined, ...(isBtoBQuotePage ? { rawAnswers: answers, idempotencyKey: idempotencyKeyRef.current as string } : {}) })
         if (res.success) {
-            if (isBtoBQuotePage) trackOemEvent('generate_lead')
+            if (isBtoBQuotePage) trackOemEvent('generate_lead', selectedProduct)
             setIsSuccess(true)
         }
         else setErrorData(res.error || '送信に失敗しました。入力内容を確認してください。')
