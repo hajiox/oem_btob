@@ -157,7 +157,7 @@ function StoreSection() {
 }
 
 // フッター
-function Footer() {
+function Footer({ showAnalytics = false }: { showAnalytics?: boolean }) {
   return (
     <footer style={{ width: '100%', backgroundColor: '#fff', color: '#111', padding: '60px 16px', borderTop: '1px solid #eaeaea' }}>
       <div style={{ maxWidth: '896px', margin: '0 auto', textAlign: 'center' }}>
@@ -171,6 +171,7 @@ function Footer() {
         <p style={{ fontSize: '10px', letterSpacing: '0.15em', color: '#999' }}>
           &copy; {new Date().getFullYear()} AIZU BRAND HALL. All rights reserved.
         </p>
+        {showAnalytics && <OemAnalytics measurementId={process.env.NEXT_PUBLIC_OEM_GA_MEASUREMENT_ID} />}
       </div>
     </footer>
   )
@@ -385,8 +386,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
       <StoreSection />
 
       {/* フッター */}
-      <Footer />
-      {currentPageId === SAMPLE_PAGE_ID && <OemAnalytics measurementId={process.env.NEXT_PUBLIC_OEM_GA_MEASUREMENT_ID} />}
+      <Footer showAnalytics={currentPageId === SAMPLE_PAGE_ID} />
 
     </main>
   )
