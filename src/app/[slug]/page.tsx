@@ -24,6 +24,16 @@ const LP_IMAGES = [
 ]
 
 // LP セクションスケルトン
+function SamplePurchaseLink({ pageId, src }: { pageId: string; src: string }) {
+  if (pageId !== SAMPLE_PAGE_ID || oemLpImage(pageId, src, '').src !== '/images/btob/oem-notice-copy-v3.webp') return null
+  return (
+    <a href="https://www.rakuten.co.jp/aizubrandhall/" target="_blank" rel="noopener noreferrer"
+      style={{ display: 'inline-block', padding: '8px 12px', color: '#64748b', fontSize: 13, lineHeight: 1.6, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+      既存商品の味を試す｜楽天市場で購入 ↗
+    </a>
+  )
+}
+
 function SectionSkeleton() {
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-8">
@@ -316,6 +326,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   </div>
                 )}
 
+                {section.image_url && <SamplePurchaseLink pageId={currentPageId} src={section.image_url} />}
                 {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><OemRankingProof /><PackageShowcase /></>}
                 {section.image_url && oemLpNotes(currentPageId, section.image_url).map(note => <p key={note} style={{ margin: 0, width: '100%', textAlign: 'left', color: '#334155', fontSize: 16, lineHeight: 1.9 }}>{note}</p>)}
               </div>
@@ -331,6 +342,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                   priority={i === 0}
                 />
+                <SamplePurchaseLink pageId={currentPageId} src={img.src} />
                 {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><OemRankingProof /><PackageShowcase /></>}
               </div>
             ))
