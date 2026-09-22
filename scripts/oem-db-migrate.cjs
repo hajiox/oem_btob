@@ -2,7 +2,7 @@
 const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { Client } = require('pg')
-const allowed = new Set(['008_oem_mail.sql','009_oem_intake.sql','010_oem_cases.sql','011_oem_intake_enforcement.sql'])
+const allowed = new Set(['008_oem_mail.sql','009_oem_intake.sql','010_oem_cases.sql','011_oem_intake_enforcement.sql','012_oem_conversations.sql'])
 function connection() {
     // Reuse the repository's existing DB connection until moved to environment configuration.
     const connectionString = process.env.OEM_DATABASE_URL || fs.readFileSync('run-schema.js','utf8').match(/connectionString: '([^']+)'/)?.[1]

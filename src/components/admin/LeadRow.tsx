@@ -9,6 +9,7 @@ import { deleteLead } from '@/actions/dashboard'
 import { OEM_PAGE_ID } from '@/lib/oem-quote-validation'
 import { OemLeadCasePanel } from './OemLeadCasePanel'
 import { OemMailPanel } from './OemMailPanel'
+import { OemConversationPanel } from './OemConversationPanel'
 
 export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: () => void | Promise<void> }) {
     const [isExpanded, setIsExpanded] = useState(false)
@@ -169,7 +170,7 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                 </div>
                             </div>
                         </div>
-                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><OemMailPanel leadId={lead.id} /></>}
+                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} /></>}
                     </td>
                 </tr>
             )}
