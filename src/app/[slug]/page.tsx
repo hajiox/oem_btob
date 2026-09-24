@@ -386,6 +386,13 @@ export default async function HomePage({ params }: { params: { slug: string } })
           </p>
         </div>
 
+        {currentPageId === SAMPLE_PAGE_ID && (
+          <aside aria-labelledby="oem-payment-title" data-testid="oem-payment-notice" style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto 28px', padding: '20px 24px', border: '1px solid rgba(165,180,252,0.3)', borderRadius: 12, background: 'rgba(15,23,42,0.55)', color: '#e2e8f0', textAlign: 'left', overflowWrap: 'anywhere' }}>
+            <h3 id="oem-payment-title" style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#fff' }}>お支払いについて</h3>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.9 }}>正式発注後に、お見積金額の<strong>50％を前金</strong>としてお支払いいただきます。ご入金確認後に製造を開始し、残額は製造数量の確定後、<strong>出荷前にご精算</strong>いただきます。</p>
+            <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.8, color: '#c7d2fe' }}>※サイトの概算確認・ご相談だけで、お支払いが発生することはありません。</p>
+          </aside>
+        )}
         <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} />
         {currentPageId === SAMPLE_PAGE_ID && (
           <div style={{ position: 'relative', maxWidth: 900, margin: '32px auto 0', color: '#e2e8f0', fontSize: 14, lineHeight: 1.8 }}>
