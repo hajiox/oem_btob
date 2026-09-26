@@ -1,7 +1,5 @@
 export const OEM_ANALYTICS_HOST = 'oem.aizubrandhall.com'
 export const OEM_ANALYTICS_PATH = '/btob'
-export const OEM_ANALYTICS_CONSENT_KEY = 'oem-ga4-consent-v1'
-
 export const OEM_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
     'c0000001-0000-0000-0000-000000000002',
@@ -47,11 +45,10 @@ export function getSafeCampaign(search: string = ''): Record<string, string> {
         ...(name ? { campaign_name: name } : {}), ...(content ? { campaign_content: content } : {}) }
 }
 
-export type OemConsent = 'accepted' | 'rejected'
 export type OemEventName = 'oem_select_product' | 'oem_view_quote' | 'oem_start_consultation' | 'generate_lead'
 
 type Gtag = (...args: unknown[]) => void
-type OemWindow = Window & { gtag?: Gtag; dataLayer?: IArguments[]; __oemGaLoaded?: boolean; __oemGaDisabled?: boolean; __oemGaMeasurementId?: string }
+type OemWindow = Window & { gtag?: Gtag; dataLayer?: IArguments[]; __oemGaLoaded?: boolean; __oemGaMeasurementId?: string }
 
 const sentEvents = new Set<string>()
 const pendingEvents = new Map<string, { name: OemEventName; productId: string }>()
@@ -79,24 +76,6 @@ export function getSafeReferrer(referrer: string | undefined | null): string | u
     }
 }
 
-export function readOemConsent(storage: Pick<Storage, 'getItem'> | undefined): OemConsent | null {
-    try {
-        const value = storage?.getItem(OEM_ANALYTICS_CONSENT_KEY)
-        return value === 'accepted' || value === 'rejected' ? value : null
-    } catch {
-        return null
-    }
-}
-
-export function saveOemConsent(storage: Pick<Storage, 'setItem'> | undefined, consent: OemConsent): boolean {
-    try {
-        storage?.setItem(OEM_ANALYTICS_CONSENT_KEY, consent)
-        return true
-    } catch {
-        return false
-    }
-}
-
 export function resetOemAnalyticsDedupe() {
     sentEvents.clear()
     pendingEvents.clear()
@@ -104,11 +83,7 @@ export function resetOemAnalyticsDedupe() {
 
 function canSend(): boolean {
     if (typeof window === 'undefined' || !isOemAnalyticsPage(window.location)) return false
-    try {
-        return readOemConsent(window.localStorage) === 'accepted' && Boolean((window as OemWindow).__oemGaLoaded) && !(window as OemWindow).__oemGaDisabled
-    } catch {
-        return false
-    }
+    return Boolean((window as OemWindow).__oemGaLoaded)
 }
 
 export function trackOemEvent(name: OemEventName, productId?: string | null): boolean {
@@ -117,13 +92,9 @@ export function trackOemEvent(name: OemEventName, productId?: string | null): bo
     const dedupeKey = `${name}:${productId}`
     if (sentEvents.has(dedupeKey)) return false
     if (!canSend()) {
-        // Buffer only actions after consent while the tag loads, never pre-consent activity.
-        if (typeof window !== 'undefined' && isOemAnalyticsPage(window.location)) {
-            try {
-                if (readOemConsent(window.localStorage) === 'accepted' && !(window as OemWindow).__oemGaDisabled)
-                    pendingEvents.set(dedupeKey, { name, productId })
-            } catch { /* storage unavailable: no tracking */ }
-        }
+        // Preserve early actions while the analytics script is loading.
+        if (typeof window !== 'undefined' && isOemAnalyticsPage(window.location))
+            pendingEvents.set(dedupeKey, { name, productId })
         return false
     }
     const gtag = (window as OemWindow).gtag
@@ -144,10 +115,7 @@ export function installOemGoogleTag(measurementId: string): Promise<boolean> {
     if (typeof window === 'undefined' || typeof document === 'undefined') return Promise.resolve(false)
     if (!isValidMeasurementId(measurementId) || !isOemAnalyticsPage(window.location)) return Promise.resolve(false)
     const target = window as OemWindow
-    if (target.__oemGaLoaded) {
-        updateOemGoogleConsent(measurementId, 'accepted')
-        return Promise.resolve(true)
-    }
+    if (target.__oemGaLoaded) return Promise.resolve(true)
     if (loadingPromise) return loadingPromise
     loadingPromise = new Promise(resolve => {
         const w = window as OemWindow
@@ -161,21 +129,10 @@ export function installOemGoogleTag(measurementId: string): Promise<boolean> {
         w.gtag('js', new Date())
         w.gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' })
         target.__oemGaMeasurementId = measurementId
-        target.__oemGaDisabled = false
-        ;(target as Window & Record<string, unknown>)[`ga-disable-${measurementId}`] = false
         const script = document.createElement('script')
         script.async = true
         script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`
         script.onload = () => {
-            let stillAccepted = false
-            try { stillAccepted = readOemConsent(window.localStorage) === 'accepted' } catch { stillAccepted = false }
-            if (!stillAccepted) {
-                updateOemGoogleConsent(measurementId, 'rejected')
-                loadingPromise = null
-                script.remove()
-                resolve(false)
-                return
-            }
             const gtag = w.gtag
             if (typeof gtag !== 'function') { resolve(false); return }
             gtag('config', measurementId, {
@@ -197,18 +154,4 @@ export function installOemGoogleTag(measurementId: string): Promise<boolean> {
         document.head.appendChild(script)
     })
     return loadingPromise
-}
-
-export function updateOemGoogleConsent(measurementId: string, consent: OemConsent): void {
-    if (typeof window === 'undefined' || !isValidMeasurementId(measurementId)) return
-    const target = window as OemWindow
-    if (consent !== 'accepted') pendingEvents.clear()
-    const gtag = target.gtag
-    if (typeof gtag === 'function') {
-        gtag('consent', 'update', consent === 'accepted'
-            ? { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' }
-            : { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' })
-    }
-    target.__oemGaDisabled = consent !== 'accepted'
-    ;(target as Window & Record<string, unknown>)[`ga-disable-${measurementId}`] = consent !== 'accepted'
 }

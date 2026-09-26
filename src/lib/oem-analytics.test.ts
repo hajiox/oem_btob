@@ -1,19 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-    OEM_ANALYTICS_CONSENT_KEY,
     getCanonicalPageLocation,
     getSafeReferrer,
     getSafeCampaign,
     OEM_PRODUCT_IDS,
     isOemAnalyticsPage,
     isValidMeasurementId,
-    readOemConsent,
     installOemGoogleTag,
     resetOemAnalyticsDedupe,
-    saveOemConsent,
     trackOemEvent,
-    updateOemGoogleConsent,
 } from './oem-analytics'
 
 test('OEM analytics is restricted to the canonical public page', () => {
@@ -30,16 +26,6 @@ test('measurement IDs and locations are privacy-safe', () => {
     assert.equal(getSafeReferrer('not a URL'), undefined)
 })
 
-test('consent storage accepts only explicit choices and survives storage errors', () => {
-    const values = new Map<string, string>()
-    const storage = { getItem: (key: string) => values.get(key) || null, setItem: (key: string, value: string) => { values.set(key, value) } }
-    assert.equal(readOemConsent(storage), null)
-    assert.equal(saveOemConsent(storage, 'rejected'), true)
-    assert.equal(values.get(OEM_ANALYTICS_CONSENT_KEY), 'rejected')
-    assert.equal(readOemConsent(storage), 'rejected')
-    assert.equal(saveOemConsent({ setItem: () => { throw new Error('blocked') } }, 'accepted'), false)
-})
-
 test('campaign attribution accepts only reviewed labels, never arbitrary query data', () => {
     assert.deepEqual(getSafeCampaign('?utm_source=instagram&utm_medium=social&utm_campaign=oem_fukushima&utm_content=profile&email=private@example.com'), {
         campaign_source: 'instagram', campaign_medium: 'social', campaign_name: 'oem_fukushima', campaign_content: 'profile',
@@ -48,15 +34,12 @@ test('campaign attribution accepts only reviewed labels, never arbitrary query d
     for (const query of ['', '?utm_source=google', '?utm_source=private&utm_medium=social', '?utm_source=google&utm_source=instagram&utm_medium=cpc']) assert.deepEqual(getSafeCampaign(query), {})
 })
 
-test('runtime queue, consent race, dedupe, and PII exclusion are enforced', async () => {
-    const values = new Map<string, string>([['oem-ga4-consent-v1', 'accepted']])
+test('runtime queue, ad-signal denial, dedupe, and PII exclusion are enforced', async () => {
     const calls: unknown[][] = []
     let appendedScript: { onload?: () => void; onerror?: () => void; remove: () => void } | undefined
-    const storage = { getItem: (key: string) => values.get(key) || null, setItem: (key: string, value: string) => { values.set(key, value) } }
     type FakeWindow = Window & { dataLayer: IArguments[]; gtag?: (...args: unknown[]) => void; __oemGaLoaded?: boolean }
     const fakeWindow = {
         location: { hostname: 'oem.aizubrandhall.com', pathname: '/btob', origin: 'https://oem.aizubrandhall.com', search: '?utm_source=instagram&utm_medium=social&utm_campaign=oem_fukushima&email=secret' },
-        localStorage: storage,
         dataLayer: [] as IArguments[],
     } as unknown as FakeWindow
     const fakeDocument = {
@@ -75,18 +58,15 @@ test('runtime queue, consent race, dedupe, and PII exclusion are enforced', asyn
         const queued = fakeWindow.dataLayer.map(entry => Array.from(entry))
         assert.deepEqual(queued[0]?.slice(0, 2), ['js', queued[0]?.[1]])
         assert.equal(queued[1]?.[0], 'consent')
-        values.set('oem-ga4-consent-v1', 'rejected')
         appendedScript?.onload?.()
-        assert.equal(await loading, false)
-        values.set('oem-ga4-consent-v1', 'accepted')
-        const resumed = installOemGoogleTag('G-TEST123')
-        assert.ok(appendedScript)
-        appendedScript?.onload?.()
-        assert.equal(await resumed, true)
+        assert.equal(await loading, true)
         const queuedConfig = fakeWindow.dataLayer.map(entry => Array.from(entry)).find(entry => entry[0] === 'config')
         assert.equal((queuedConfig?.[2] as { allow_google_signals?: boolean }).allow_google_signals, false)
         assert.equal((queuedConfig?.[2] as { allow_ad_personalization_signals?: boolean }).allow_ad_personalization_signals, false)
         assert.equal((queuedConfig?.[2] as { campaign_source?: string }).campaign_source, 'instagram')
+        const queuedConsent = fakeWindow.dataLayer.map(entry => Array.from(entry)).find(entry => entry[0] === 'consent')
+        assert.equal((queuedConsent?.[2] as { analytics_storage?: string }).analytics_storage, 'granted')
+        assert.equal((queuedConsent?.[2] as { ad_storage?: string }).ad_storage, 'denied')
         const originalGtag = fakeWindow.gtag
         fakeWindow.gtag = ((...args: unknown[]) => calls.push(args)) as unknown as typeof fakeWindow.gtag
         fakeWindow.__oemGaLoaded = true
@@ -110,8 +90,6 @@ test('runtime queue, consent race, dedupe, and PII exclusion are enforced', asyn
         resetOemAnalyticsDedupe()
         fakeWindow.__oemGaLoaded = false
         assert.equal(trackOemEvent('oem_select_product', curry), false)
-        updateOemGoogleConsent('G-TEST123', 'rejected')
-        assert.equal(trackOemEvent('generate_lead', curry), false)
         assert.equal(JSON.stringify([...fakeWindow.dataLayer.map(entry => Array.from(entry)), ...calls]).includes('email'), false)
         fakeWindow.gtag = originalGtag
     } finally {
