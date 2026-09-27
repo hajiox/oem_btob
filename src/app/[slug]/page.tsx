@@ -181,6 +181,7 @@ function Footer({ showAnalytics = false }: { showAnalytics?: boolean }) {
         <p style={{ fontSize: '10px', letterSpacing: '0.15em', color: '#999' }}>
           &copy; {new Date().getFullYear()} AIZU BRAND HALL. All rights reserved.
         </p>
+        {showAnalytics && <p style={{ margin: '14px 0 0', fontSize: 13 }}><Link href="/btob/terms" style={{ color: '#64748b', textDecoration: 'underline', textUnderlineOffset: 3 }}>食品OEM取引規約</Link></p>}
         {showAnalytics && <OemAnalytics measurementId={process.env.NEXT_PUBLIC_OEM_GA_MEASUREMENT_ID} />}
       </div>
     </footer>

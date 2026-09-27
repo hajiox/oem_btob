@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState } from 'react'
-import type { Lead } from '@/types/database'
 import type { EnrichedLead } from '@/actions/leads'
 import { LeadStatusSelect } from './LeadStatusSelect'
 import { ChevronDown, ChevronUp, Trash2, Mail, User, Phone, ClipboardList } from 'lucide-react'
@@ -10,11 +9,14 @@ import { OEM_PAGE_ID } from '@/lib/oem-quote-validation'
 import { OemLeadCasePanel } from './OemLeadCasePanel'
 import { OemMailPanel } from './OemMailPanel'
 import { OemConversationPanel } from './OemConversationPanel'
+import { OemOrderPanel } from './OemOrderPanel'
 
 export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: () => void | Promise<void> }) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    const options = lead.selected_options as any[] | null
+    const options = Array.isArray(lead.selected_options)
+        ? lead.selected_options as Array<{ question?: string; answer?: string }>
+        : null
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -170,7 +172,7 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                 </div>
                             </div>
                         </div>
-                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} /></>}
+                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><OemOrderPanel leadId={lead.id} estimatedTotalPrice={lead.estimated_total_price || 0} /><OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} /></>}
                     </td>
                 </tr>
             )}
