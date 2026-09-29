@@ -141,6 +141,7 @@ export async function reissueOemOrderLink(orderId: string): Promise<ActionResult
 export async function advanceOemOrder(orderId: string, requestedStatus: OemOrderStatus, finalAmount?: number): Promise<ActionResult> {
   try {
     const user = await requireMailAdmin()
+    if (requestedStatus === 'deposit_paid' || requestedStatus === 'paid') return { success: false, error: '入金管理で銀行明細を確認し、入金日・金額・名義を記録してください' }
     const id = uuid(orderId)
     const { data: order, error } = await adminClient.from('oem_orders').select('*').eq('id', id).single()
     if (error || !order) return { success: false, error: '正式発注が見つかりません' }

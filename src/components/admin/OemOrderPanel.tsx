@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { advanceOemOrder, cancelOemOrder, getOemOrder, issueOemOrder, reissueOemOrderLink } from '@/actions/oemOrders'
 import type { OemOrder } from '@/lib/oem-orders'
 import { nextOemOrderStatus, OEM_ORDER_STATUS_LABELS, type OemOrderStatus } from '@/lib/oem-order-shared'
+import { OemPaymentPanel, PAYMENT_CHANGED } from './OemPaymentPanel'
 
 const nextButtonLabels: Partial<Record<OemOrderStatus, string>> = {
   accepted: '前金入金済みにする', deposit_paid: '製造開始にする', in_production: '製造数・最終金額を確定する', balance_due: '全額入金済みにする', paid: '出荷済みにする',
@@ -49,14 +50,14 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     const result = await issueOemOrder(leadId, { formalQuoteAmount: Number(amount), specification })
     setMessage(result.error || result.mailWarning || result.message || '')
     if (result.url) setIssuedUrl(result.url)
-    if (result.success) await reload()
+    if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
   })
   const reissue = () => startTransition(async () => {
     if (!order || !window.confirm('以前の発注URLを無効にし、新しいURLをメール送信します。よろしいですか？')) return
     const result = await reissueOemOrderLink(order.id)
     setMessage(result.error || result.mailWarning || result.message || '')
     if (result.url) setIssuedUrl(result.url)
-    if (result.success) await reload()
+    if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
   })
   const advance = () => startTransition(async () => {
     if (!order) return
@@ -65,13 +66,13 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     if (!window.confirm(`「${OEM_ORDER_STATUS_LABELS[next]}」へ進めます。よろしいですか？`)) return
     const result = await advanceOemOrder(order.id, next, next === 'balance_due' ? Number(finalAmount) : undefined)
     setMessage(result.error || result.message || '')
-    if (result.success) await reload()
+    if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
   })
   const cancel = () => startTransition(async () => {
     if (!order || !window.confirm('この正式発注をキャンセルします。発注URLも利用できなくなります。よろしいですか？')) return
     const result = await cancelOemOrder(order.id)
     setMessage(result.error || result.message || '')
-    if (result.success) await reload()
+    if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
   })
 
   return <div style={{ marginTop: 28, borderTop: '1px solid var(--admin-border)', paddingTop: 24 }} onClick={event => event.stopPropagation()}>
@@ -95,7 +96,8 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
       </div>}
       {acceptance && <p style={{ margin: '14px 0 0', color: '#4ade80', fontSize: 14 }}>規約同意：{String(acceptance.contact_name)} 様／{new Date(String(acceptance.accepted_at)).toLocaleString('ja-JP')}</p>}
       {order.status === 'in_production' && <label style={{ ...labelStyle, marginTop: 16 }}>完成数量確定後の最終金額（税別）<input type="number" min="1" max="100000000" value={finalAmount} onChange={e => setFinalAmount(e.target.value)} style={inputStyle} /></label>}
-      {nextOemOrderStatus(order.status) && <button type="button" onClick={advance} disabled={pending} style={{ ...primaryButton, marginTop: 16 }}>{nextButtonLabels[order.status]}</button>}
+      {nextOemOrderStatus(order.status) && !['accepted', 'balance_due'].includes(order.status) && <button type="button" onClick={advance} disabled={pending} style={{ ...primaryButton, marginTop: 16 }}>{nextButtonLabels[order.status]}</button>}
+      <OemPaymentPanel orderId={order.id} status={order.status} onChanged={reload} />
       {!['shipped', 'cancelled'].includes(order.status) && <button type="button" onClick={cancel} disabled={pending} style={{ ...secondaryButton, marginTop: 16, marginLeft: 10, color: '#fca5a5' }}>キャンセル</button>}
     </div>}
     {issuedUrl && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--admin-text-muted)', overflowWrap: 'anywhere' }}>今回発行したURL（再表示不可）：<a href={issuedUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--admin-accent)' }}>{issuedUrl}</a></div>}

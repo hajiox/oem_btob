@@ -7,6 +7,7 @@ import { LeadRow } from '@/components/admin/LeadRow'
 import { getPages } from '@/actions/pages'
 import { getLeads } from '@/actions/leads'
 import { OemMailboxConnection } from '@/components/admin/OemMailboxConnection'
+import { OemPaymentAlerts } from '@/components/admin/OemPaymentAlerts'
 
 function StatCard({
     title, value, icon, color, subtext,
@@ -81,6 +82,7 @@ export default function DashboardClient() {
     return (
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
             <OemMailboxConnection />
+            <OemPaymentAlerts />
             {loadError && <p role="alert" style={{ color: '#fca5a5', marginBottom: 20 }}>{loadError} <button type="button" onClick={loadData}>再試行</button></p>}
             {/* ページヘッダー */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
