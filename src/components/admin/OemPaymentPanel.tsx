@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getOemPayments, recordOemPayment, saveOemPaymentPlan } from '@/actions/oemPayments'
 import type { PaymentData, PaymentPlan, PaymentStage } from '@/lib/oem-payments-shared'
 import type { OemOrderStatus } from '@/lib/oem-order-shared'
+import { INVOICE_CHANGED } from '@/lib/oem-invoices-shared'
 
 const yen = (amount: number) => `¥${amount.toLocaleString('ja-JP')}`
 const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(new Date())
@@ -18,6 +19,11 @@ export function OemPaymentPanel({ orderId, status, onChanged }: { orderId: strin
     if (!result.success || !result.data) throw new Error(result.error || '入金情報を取得できませんでした')
     setData(result.data); setError('')
   }, [orderId])
+  useEffect(() => {
+    const refresh = () => { void reload().catch(() => setError('入金情報を取得できませんでした')) }
+    window.addEventListener(INVOICE_CHANGED, refresh)
+    return () => window.removeEventListener(INVOICE_CHANGED, refresh)
+  }, [reload])
   useEffect(() => { let active = true; void getOemPayments(orderId).then(result => {
     if (!active) return
     if (result.success && result.data) { setData(result.data); setError('') }
@@ -94,11 +100,12 @@ function PaymentStagePanel({ orderId, stage, plan, receipts, active, onChanged }
     {active && (!plan || editing) && <form onSubmit={save} style={{ display: 'grid', gap: 12, marginTop: 12 }}>
       {!plan && <p style={{ color: '#fbbf24', margin: 0 }}>まず実際の請求額（税込）を登録してください。</p>}
       <div style={grid}>
-        <label>請求額（税込・円）<input required type="number" min="1" max="100000000" step="1" value={expectedAmount} disabled={busy || ownReceipts.length > 0} onChange={e => setExpectedAmount(e.target.value)} style={input} /></label>
-        <label>支払期限<input type="date" value={dueDate} disabled={busy} onChange={e => setDueDate(e.target.value)} style={input} /></label>
+        <label>請求額（税込・円）<input required type="number" min="1" max="100000000" step="1" value={expectedAmount} disabled={busy || ownReceipts.length > 0 || plan?.invoiced} onChange={e => setExpectedAmount(e.target.value)} style={input} /></label>
+        <label>支払期限<input type="date" value={dueDate} disabled={busy || plan?.invoiced} onChange={e => setDueDate(e.target.value)} style={input} /></label>
         <label>振込予定名義<input maxLength={200} value={expectedPayer} disabled={busy} onChange={e => setExpectedPayer(e.target.value)} style={input} /></label>
       </div>
       {ownReceipts.length > 0 && <p style={muted}>入金記録後は請求額を変更できません。</p>}
+      {plan?.invoiced && <p style={muted}>請求書発行済みのため、請求額・支払期限は固定されています。</p>}
       <div><button disabled={busy} style={primary} type="submit">請求予定を保存</button></div>
     </form>}
     {active && plan && remaining > 0 && !editing && <form onSubmit={record} style={{ display: 'grid', gap: 12, marginTop: 18 }}>

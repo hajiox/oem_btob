@@ -8,6 +8,7 @@ export type PaymentPlan = {
   due_date: string | null
   payer_name: string
   updated_at: string
+  invoiced?: boolean
 }
 
 export type PaymentReceipt = {

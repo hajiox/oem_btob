@@ -30,7 +30,9 @@ export async function getOemPayments(orderId: string): Promise<{ success: boolea
       ? await adminClient.from('oem_payment_receipts').select('id,plan_id,amount,paid_on,payer_name,note,confirmed_by,created_at').in('plan_id', planIds).order('created_at', { ascending: true })
       : { data: [], error: null }
     if (receiptError) throw receiptError
-    return { success: true, data: { plans: (plans || []) as PaymentPlan[], receipts: (receipts || []) as PaymentReceipt[] } }
+    const { data: invoices, error: invoiceError } = await adminClient.from('oem_invoices').select('plan_id').eq('order_id', order.id)
+    if (invoiceError) throw invoiceError
+    return { success: true, data: { plans: (plans || []).map(plan => ({ ...plan, invoiced: invoices.some(invoice => invoice.plan_id === plan.id) })) as PaymentPlan[], receipts: (receipts || []) as PaymentReceipt[] } }
   } catch (error) { return { ...fail(error, '入金情報を取得できませんでした') } }
 }
 

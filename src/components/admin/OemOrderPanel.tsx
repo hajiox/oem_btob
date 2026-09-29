@@ -5,6 +5,7 @@ import { advanceOemOrder, cancelOemOrder, getOemOrder, issueOemOrder, reissueOem
 import type { OemOrder } from '@/lib/oem-orders'
 import { nextOemOrderStatus, OEM_ORDER_STATUS_LABELS, type OemOrderStatus } from '@/lib/oem-order-shared'
 import { OemPaymentPanel, PAYMENT_CHANGED } from './OemPaymentPanel'
+import { OemInvoicePanel } from './OemInvoicePanel'
 
 const nextButtonLabels: Partial<Record<OemOrderStatus, string>> = {
   accepted: '前金入金済みにする', deposit_paid: '製造開始にする', in_production: '製造数・最終金額を確定する', balance_due: '全額入金済みにする', paid: '出荷済みにする',
@@ -27,7 +28,6 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     if (result.success) {
       setOrder(result.order || null); setAcceptance(result.acceptance || null)
       if (result.defaultSpecification) setSpecification(previous => previous || result.defaultSpecification || '')
-      setMessage('')
     } else setMessage(result.error || '正式発注情報を取得できませんでした')
     setLoading(false)
   }, [leadId])
@@ -87,7 +87,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     </div> : <div style={cardStyle}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}><strong>{order.order_number}</strong><span style={badgeStyle}>{OEM_ORDER_STATUS_LABELS[order.status]}</span></div>
       <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, fontSize: 14 }}>
-        <span>正式見積：¥{order.formal_quote_amount.toLocaleString()}</span><span>前金：¥{order.deposit_amount.toLocaleString()}</span><span>規約版：{order.terms_version}</span>
+        <span>正式見積（税別）：¥{order.formal_quote_amount.toLocaleString()}</span><span>前金（税別）：¥{order.deposit_amount.toLocaleString()}</span><span>規約版：{order.terms_version}</span>
       </div>
       <details style={{ marginTop: 14 }}><summary style={{ cursor: 'pointer' }}>固定済みの商品仕様</summary><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{order.specification}</p></details>
       {order.status === 'issued' && <div style={{ marginTop: 16 }}>
@@ -97,6 +97,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
       {acceptance && <p style={{ margin: '14px 0 0', color: '#4ade80', fontSize: 14 }}>規約同意：{String(acceptance.contact_name)} 様／{new Date(String(acceptance.accepted_at)).toLocaleString('ja-JP')}</p>}
       {order.status === 'in_production' && <label style={{ ...labelStyle, marginTop: 16 }}>完成数量確定後の最終金額（税別）<input type="number" min="1" max="100000000" value={finalAmount} onChange={e => setFinalAmount(e.target.value)} style={inputStyle} /></label>}
       {nextOemOrderStatus(order.status) && !['accepted', 'balance_due'].includes(order.status) && <button type="button" onClick={advance} disabled={pending} style={{ ...primaryButton, marginTop: 16 }}>{nextButtonLabels[order.status]}</button>}
+      <OemInvoicePanel order={order} />
       <OemPaymentPanel orderId={order.id} status={order.status} onChanged={reload} />
       {!['shipped', 'cancelled'].includes(order.status) && <button type="button" onClick={cancel} disabled={pending} style={{ ...secondaryButton, marginTop: 16, marginLeft: 10, color: '#fca5a5' }}>キャンセル</button>}
     </div>}
