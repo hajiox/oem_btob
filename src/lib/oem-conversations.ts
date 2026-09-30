@@ -3,9 +3,9 @@ import { connectedGmail } from '@/lib/oem-gmail-auth'
 import { GmailApiError, normalizeGmailMessage, buildMimeMessage, validateMailAttachments, type GmailClient, type MimeAttachment } from '@/lib/oem-gmail-client'
 import { MailError, OEM_MAILBOX, caseTag, hashMail, uuid, mailConfigured } from '@/lib/oem-mail-security'
 
-type Lead = { id: string; email: string }
+type Lead = { id: string; email: string; company_name?: string; contact_name?: string }
 const table = 'oem_conversation_messages'
-const columns = 'id,lead_id,gmail_id,gmail_thread_id,direction,subject,text_body,from_address,to_address,sent_at,status,rfc_message_id,references_header,attachments,request_id,payload_hash'
+const columns = 'id,lead_id,gmail_id,gmail_thread_id,direction,subject,text_body,from_address,to_address,sent_at,status,rfc_message_id,references_header,attachments,request_id,payload_hash,reviewed_at,reviewed_by,handled_at,handled_by,reply_to_id,reply_closed_at,reply_closed_by'
 function must(error: unknown) { if (error) throw new MailError('メール履歴を保存・取得できませんでした。', 503) }
 export function mailSubject(value: unknown, leadId: string) {
     if (typeof value !== 'string' || /[\r\n\x00]/.test(value) || value.length > 200) throw new MailError('件名は改行なしの200文字以内で入力してください。')
@@ -29,18 +29,20 @@ export async function getMailboxStatus() {
 export async function listConversation(lead: Lead, cursor?: string) {
     const offset = cursor === undefined ? 0 : Number(cursor)
     if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100000) throw new MailError('履歴のページ指定が不正です。')
-    const [{ data, error }, draftResult, status, unresolved] = await Promise.all([
-        db.from(table).select(columns).eq('lead_id', lead.id).order('sent_at', { ascending: false }).order('id').range(offset, offset + 49),
+    const [{ data, error }, draftResult, status, unresolved, awaiting] = await Promise.all([
+        db.from(table).select(columns).eq('lead_id', lead.id).order('sent_at', { ascending: false }).order('id', { ascending: false }).range(offset, offset + 49),
         db.from('oem_conversation_drafts').select('subject,text_body').eq('lead_id', lead.id).maybeSingle(), getMailboxStatus(),
         db.from(table).select('id', { count: 'exact', head: true }).eq('lead_id', lead.id).in('status', ['pending', 'sending', 'unknown']),
+        db.from(table).select('id').eq('lead_id', lead.id).eq('direction', 'inbound').is('reply_closed_at', null).is('handled_at', null).order('sent_at', { ascending: false }).order('id', { ascending: false }).limit(1),
     ])
-    must(error); must(draftResult.error); must(unresolved.error)
-    return { ...status, hasUnresolved: !!unresolved.count, messages: (data || []).map(m => ({ id: m.id, requestId: m.request_id, direction: m.direction, subject: m.subject, text: m.text_body, from: m.from_address, to: m.to_address, sentAt: m.sent_at, status: m.status, attachments: m.attachments || [] })),
+    must(error); must(draftResult.error); must(unresolved.error); must(awaiting.error)
+    const newestPendingReplyId = awaiting.data?.[0]?.id
+    return { ...status, hasUnresolved: !!unresolved.count, newestPendingReplyId, replyToMessageId: newestPendingReplyId, messages: (data || []).map(m => ({ id: m.id, requestId: m.request_id, direction: m.direction, subject: m.subject, text: m.text_body, from: m.from_address, to: m.to_address, sentAt: m.sent_at, status: m.status, attachments: m.attachments || [], reviewedAt: m.reviewed_at, reviewedBy: m.reviewed_by, handledAt: m.handled_at, handledBy: m.handled_by, replyToId: m.reply_to_id, replyClosedAt: m.reply_closed_at })),
         draft: draftResult.data ? { subject: draftResult.data.subject, text: draftResult.data.text_body } : null,
         hasMore: data?.length === 50, nextCursor: data?.length === 50 ? String(offset + 50) : undefined }
 }
-async function storeThread(client: GmailClient, threadId: string, lead: Lead) {
-    const thread = await client.thread(threadId)
+export async function storeConversationThread(client: GmailClient, threadId: string, lead: Lead, preloaded?: import('@/lib/oem-gmail-client').GmailThread) {
+    const thread = preloaded || await client.thread(threadId)
     const messages = (thread.messages || []).map(m => normalizeGmailMessage(m, OEM_MAILBOX))
     // The case token and known participants must both match. Never ingest a mailbox-wide search.
     if (!messages.some(m => m.subject.includes(caseTag(lead.id)) && isCaseParticipant(m.from, m.to, lead.email))) return 0
@@ -59,10 +61,10 @@ async function storeThread(client: GmailClient, threadId: string, lead: Lead) {
         if (tags.some(tag => tag.toLowerCase() !== caseTag(lead.id).toLowerCase())) continue
         const values = { lead_id: lead.id, gmail_id: m.id, gmail_thread_id: thread.id, direction: m.direction, subject: m.subject, text_body: m.text.slice(0, 150000), from_address: m.from, to_address: m.to, sent_at: Number.isFinite(Date.parse(m.sentAt)) ? m.sentAt : new Date().toISOString(), status: m.direction === 'outbound' ? 'sent' : 'received', rfc_message_id: m.messageIdHeader, references_header: m.references.join(' '), attachments: m.attachments }
         // Reconcile an interrupted send by the stable RFC Message-ID, never by blind resend.
-        const pending = m.direction === 'outbound' && m.messageIdHeader ? await db.from(table).select('id').eq('lead_id', lead.id).eq('rfc_message_id', m.messageIdHeader).maybeSingle() : null
+        const pending = m.direction === 'outbound' && m.messageIdHeader ? await db.from(table).select('id,reply_to_id').eq('lead_id', lead.id).eq('rfc_message_id', m.messageIdHeader).maybeSingle() : null
         if (pending) must(pending.error)
         const saved = pending?.data
-            ? await db.from(table).update(values).eq('id', pending.data.id).eq('lead_id', lead.id)
+            ? await db.from(table).update({ ...values, ...(pending.data.reply_to_id ? { reply_to_id: pending.data.reply_to_id } : {}) }).eq('id', pending.data.id).eq('lead_id', lead.id)
             : await db.from(table).upsert(values, { onConflict: 'gmail_id', ignoreDuplicates: true })
         must(saved.error); count++
     }
@@ -73,7 +75,7 @@ export async function syncConversation(lead: Lead, cursor?: string) {
     const client = await connectedGmail()
     const result = await client.listThreads(`subject:"${caseTag(lead.id)}"`, cursor)
     let count = 0
-    for (const thread of result.threads || []) count += await storeThread(client, thread.id, lead)
+    for (const thread of result.threads || []) count += await storeConversationThread(client, thread.id, lead)
     return { success: true, hasMore: !!result.nextPageToken, nextCursor: result.nextPageToken, message: `${count}件のメールを確認しました。` }
 }
 export async function saveConversationDraft(lead: Lead, userId: string, subject: unknown, text: unknown) {
@@ -82,11 +84,14 @@ export async function saveConversationDraft(lead: Lead, userId: string, subject:
     const { error } = await db.from('oem_conversation_drafts').upsert({ lead_id: lead.id, subject: title, text_body: text, updated_by: userId })
     must(error); return { success: true }
 }
-export async function sendConversation(lead: Lead, userId: string, input: { subject?: unknown; text?: unknown; requestId?: unknown; attachments?: MimeAttachment[] }) {
+export async function sendConversation(lead: Lead, userId: string, input: { subject?: unknown; text?: unknown; requestId?: unknown; attachments?: MimeAttachment[]; replyToMessageId?: unknown }) {
     const requestId = uuid(input.requestId), subject = mailSubject(input.subject, lead.id), text = mailText(input.text)
     let attachments: MimeAttachment[]
     try { attachments = validateMailAttachments(input.attachments || []) } catch { throw new MailError('添付形式・ファイル名・合計3MB以下をご確認ください。') }
-    const hash = hashMail(JSON.stringify({ leadId: lead.id, to: lead.email, subject, text, attachments }))
+    const replyToMessageId = input.replyToMessageId === undefined || input.replyToMessageId === null || input.replyToMessageId === '' ? undefined : uuid(input.replyToMessageId)
+    const replyTarget = replyToMessageId ? await db.from(table).select('id,lead_id,direction,gmail_thread_id,rfc_message_id,references_header,subject,sent_at').eq('id', replyToMessageId).eq('lead_id', lead.id).eq('direction', 'inbound').single() : null
+    if (replyTarget) { must(replyTarget.error); if (!replyTarget.data?.rfc_message_id || !/^<[^<>\s]+@[^<>\s]+>$/.test(replyTarget.data.rfc_message_id)) throw new MailError('返信対象のメール情報を確認できません。', 409) }
+    const hash = hashMail(JSON.stringify(replyToMessageId === undefined ? { leadId: lead.id, to: lead.email, subject, text, attachments } : { leadId: lead.id, to: lead.email, subject, text, attachments, replyToMessageId }))
     const previous = await db.from(table).select('id,status,payload_hash').eq('request_id', requestId).maybeSingle(); must(previous.error)
     if (previous.data) {
         if (previous.data.payload_hash !== hash) throw new MailError('同じ送信IDの内容が変わっています。履歴を確認してください。', 409)
@@ -94,14 +99,17 @@ export async function sendConversation(lead: Lead, userId: string, input: { subj
     }
     const client = await connectedGmail() // Connection failures must not create a stuck outbox.
     const latest = await db.from(table).select('gmail_thread_id,rfc_message_id,references_header,subject').eq('lead_id', lead.id).in('status', ['sent', 'received']).not('gmail_id', 'is', null).order('sent_at', { ascending: false }).limit(1).maybeSingle(); must(latest.error)
-    const parent = latest.data
+    const parent = replyTarget?.data || latest.data
     // Gmail requires matching subjects to append a thread; edited subject starts a new case thread.
     const threadId = parent && parent.subject?.replace(/^(re:\s*)+/i, '') === subject.replace(/^(re:\s*)+/i, '') ? parent.gmail_thread_id : undefined
     const messageId = `<oem-${requestId}@aizu-tv.com>`
     const safeRefs = (parent?.references_header || '').split(/\s+/).filter((v: string) => /^<[^<>\s]+@[^<>\s]+>$/.test(v)).slice(-15)
     const parentId = parent?.rfc_message_id && /^<[^<>\s]+@[^<>\s]+>$/.test(parent.rfc_message_id) ? parent.rfc_message_id : undefined
-    const raw = buildMimeMessage({ from: OEM_MAILBOX, to: lead.email, subject, text, messageId, ...(threadId ? { inReplyTo: parentId, references: [...safeRefs, ...(parentId ? [parentId] : [])] } : {}), attachments })
-    const inserted = await db.from(table).insert({ lead_id: lead.id, direction: 'outbound', subject, text_body: text, from_address: OEM_MAILBOX, to_address: lead.email, status: 'pending', request_id: requestId, payload_hash: hash, rfc_message_id: messageId, attachments: attachments.map(a => ({ id: '', name: a.name, size: Buffer.from(a.base64, 'base64').length, mimeType: a.type })), created_by: userId }).select('id').single()
+    const replyHeaders = replyToMessageId && parentId
+        ? { inReplyTo: parentId, references: [...safeRefs, parentId] }
+        : threadId && parentId ? { inReplyTo: parentId, references: [...safeRefs, parentId] } : {}
+    const raw = buildMimeMessage({ from: OEM_MAILBOX, to: lead.email, subject, text, messageId, ...replyHeaders, attachments })
+    const inserted = await db.from(table).insert({ lead_id: lead.id, direction: 'outbound', subject, text_body: text, from_address: OEM_MAILBOX, to_address: lead.email, status: 'pending', request_id: requestId, payload_hash: hash, rfc_message_id: messageId, reply_to_id: replyToMessageId || null, attachments: attachments.map(a => ({ id: '', name: a.name, size: Buffer.from(a.base64, 'base64').length, mimeType: a.type })), created_by: userId }).select('id').single()
     if (inserted.error?.code === '23505') return { success: false, status: 'sending', error: '同じ送信を処理中です。更新して確認してください。' }
     must(inserted.error)
     const id = inserted.data!.id
@@ -122,6 +130,26 @@ export async function sendConversation(lead: Lead, userId: string, input: { subj
     await db.from('oem_conversation_drafts').delete().eq('lead_id', lead.id).eq('subject', subject).eq('text_body', text).eq('updated_by', userId)
     return { success: true, status: 'sent' }
 }
+
+export async function reviewConversationMessages(lead: Lead, userId: string, messageIds: unknown) {
+    if (!Array.isArray(messageIds) || messageIds.length > 50 || messageIds.some(v => typeof v !== 'string')) throw new MailError('確認対象が不正です。')
+    const ids = messageIds.map(uuid); if (!ids.length) return { success: true }
+    const result = await db.rpc('review_oem_conversation_messages', { p_lead_id: lead.id, p_user_id: userId, p_message_ids: ids }); must(result.error); if (result.data !== true) throw new MailError('確認対象を更新できませんでした.', 409); return { success: true }
+}
+export async function handleConversationMessage(lead: Lead, userId: string, messageId: unknown, handled: unknown) {
+    const id = uuid(messageId); if (typeof handled !== 'boolean') throw new MailError('対応状態が不正です。')
+    const result = await db.rpc('handle_oem_conversation_message', { p_lead_id: lead.id, p_user_id: userId, p_message_id: id, p_handled: handled }); must(result.error); if (result.data !== true) throw new MailError('対応状態を更新できませんでした。', 409); return { success: true }
+}
+
+type MailAttentionRow = { lead_id: string; company_name: string; email: string; unread_count: number | string; awaiting_reply_count: number | string; last_inbound_at: string | null; preview: string; latest_message_id: string }
+export async function listMailAttention(offset = 0) {
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100000) throw new MailError('ページ指定が不正です。')
+    const [summary, page] = await Promise.all([db.rpc('oem_mail_attention_summary'), db.rpc('oem_mail_attention', { p_limit: 51, p_offset: offset })]); must(summary.error); must(page.error)
+    const s = summary.data?.[0] || { total: 0, unread_cases: 0, awaiting_reply_cases: 0 }; const rows = (page.data || []) as MailAttentionRow[]; const alerts = rows.slice(0, 50).map(a => ({ leadId: a.lead_id, companyName: a.company_name, email: a.email, unreadCount: Number(a.unread_count), awaitingReplyCount: Number(a.awaiting_reply_count), lastInboundAt: a.last_inbound_at, preview: a.preview, latestMessageId: a.latest_message_id })); return { success: true, alerts, total: Number(s.total), unreadCases: Number(s.unread_cases), awaitingReplyCases: Number(s.awaiting_reply_cases), hasMore: rows.length > 50, nextOffset: rows.length > 50 ? offset + 50 : undefined }
+}
+
+// Backward-compatible name for callers that still use the original helper.
+export const storeThread = storeConversationThread
 export async function downloadConversationAttachment(lead: Lead, messageId: string, attachmentId: string) {
     const { data, error } = await db.from(table).select('gmail_id,attachments').eq('lead_id', lead.id).eq('id', uuid(messageId)).single(); must(error)
     const attachment = (data?.attachments as { id: string; name: string; size: number }[] | undefined)?.find(a => a.id === attachmentId)
