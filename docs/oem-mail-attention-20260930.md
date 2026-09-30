@@ -30,3 +30,11 @@
 - 実返信で返信待ちを閉じるのは成功保存時のみ。確認画面を作った時の受信アンカーを固定し、その後の新着を巻き込まない。履歴未取得の返信待ちがある場合は先に以前の会話を読み込ませる。
 - 同期失敗は管理画面で表示し、続きから再試行する。メール接続が切れた場合の再認可は管理者が行う。
 
+## 本番確認
+
+- 実装commit `275b87f`、deployment `dpl_3N85x2p7mf55H8pyQwtX8pDqfgFa` はREADY、`oem.aizubrandhall.com` に反映済み。
+- 通常Chrome連携で合成メールを開き、当該案件が「未確認1・返信待ち1」→「未確認0・返信待ち1」へ変化。「対応済み」でアラートから消え、会話には「対応済み」と手動で戻せるボタンが残ることを確認。
+- DBで reviewed/handled/actor記録を確認。実返信済みにはしない（reply_closed_at未設定）。テスト前後の送信済み2通・pending1通は変化なし。既存の別案件は操作しない。
+- 本番の未認証attention/cron GETは401。Vercel cron定義が5分間隔で有効。2026-09-30 17:40:32 JSTのdeploymentホストへのscheduled GETは200を確認（手動の未認証GETは17:37:55に401）。管理画面での実Gmail取得もエラーなし。
+- 画面証跡：`output/mail-attention/01-reviewed-awaiting.png`、`02-handled.png`（ローカル出力、Git対象外）。
+
