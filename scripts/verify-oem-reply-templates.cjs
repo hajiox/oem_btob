@@ -70,4 +70,16 @@ for (const id of ['payment', 'progress', 'shipping', 'settlement']) {
 const legacy = { ...mock, order: null, plans: [], settlement: { id: 's1', kind: 'cancellation', state: 'confirmed', target_gross: 30000 }, settlementRemaining: 30000, legacyCancellation: true }
 const settlement = template.buildReplyTemplate(legacy, 'settlement')
 assert(!settlement.text.includes('資材手配前は30,000円'), 'legacy settlement template made a current policy promise')
+
+const scenario = overrides => ({ ...mock, ...overrides, selectedOptions: [] })
+const paid = template.buildReplyTemplate(scenario({ order: { ...mock.order, status: 'paid' }, settlement: null }), 'payment')
+assert(!paid.text.includes('50％'), 'paid payment reply still contains the prepayment instruction')
+const shipped = template.buildReplyTemplate(scenario({ order: { ...mock.order, status: 'shipped' }, settlement: null, fulfillment: { ...mock.fulfillment, shipped_on: '2026-10-01', carrier: '配送会社', tracking_number: 'TRK-1' } }), 'shipping')
+assert(shipped.text.includes('出荷日：2026-10-01') && shipped.text.includes('追跡番号：TRK-1'), 'shipped reply omitted recorded shipment facts')
+const cancelledShipping = template.buildReplyTemplate(scenario({ order: null, legacyCancellation: true, settlement: null, fulfillment: null }), 'shipping')
+assert(cancelledShipping.text.includes('キャンセル済みのため') && !cancelledShipping.text.includes('出荷前に残額'), 'cancelled shipping reply promised shipment')
+const settlementDraft = template.buildReplyTemplate(scenario({ order: null, legacyCancellation: true, settlement: { kind: 'cancellation', state: 'draft', target_gross: 30000 }, settlementRemaining: null }), 'payment')
+assert(!settlementDraft.text.includes('50％') && settlementDraft.text.includes('調整中'), 'settlement draft reply made a payment promise')
+const settlementConfirmed = template.buildReplyTemplate(scenario({ order: null, legacyCancellation: true, settlement: { kind: 'cancellation', state: 'confirmed', target_gross: 30000 }, settlementRemaining: -12000 }), 'settlement')
+assert(!settlementConfirmed.text.includes('正式見積額') && settlementConfirmed.text.includes('返金額') && settlementConfirmed.text.includes('¥12,000'), 'confirmed refund settlement was not labeled with absolute amount')
 console.log('reply template/context verification passed')

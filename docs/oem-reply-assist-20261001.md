@@ -28,6 +28,7 @@
 - 適用直前は案件・受信・共有下書き全体を検証。下書きには事実ハッシュを保持し、再読み込み・編集後も保存/送信時に案件・入金・受信の変更を再検証。
 - 下書き保存は更新時刻による競合拒否。同じ担当者・件名・本文・参照情報のみ冪等。共有下書き再読み込みは未保存編集の置換チェック後に行う。
 - 既存の二段階送信確認・安定送信ID・不明結果自動再送禁止を維持。
+- 事実変更による送信前拒否は`not_sent`として返す。Gmail未実行を送信結果不明と混同せず、再準備できる。
 
 ## DB・検証
 
@@ -48,6 +49,8 @@ SQL019：生成台帳（RLS、service_roleは参照と限定RPCのみ）、下�
 `scripts/prepare-oem-reply-demo.cjs`の「返信案動作テスト・支払不要」、`reply-assist-demo@example.invalid`のみを使用。架空受信を登録して定型文・AI案・反映・保存・再読込を確認。実注文・銀行操作・顧客メール送信なし。
 
 画面確認は既存の通常Chrome連携。リモートデバッグ・PC操作を先に使わない。
+
+本番画面で7定型文を準備し、原料支給定型文の反映・保存、Gemini実生成1回・既存本文置換・保存を確認。DBで生成ready1、保存本文236文字・事実ハッシュあり、架空受信1、送信0・発注0を照合。証跡：`output/reply-assist/01-ai-draft-saved.png`、`02-ai-candidate.png`。SQL019適用済み、初回実装コミット`6c4ae49`はVercel READY・独自ドメインaliasを確認。
 
 公式API資料：https://ai.google.dev/api/generate-content 、https://ai.google.dev/gemini-api/docs/text-generation
 

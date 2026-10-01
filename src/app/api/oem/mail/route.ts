@@ -28,8 +28,14 @@ export async function POST(request: Request) {
                     result = await saveConversationDraft(lead, user.id, input.subject, input.text, input.expectedUpdatedAt, stamp); break
                 }
                 case 'send': {
-                    const stamp = replyContextStamp(input.replyContext)
-                    if (stamp) await validateReplyFacts(lead, stamp)
+                    try {
+                        const stamp = replyContextStamp(input.replyContext)
+                        if (stamp) await validateReplyFacts(lead, stamp)
+                    } catch (error) {
+                        // This guard runs before creating an outbox entry or calling Gmail.
+                        if (error instanceof MailError) return Response.json({ success: false, status: 'not_sent', error: error.message }, { status: error.status, headers: { 'Cache-Control': 'no-store' } })
+                        throw error
+                    }
                     result = await sendConversation(lead, user.id, input); break
                 }
                 case 'review': result = await reviewConversationMessages(lead, user.id, input.messageIds); break

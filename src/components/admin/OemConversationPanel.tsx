@@ -63,12 +63,15 @@ async function api(action: string, payload: Record<string, unknown>) {
     string,
     unknown
   >;
-  if (!response.ok)
-    throw new Error(
+  if (!response.ok) {
+    const error = new Error(
       typeof data.error === "string"
         ? data.error
         : "メール操作に失敗しました。",
-    );
+    ) as Error & { noSend?: boolean };
+    error.noSend = data.status === "not_sent";
+    throw error;
+  }
   return data;
 }
 const changed = () => window.dispatchEvent(new Event(CHANGED));
@@ -295,10 +298,12 @@ export function OemConversationPanel({
         await list();
       }
     } catch (e) {
-      setSendState("unknown");
+      const notSent = (e as Error & { noSend?: boolean })?.noSend;
+      setSendState(notSent ? "idle" : "unknown");
+      if (notSent) { setPreview(null); setSendRequestId(null); sendRef.current = null; }
       setNotice(
         e instanceof Error
-          ? `${e.message} 再送せず同期してください。`
+          ? `${e.message}${notSent ? ' メールは送信していません。' : ' 再送せず同期してください。'}`
           : "送信結果を確認できません。",
       );
     } finally {

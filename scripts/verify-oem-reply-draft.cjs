@@ -19,6 +19,6 @@ const post = body => mod.exports.POST(new Request('https://example.invalid', { m
   let response = await post({ action: 'draft', ...base }); assert.equal(response.status, 200); assert.equal(saved, 1); assert.equal(validated, 1)
   stale = true; response = await post({ action: 'draft', ...base }); assert.equal(response.status, 409); assert.equal(saved, 1); stale = false
   response = await post({ action: 'send', ...base, requestId: '22222222-2222-4222-8222-222222222222' }); assert.equal(response.status, 200); assert.equal(sent, 1)
-  stale = true; response = await post({ action: 'send', ...base, requestId: '33333333-3333-4333-8333-333333333333' }); assert.equal(response.status, 409); assert.equal(sent, 1)
+  stale = true; response = await post({ action: 'send', ...base, requestId: '33333333-3333-4333-8333-333333333333' }); assert.equal(response.status, 409); assert.equal(sent, 1); assert.equal((await response.json()).status, 'not_sent')
   console.log('OEM reply draft/send checks: PASS (fresh context required before save/send; stale guard prevents both; no external calls)')
 })().catch(error => { console.error('OEM reply draft/send checks: FAIL'); console.error(error.stack || error); process.exitCode = 1 })
