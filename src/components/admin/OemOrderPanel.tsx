@@ -1,21 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
-import { advanceOemOrder, cancelOemOrder, getOemOrder, issueOemOrder, reissueOemOrderLink } from '@/actions/oemOrders'
+import { cancelOemOrder, getOemOrder, issueOemOrder, reissueOemOrderLink } from '@/actions/oemOrders'
 import type { OemOrder } from '@/lib/oem-orders'
-import { nextOemOrderStatus, OEM_ORDER_STATUS_LABELS, type OemOrderStatus } from '@/lib/oem-order-shared'
+import { OEM_ORDER_STATUS_LABELS } from '@/lib/oem-order-shared'
 import { OemPaymentPanel, PAYMENT_CHANGED } from './OemPaymentPanel'
 import { OemInvoicePanel } from './OemInvoicePanel'
-
-const nextButtonLabels: Partial<Record<OemOrderStatus, string>> = {
-  accepted: '前金入金済みにする', deposit_paid: '製造開始にする', in_production: '製造数・最終金額を確定する', balance_due: '全額入金済みにする', paid: '出荷済みにする',
-}
+import { OemFulfillmentPanel } from './OemFulfillmentPanel'
 
 export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string; estimatedTotalPrice: number }) {
   const [order, setOrder] = useState<OemOrder | null>(null)
   const [acceptance, setAcceptance] = useState<Record<string, unknown> | null>(null)
   const [amount, setAmount] = useState(String(estimatedTotalPrice || ''))
-  const [finalAmount, setFinalAmount] = useState('')
   const [specification, setSpecification] = useState('')
   const [message, setMessage] = useState('')
   const [issuedUrl, setIssuedUrl] = useState('')
@@ -59,15 +55,6 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     if (result.url) setIssuedUrl(result.url)
     if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
   })
-  const advance = () => startTransition(async () => {
-    if (!order) return
-    const next = nextOemOrderStatus(order.status)
-    if (!next) return
-    if (!window.confirm(`「${OEM_ORDER_STATUS_LABELS[next]}」へ進めます。よろしいですか？`)) return
-    const result = await advanceOemOrder(order.id, next, next === 'balance_due' ? Number(finalAmount) : undefined)
-    setMessage(result.error || result.message || '')
-    if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
-  })
   const cancel = () => startTransition(async () => {
     if (!order || !window.confirm('この正式発注をキャンセルします。発注URLも利用できなくなります。よろしいですか？')) return
     const result = await cancelOemOrder(order.id)
@@ -78,7 +65,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
   return <div style={{ marginTop: 28, borderTop: '1px solid var(--admin-border)', paddingTop: 24 }} onClick={event => event.stopPropagation()}>
     <h4 style={{ fontSize: 17, color: 'var(--admin-text)', marginBottom: 8 }}>正式発注・規約同意</h4>
     <p style={{ margin: '0 0 16px', color: 'var(--admin-text-muted)', fontSize: 14 }}>お客様が専用ページで規約に同意するまで、前金確認以降には進めません。</p>
-    {loading ? <p>読み込み中...</p> : !order || order.status === 'cancelled' ? <div style={cardStyle}>
+    {loading && !order ? <p>読み込み中...</p> : !order || order.status === 'cancelled' ? <div style={cardStyle}>
       {order?.status === 'cancelled' && <p style={{ color: '#fbbf24' }}>直前の正式発注はキャンセル済みです。必要なら改訂版を発行できます。</p>}
       <label style={labelStyle}>正式見積額（税別）<input type="number" min="1" max="100000000" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} /></label>
       <label style={labelStyle}>正式な商品仕様<textarea value={specification} onChange={e => setSpecification(e.target.value)} maxLength={10000} style={{ ...inputStyle, minHeight: 130, resize: 'vertical' }} /></label>
@@ -95,8 +82,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
         <button type="button" onClick={reissue} disabled={pending} style={secondaryButton}>期限を延長して発注リンクを再送</button>
       </div>}
       {acceptance && <p style={{ margin: '14px 0 0', color: '#4ade80', fontSize: 14 }}>規約同意：{String(acceptance.contact_name)} 様／{new Date(String(acceptance.accepted_at)).toLocaleString('ja-JP')}</p>}
-      {order.status === 'in_production' && <label style={{ ...labelStyle, marginTop: 16 }}>完成数量確定後の最終金額（税別）<input type="number" min="1" max="100000000" value={finalAmount} onChange={e => setFinalAmount(e.target.value)} style={inputStyle} /></label>}
-      {nextOemOrderStatus(order.status) && !['accepted', 'balance_due'].includes(order.status) && <button type="button" onClick={advance} disabled={pending} style={{ ...primaryButton, marginTop: 16 }}>{nextButtonLabels[order.status]}</button>}
+      <OemFulfillmentPanel key={order.id} order={order} onChanged={reload} />
       <OemInvoicePanel order={order} />
       <OemPaymentPanel orderId={order.id} status={order.status} onChanged={reload} />
       {!['shipped', 'cancelled'].includes(order.status) && <button type="button" onClick={cancel} disabled={pending} style={{ ...secondaryButton, marginTop: 16, marginLeft: 10, color: '#fca5a5' }}>キャンセル</button>}

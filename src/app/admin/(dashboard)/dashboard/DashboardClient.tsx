@@ -9,6 +9,7 @@ import { getLeads } from "@/actions/leads";
 import { OemMailboxConnection } from "@/components/admin/OemMailboxConnection";
 import { OemPaymentAlerts } from "@/components/admin/OemPaymentAlerts";
 import { OemConversationAlerts } from "@/components/admin/OemConversationAlerts";
+import { OemFulfillmentAlerts } from "@/components/admin/OemFulfillmentAlerts";
 
 function StatCard({
   title,
@@ -199,6 +200,7 @@ export default function DashboardClient() {
       <OemMailboxConnection />
       <OemPaymentAlerts />
       <OemConversationAlerts />
+      <OemFulfillmentAlerts />
       {loadError && (
         <p role="alert" style={{ color: "#fca5a5", marginBottom: 20 }}>
           {loadError}{" "}

@@ -67,8 +67,17 @@ async function main() {
     assert(exactReceipt.rows[0].result === 'accepted', 'exact receipt must advance deposit status')
     const exactAlerts = await client.query('SELECT * FROM public.get_oem_payment_alerts(100,0) WHERE order_id=$1', [exactOrderId])
     assert(exactAlerts.rowCount === 0, 'exact payment must remove alert')
-    await client.query("UPDATE public.oem_orders SET status='in_production' WHERE id=$1", [exactOrderId])
-    await client.query("UPDATE public.oem_orders SET status='balance_due' WHERE id=$1", [exactOrderId])
+    const fulfillmentInstalled = (await client.query("SELECT to_regclass('public.oem_order_fulfillment') AS table_name")).rows[0].table_name
+    if (fulfillmentInstalled) {
+      const today = (await client.query("SELECT (now() AT TIME ZONE 'Asia/Tokyo')::date::text AS today")).rows[0].today
+      for (const [version, action, input, expected] of [[0, 'save', { plannedQuantity: 100, quantityUnit: '個' }, 'saved'], [1, 'start', {}, 'started'], [2, 'complete', { completedQuantity: 100, completedOn: today, finalAmount: 100000 }, 'completed']]) {
+        const result = await client.query('SELECT * FROM public.update_oem_fulfillment($1,$2,$3,$4,$5)', [exactOrderId, user, version, action, input])
+        assert(result.rows[0].result === expected, `payment fixture fulfillment ${action} must succeed`)
+      }
+    } else {
+      await client.query("UPDATE public.oem_orders SET status='in_production' WHERE id=$1", [exactOrderId])
+      await client.query("UPDATE public.oem_orders SET status='balance_due' WHERE id=$1", [exactOrderId])
+    }
     const balancePlan = await client.query('SELECT * FROM public.save_oem_payment_plan($1,$2,$3,$4,$5,$6,$7)', [exactOrderId, 'balance', 200, null, '検証会社', null, user])
     const balanceReceipt = await client.query('SELECT * FROM public.record_oem_payment_receipt($1,$2,$3,$4,$5,$6,$7)', [balancePlan.rows[0].plan_id, id(), 200, '2026-09-04', '検証会社', '', user])
     assert(balanceReceipt.rows[0].result === 'accepted', 'exact balance receipt must advance paid status')

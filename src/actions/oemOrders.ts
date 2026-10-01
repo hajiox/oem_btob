@@ -142,6 +142,7 @@ export async function advanceOemOrder(orderId: string, requestedStatus: OemOrder
   try {
     const user = await requireMailAdmin()
     if (requestedStatus === 'deposit_paid' || requestedStatus === 'paid') return { success: false, error: '入金管理で銀行明細を確認し、入金日・金額・名義を記録してください' }
+    if (['in_production', 'balance_due', 'shipped'].includes(requestedStatus)) return { success: false, error: '製造・発送管理で数量・日付・発送情報を確認して工程を進めてください' }
     const id = uuid(orderId)
     const { data: order, error } = await adminClient.from('oem_orders').select('*').eq('id', id).single()
     if (error || !order) return { success: false, error: '正式発注が見つかりません' }

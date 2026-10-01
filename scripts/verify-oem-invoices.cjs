@@ -18,7 +18,18 @@ async function main() {
     const issued = await db.query('SELECT * FROM public.issue_oem_invoice($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', args); assert(issued.rows[0].result === 'issued' && issued.rows[0].snapshot.amountDue === 57300, 'mixed-tax deposit must issue 57300'); const invoiceId = issued.rows[0].invoice_id
     const plan = await db.query('SELECT id FROM public.oem_payment_plans WHERE order_id=$1 AND stage=$2', [orderId, 'deposit']); assert(plan.rowCount, 'invoice must create matching plan')
     const duplicate = await db.query('SELECT * FROM public.issue_oem_invoice($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', args); assert(duplicate.rows[0].result === 'duplicate', 'same request must be idempotent')
-    await db.query('SELECT * FROM public.record_oem_payment_receipt($1,$2,$3,$4,$5,$6,$7)', [plan.rows[0].id, id(), 57300, '2026-09-29', '請求検証会社', '', user]); await db.query("UPDATE public.oem_orders SET status='in_production' WHERE id=$1", [orderId]); await db.query("UPDATE public.oem_orders SET status='balance_due' WHERE id=$1", [orderId])
+    await db.query('SELECT * FROM public.record_oem_payment_receipt($1,$2,$3,$4,$5,$6,$7)', [plan.rows[0].id, id(), 57300, '2026-09-29', '請求検証会社', '', user])
+    const fulfillmentInstalled = (await db.query("SELECT to_regclass('public.oem_order_fulfillment') AS table_name")).rows[0].table_name
+    if (fulfillmentInstalled) {
+      const today = (await db.query("SELECT (now() AT TIME ZONE 'Asia/Tokyo')::date::text AS today")).rows[0].today
+      for (const [version, action, input, expected] of [[0, 'save', { plannedQuantity: 100, quantityUnit: '個' }, 'saved'], [1, 'start', {}, 'started'], [2, 'complete', { completedQuantity: 100, completedOn: today, finalAmount: 116000 }, 'completed']]) {
+        const result = await db.query('SELECT * FROM public.update_oem_fulfillment($1,$2,$3,$4,$5)', [orderId, user, version, action, input])
+        assert(result.rows[0].result === expected, `invoice fixture fulfillment ${action} must succeed`)
+      }
+    } else {
+      await db.query("UPDATE public.oem_orders SET status='in_production' WHERE id=$1", [orderId])
+      await db.query("UPDATE public.oem_orders SET status='balance_due' WHERE id=$1", [orderId])
+    }
     const afterPaid = await db.query('SELECT * FROM public.issue_oem_invoice($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', args); assert(afterPaid.rows[0].result === 'duplicate' && afterPaid.rows[0].invoice_id === invoiceId, 'duplicate after paid must remain idempotent')
     const bh = hash(JSON.stringify({ orderId, stage: 'balance', dueDate: d, description: '残金検証', taxable8: 50000, taxable10: 54000, nonTaxable: 12000, issuer })); const balance = await db.query('SELECT * FROM public.issue_oem_invoice($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', [orderId, id(), bh, 'balance', d, '残金検証', 50000, 54000, 12000, issuer, user]); assert(balance.rows[0].result === 'issued' && balance.rows[0].snapshot.amountDue === 68100, 'mixed-tax balance must issue 68100')
     await db.query('SAVEPOINT mutation'); let blocked = false; try { await db.query("UPDATE public.oem_payment_plans SET due_date='2026-11-01' WHERE id=$1", [plan.rows[0].id]) } catch (e) { blocked = e.code === '23514' }; await db.query('ROLLBACK TO SAVEPOINT mutation'); assert(blocked, 'invoiced plan mutation must be blocked')
