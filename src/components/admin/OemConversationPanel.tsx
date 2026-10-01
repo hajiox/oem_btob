@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { OemReplyAssistant } from "@/components/admin/OemReplyAssistant";
+import type { ReplyContextStamp } from "@/lib/oem-reply-assist-shared";
 type Attachment = { id: string; name: string; size: number };
 type Message = {
   id: string;
@@ -20,7 +22,7 @@ type Message = {
 };
 type MailboxData = {
   messages: Message[];
-  draft: { subject: string; text: string } | null;
+  draft: { subject: string; text: string; updatedAt: string; replyContext: ReplyContextStamp | null } | null;
   hasMore: boolean;
   nextCursor?: string;
   connected: boolean;
@@ -94,9 +96,12 @@ export function OemConversationPanel({
     [sendRequestId, setSendRequestId] = useState<string | null>(null),
     [sendState, setSendState] = useState("idle"),
     [syncCursor, setSyncCursor] = useState<string>(),
-    [syncHasMore, setSyncHasMore] = useState(false);
+    [syncHasMore, setSyncHasMore] = useState(false),
+    [appliedReply, setAppliedReply] = useState<ReplyContextStamp | null>(null),
+    [reloadDraft, setReloadDraft] = useState(false);
   const sendRef = useRef<string | null>(null),
     dirty = useRef(false),
+    draftStamp = useRef<string | null>(null),
     reviewed = useRef(new Set<string>()),
     inputRef = useRef<HTMLInputElement>(null),
     totalBytes = useMemo(() => files.reduce((n, f) => n + f.size, 0), [files]);
@@ -140,10 +145,14 @@ export function OemConversationPanel({
         setSubject("");
         setText("");
         dirty.current = false;
+        draftStamp.current = null;
+        setAppliedReply(null);
       }
       if (!preserve && !dirty.current) {
         setSubject(result.draft?.subject || "");
         setText(result.draft?.text || "");
+        draftStamp.current = result.draft?.updatedAt || null;
+        setAppliedReply(result.draft?.replyContext || null);
       }
     },
     [leadId],
@@ -226,13 +235,17 @@ export function OemConversationPanel({
   async function save() {
     setBusy(true);
     try {
-      const r = await api("draft", { leadId, subject, text });
+      const r = await api("draft", { leadId, subject, text, expectedUpdatedAt: draftStamp.current, replyContext: appliedReply });
       setNotice(
         r.success
           ? "下書きを保存しました。"
           : String(r.error || "下書きを保存できませんでした。"),
       );
-      if (r.success) dirty.current = false;
+      if (r.success) {
+        dirty.current = false;
+        draftStamp.current = String(r.updatedAt);
+        setSubject(String(r.subject));
+      }
     } catch (e) {
       setNotice(
         e instanceof Error ? e.message : "下書きを保存できませんでした。",
@@ -244,6 +257,8 @@ export function OemConversationPanel({
   async function send() {
     if (!preview || !sendRequestId) return;
     setBusy(true);
+    try { if (appliedReply) await validateAppliedReply(appliedReply); }
+    catch (e) { setNotice(e instanceof Error ? e.message : "返信案を再確認してください。"); setBusy(false); return; }
     setSendState("sending");
     try {
       const r = await api("send", {
@@ -252,6 +267,7 @@ export function OemConversationPanel({
         text: preview.text,
         requestId: sendRequestId,
         replyToMessageId: preview.replyToMessageId,
+        replyContext: appliedReply,
         attachments: preview.files.map(({ name, type, base64 }) => ({
           name,
           type,
@@ -274,6 +290,8 @@ export function OemConversationPanel({
         setSubject("");
         setText("");
         dirty.current = false;
+        draftStamp.current = null;
+        setAppliedReply(null);
         await list();
       }
     } catch (e) {
@@ -286,6 +304,22 @@ export function OemConversationPanel({
     } finally {
       setBusy(false);
     }
+  }
+  async function validateAppliedReply(candidate: ReplyContextStamp) {
+    const response = await fetch("/api/oem/reply-assist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "validate", leadId, ...candidate }) });
+    const result = await response.json();
+    if (!response.ok || result.success !== true) throw new Error(result.error || "返信案を再準備してください。");
+  }
+  async function preparePreview() {
+    setBusy(true);
+    try {
+      if (appliedReply) await validateAppliedReply(appliedReply);
+      const id = globalThis.crypto?.randomUUID?.();
+      if (!id) throw new Error("安全な送信IDを生成できません。");
+      setSendRequestId(id); sendRef.current = id;
+      setPreview({ subject: subject || (pending ? `Re: ${pending.subject}` : ""), text, files: [...files], replyToMessageId: pending?.id });
+    } catch (e) { setNotice(e instanceof Error ? e.message : "返信案を再確認してください。"); }
+    finally { setBusy(false); }
   }
   async function choose(event: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files || []);
@@ -504,6 +538,7 @@ export function OemConversationPanel({
           )}
           {data.connected && !locked && (
             <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+              <OemReplyAssistant leadId={leadId} disabled={busy || !!preview || pendingUnavailable} composerKey={JSON.stringify({ subject, text, draftStamp: draftStamp.current })} hasExistingText={!!subject.trim() || !!text.trim()} onApply={(candidate) => { if (!candidate.contextSnapshot) { setNotice("返信案を再準備してください。"); return; } setSubject(candidate.subject); setText(candidate.text); dirty.current = true; setAppliedReply({ templateId: candidate.templateId, contextSnapshot: candidate.contextSnapshot }); setPreview(null); setSendRequestId(null); sendRef.current = null; setNotice("返信案を反映しました。内容を確認・編集してください。未送信です。"); }} />
               <label>
                 宛先
                 <input value={leadEmail} readOnly style={inputStyle} />
@@ -511,7 +546,7 @@ export function OemConversationPanel({
               <label>
                 件名
                 <input
-                  disabled={!!preview}
+                  disabled={busy || !!preview}
                   value={subject}
                   onChange={(e) => {
                     setSubject(e.target.value);
@@ -523,7 +558,7 @@ export function OemConversationPanel({
               <label>
                 返信本文
                 <textarea
-                  disabled={!!preview}
+                  disabled={busy || !!preview}
                   value={text}
                   onChange={(e) => {
                     setText(e.target.value);
@@ -575,25 +610,18 @@ export function OemConversationPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const id = globalThis.crypto?.randomUUID?.();
-                    if (!id) return setNotice("安全な送信IDを生成できません。");
-                    setSendRequestId(id);
-                    sendRef.current = id;
-                    setPreview({
-                      subject:
-                        subject || (pending ? `Re: ${pending.subject}` : ""),
-                      text,
-                      files: [...files],
-                      replyToMessageId: pending?.id,
-                    });
-                  }}
+                  onClick={() => void preparePreview()}
                   disabled={busy || !!preview || !text.trim() || pendingUnavailable}
                   style={sendButton}
                 >
                   送信内容を確認
                 </button>
               </div>
+              <details>
+                <summary style={{ cursor: "pointer", fontSize: 13 }}>共有下書きの再読み込み</summary>
+                <label style={{ display: "block", margin: "8px 0", fontSize: 13 }}><input type="checkbox" checked={reloadDraft} onChange={(e) => setReloadDraft(e.target.checked)} disabled={busy || !!preview} /> 未保存の件名・本文を、保存済みの共有下書きで置き換える</label>
+                <button type="button" disabled={busy || !!preview || !reloadDraft} style={button} onClick={async () => { setBusy(true); try { const result = await api("list", { leadId }) as unknown as MailboxData; setSubject(result.draft?.subject || ""); setText(result.draft?.text || ""); draftStamp.current = result.draft?.updatedAt || null; dirty.current = false; setAppliedReply(result.draft?.replyContext || null); setReloadDraft(false); setNotice("共有下書きを読み込みました。"); } catch (e) { setNotice(e instanceof Error ? e.message : "下書きを読み込めません。"); } finally { setBusy(false); } }}>共有下書きを読み込む</button>
+              </details>
             </div>
           )}
           {notice && <p role="status">{notice}</p>}
@@ -607,6 +635,8 @@ export function OemConversationPanel({
               }}
             >
               <h5>送信前プレビュー</h5>
+              <p>宛先：{leadEmail}</p>
+              <p>返信対象：{preview.replyToMessageId ? data?.messages.find(m => m.id === preview.replyToMessageId)?.subject || "選択した受信メール" : "新規のご案内（特定の受信メールへの返信ではありません）"}</p>
               <p>{preview.subject || "(件名なし)"}</p>
               <p style={{ whiteSpace: "pre-wrap" }}>{preview.text}</p>
               <button

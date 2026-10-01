@@ -10,7 +10,9 @@ function must(error: unknown) { if (error) throw new MailError('メール履歴�
 export function mailSubject(value: unknown, leadId: string) {
     if (typeof value !== 'string' || /[\r\n\x00]/.test(value) || value.length > 200) throw new MailError('件名は改行なしの200文字以内で入力してください。')
     const tag = caseTag(leadId)
-    return value.includes(tag) ? value.trim() : `${value.trim() || 'OEMのご相談について'} ${tag}`
+    const title = value.includes(tag) ? value.trim() : `${value.trim() || 'OEMのご相談について'} ${tag}`
+    if (title.length > 200) throw new MailError('案件番号を含めて件名を200文字以内にしてください。')
+    return title
 }
 export function mailText(value: unknown) {
     if (typeof value !== 'string' || !value.trim() || value.length > 30000 || value.includes('\0')) throw new MailError('本文を1〜30,000文字で入力してください。')
@@ -31,14 +33,14 @@ export async function listConversation(lead: Lead, cursor?: string) {
     if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100000) throw new MailError('履歴のページ指定が不正です。')
     const [{ data, error }, draftResult, status, unresolved, awaiting] = await Promise.all([
         db.from(table).select(columns).eq('lead_id', lead.id).order('sent_at', { ascending: false }).order('id', { ascending: false }).range(offset, offset + 49),
-        db.from('oem_conversation_drafts').select('subject,text_body').eq('lead_id', lead.id).maybeSingle(), getMailboxStatus(),
+        db.from('oem_conversation_drafts').select('subject,text_body,updated_at,reply_template_id,reply_context_hash').eq('lead_id', lead.id).maybeSingle(), getMailboxStatus(),
         db.from(table).select('id', { count: 'exact', head: true }).eq('lead_id', lead.id).in('status', ['pending', 'sending', 'unknown']),
         db.from(table).select('id').eq('lead_id', lead.id).eq('direction', 'inbound').is('reply_closed_at', null).is('handled_at', null).order('sent_at', { ascending: false }).order('id', { ascending: false }).limit(1),
     ])
     must(error); must(draftResult.error); must(unresolved.error); must(awaiting.error)
     const newestPendingReplyId = awaiting.data?.[0]?.id
     return { ...status, hasUnresolved: !!unresolved.count, newestPendingReplyId, replyToMessageId: newestPendingReplyId, messages: (data || []).map(m => ({ id: m.id, requestId: m.request_id, direction: m.direction, subject: m.subject, text: m.text_body, from: m.from_address, to: m.to_address, sentAt: m.sent_at, status: m.status, attachments: m.attachments || [], reviewedAt: m.reviewed_at, reviewedBy: m.reviewed_by, handledAt: m.handled_at, handledBy: m.handled_by, replyToId: m.reply_to_id, replyClosedAt: m.reply_closed_at })),
-        draft: draftResult.data ? { subject: draftResult.data.subject, text: draftResult.data.text_body } : null,
+        draft: draftResult.data ? { subject: draftResult.data.subject, text: draftResult.data.text_body, updatedAt: draftResult.data.updated_at, replyContext: draftResult.data.reply_template_id && draftResult.data.reply_context_hash ? { templateId: draftResult.data.reply_template_id, contextSnapshot: draftResult.data.reply_context_hash } : null } : null,
         hasMore: data?.length === 50, nextCursor: data?.length === 50 ? String(offset + 50) : undefined }
 }
 export async function storeConversationThread(client: GmailClient, threadId: string, lead: Lead, preloaded?: import('@/lib/oem-gmail-client').GmailThread) {
@@ -78,11 +80,14 @@ export async function syncConversation(lead: Lead, cursor?: string) {
     for (const thread of result.threads || []) count += await storeConversationThread(client, thread.id, lead)
     return { success: true, hasMore: !!result.nextPageToken, nextCursor: result.nextPageToken, message: `${count}件のメールを確認しました。` }
 }
-export async function saveConversationDraft(lead: Lead, userId: string, subject: unknown, text: unknown) {
+export async function saveConversationDraft(lead: Lead, userId: string, subject: unknown, text: unknown, expectedUpdatedAt?: unknown, replyContext?: import('@/lib/oem-reply-assist-shared').ReplyContextStamp | null) {
     const title = mailSubject(subject, lead.id)
-    if (typeof text !== 'string' || text.length > 30000) throw new MailError('本文は30,000文字以内で入力してください。')
-    const { error } = await db.from('oem_conversation_drafts').upsert({ lead_id: lead.id, subject: title, text_body: text, updated_by: userId })
-    must(error); return { success: true }
+    if (typeof text !== 'string' || text.length > 30000 || text.includes('\0')) throw new MailError('本文は30,000文字以内で入力してください。')
+    if (expectedUpdatedAt != null && (typeof expectedUpdatedAt !== 'string' || expectedUpdatedAt.length > 40 || !Number.isFinite(Date.parse(expectedUpdatedAt)))) throw new MailError('下書きを再読み込みしてください。')
+    const result = await db.rpc('save_oem_conversation_draft', { p_lead: lead.id, p_actor: userId, p_subject: title, p_text: text, p_expected: expectedUpdatedAt || null, p_reply_template: replyContext?.templateId || null, p_reply_context: replyContext?.contextSnapshot || null })
+    must(result.error)
+    if (result.data?.[0]?.result !== 'saved') throw new MailError('共有下書きが他の操作で変わりました。編集内容を控え、共有下書きを再読み込みしてください。', 409)
+    return { success: true, subject: title, updatedAt: result.data[0].updated_at }
 }
 export async function sendConversation(lead: Lead, userId: string, input: { subject?: unknown; text?: unknown; requestId?: unknown; attachments?: MimeAttachment[]; replyToMessageId?: unknown }) {
     const requestId = uuid(input.requestId), subject = mailSubject(input.subject, lead.id), text = mailText(input.text)

@@ -1,5 +1,6 @@
 import { requireMailAdmin, checkMailOrigin, requireOemMailLead, MailError, mailFailure } from '@/lib/oem-mail-security'
 import { getMailboxStatus, listConversation, syncConversation, saveConversationDraft, sendConversation, reviewConversationMessages, handleConversationMessage } from '@/lib/oem-conversations'
+import { replyContextStamp, validateReplyFacts } from '@/lib/oem-reply-assist'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 export async function POST(request: Request) {
@@ -21,8 +22,16 @@ export async function POST(request: Request) {
             switch (input.action) {
                 case 'list': result = await listConversation(lead, input.cursor); break
                 case 'sync': result = await syncConversation(lead, input.cursor); break
-                case 'draft': result = await saveConversationDraft(lead, user.id, input.subject, input.text); break
-                case 'send': result = await sendConversation(lead, user.id, input); break
+                case 'draft': {
+                    const stamp = replyContextStamp(input.replyContext)
+                    if (stamp) await validateReplyFacts(lead, stamp)
+                    result = await saveConversationDraft(lead, user.id, input.subject, input.text, input.expectedUpdatedAt, stamp); break
+                }
+                case 'send': {
+                    const stamp = replyContextStamp(input.replyContext)
+                    if (stamp) await validateReplyFacts(lead, stamp)
+                    result = await sendConversation(lead, user.id, input); break
+                }
                 case 'review': result = await reviewConversationMessages(lead, user.id, input.messageIds); break
                 case 'handle': result = await handleConversationMessage(lead, user.id, input.messageId, input.handled); break
                 default: throw new MailError('操作を確認してください。')
