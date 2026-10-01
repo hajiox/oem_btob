@@ -8,6 +8,9 @@ import { OemPaymentPanel, PAYMENT_CHANGED } from './OemPaymentPanel'
 import { OemInvoicePanel } from './OemInvoicePanel'
 import { OemFulfillmentPanel } from './OemFulfillmentPanel'
 import { OemSettlementPanel } from './OemSettlementPanel'
+import { OemDocumentPanel } from './OemDocumentPanel'
+import { OemPortalPanel } from './OemPortalPanel'
+import { OemApprovalPanel } from './OemApprovalPanel'
 
 export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string; estimatedTotalPrice: number }) {
   const [order, setOrder] = useState<OemOrder | null>(null)
@@ -19,6 +22,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
   const [loading, setLoading] = useState(true)
   const [pending, startTransition] = useTransition()
   const [settlementState, setSettlementState] = useState({ ready: false, hasSettlement: false, blocked: true, canReissue: false })
+  const [approvalState, setApprovalState] = useState({ ready: false, blocked: true })
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -84,9 +88,10 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
       </div>}
       {acceptance && <p style={{ margin: '14px 0 0', color: '#4ade80', fontSize: 14 }}>規約同意：{String(acceptance.contact_name)} 様／{new Date(String(acceptance.accepted_at)).toLocaleString('ja-JP')}</p>}
       <OemSettlementPanel key={`settlement-${order.id}`} order={order} onChanged={reload} onState={setSettlementState} />
-      <OemFulfillmentPanel key={order.id} order={order} onChanged={reload} settlementBlocked={!settlementState.ready || settlementState.blocked} />
+      <OemFulfillmentPanel key={order.id} order={order} onChanged={reload} settlementBlocked={!settlementState.ready || settlementState.blocked} approvalBlocked={!approvalState.ready || approvalState.blocked} />
       <OemInvoicePanel key={`invoice-${order.id}`} order={order} readOnly={!settlementState.ready || settlementState.hasSettlement} />
       <OemPaymentPanel key={`payment-${order.id}`} orderId={order.id} status={order.status} onChanged={reload} readOnly={!settlementState.ready || settlementState.hasSettlement} />
+      <details style={{ marginTop: 20 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>納品書・領収書</summary><OemDocumentPanel order={order} readOnly={!settlementState.ready || settlementState.blocked} /></details>
       {order.status === 'issued' && <button type="button" onClick={cancel} disabled={pending} style={{ ...secondaryButton, marginTop: 16, marginLeft: 10, color: '#fca5a5' }}>同意前の発注を取り下げる</button>}
       {order.status === 'cancelled' && <div style={{ marginTop: 18 }}>
         <p style={{ color: '#fbbf24' }}>この正式発注はキャンセル済みです。元の見積・請求・入金履歴は上に残しています。</p>
@@ -100,6 +105,8 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
         </details> : <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>キャンセル精算が完了するまで、改訂版の発行を保留します。</p>}
       </div>}
     </div>}
+    <details style={{ marginTop: 20 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>試作・ラベル・最終仕様のお客様承認</summary><OemApprovalPanel key={`approval-${order?.id || leadId}`} leadId={leadId} orderId={order?.id} onState={setApprovalState} /></details>
+    <details style={{ marginTop: 20 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>お客様向け進捗ページ・再注文</summary><OemPortalPanel leadId={leadId} /></details>
     {issuedUrl && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--admin-text-muted)', overflowWrap: 'anywhere' }}>今回発行したURL（再表示不可）：<a href={issuedUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--admin-accent)' }}>{issuedUrl}</a></div>}
     {message && <p role="status" style={{ marginTop: 12, color: message.includes('できません') || message.includes('必要') ? '#f87171' : '#4ade80' }}>{message}</p>}
   </div>

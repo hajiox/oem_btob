@@ -11,6 +11,7 @@ import { OemPaymentAlerts } from "@/components/admin/OemPaymentAlerts";
 import { OemConversationAlerts } from "@/components/admin/OemConversationAlerts";
 import { OemFulfillmentAlerts } from "@/components/admin/OemFulfillmentAlerts";
 import { OemSettlementAlerts } from "@/components/admin/OemSettlementAlerts";
+import { OemAccountingExport } from "@/components/admin/OemAccountingExport";
 
 function StatCard({
   title,
@@ -203,6 +204,7 @@ export default function DashboardClient() {
       <OemSettlementAlerts />
       <OemConversationAlerts />
       <OemFulfillmentAlerts />
+      <OemAccountingExport />
       {loadError && (
         <p role="alert" style={{ color: "#fca5a5", marginBottom: 20 }}>
           {loadError}{" "}

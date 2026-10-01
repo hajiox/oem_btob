@@ -21,6 +21,7 @@ export async function getInvoiceForToken(token: string): Promise<OemInvoice | nu
   if (!timingSafeEqual(Buffer.from(signature(id)), Buffer.from(sig))) return null
   const { data, error } = await adminClient.from('oem_invoices').select('*').eq('id', id).maybeSingle()
   if (error || !data) return null
+  if (data.lifecycle_status && data.lifecycle_status !== 'active') return null
   const parent = await adminClient.from('oem_orders').select('status').eq('id', data.order_id).maybeSingle()
   if (parent.error || !parent.data || parent.data.status === 'cancelled') return null
   const settlement = await adminClient.from('oem_settlements').select('id').eq('order_id', data.order_id).neq('state', 'void').limit(1)

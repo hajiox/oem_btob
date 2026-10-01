@@ -14,9 +14,9 @@ const completeStatuses = ['in_production']
 const backfillStatuses = ['balance_due', 'paid']
 const dateLabel = (value: string | null | undefined) => value || '未設定'
 
-type Props = { order: OemOrder; onChanged: () => Promise<void> | void; settlementBlocked?: boolean }
+type Props = { order: OemOrder; onChanged: () => Promise<void> | void; settlementBlocked?: boolean; approvalBlocked?: boolean }
 
-export function OemFulfillmentPanel({ order, onChanged, settlementBlocked = false }: Props) {
+export function OemFulfillmentPanel({ order, onChanged, settlementBlocked = false, approvalBlocked = true }: Props) {
   const [data, setData] = useState<OemFulfillment | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
@@ -106,6 +106,7 @@ export function OemFulfillmentPanel({ order, onChanged, settlementBlocked = fals
     const form = event.currentTarget
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     const action = String(submitter?.value || 'save') as FulfillmentAction
+    if (action === 'start' && approvalBlocked) { setMessage('お客様承認を確認するまで製造開始できません。'); return }
     const input = inputFrom(form, action)
     const qty = input.completedQuantity
     if ((action === 'complete' || action === 'record_completion') && (!qty || qty < 1 || !input.completedOn || (action === 'complete' && (!input.finalAmount || input.finalAmount < 1)))) {
@@ -135,7 +136,7 @@ export function OemFulfillmentPanel({ order, onChanged, settlementBlocked = fals
   const viewData: OemFulfillment = data || { order_id: order.id, planned_quantity: null, quantity_unit: quantityUnit || '個', production_due_date: null, shipment_due_date: null, started_on: null, completed_quantity: null, completed_on: null, shipped_on: null, carrier: '', tracking_number: '', notes: '', version: 0, updated_at: '', updated_by: null }
   const completed = viewData.completed_quantity != null
   const canPlan = !settlementBlocked && editableStatuses.includes(order.status) && !['shipped', 'cancelled'].includes(order.status)
-  const canStart = !settlementBlocked && order.status === 'deposit_paid' && viewData.planned_quantity != null && Number(plannedQuantity) === viewData.planned_quantity && quantityUnit.trim() === viewData.quantity_unit
+  const canStart = !settlementBlocked && !approvalBlocked && order.status === 'deposit_paid' && viewData.planned_quantity != null && Number(plannedQuantity) === viewData.planned_quantity && quantityUnit.trim() === viewData.quantity_unit
   const canComplete = !settlementBlocked && completeStatuses.includes(order.status) && !completed
   const canBackfill = !settlementBlocked && backfillStatuses.includes(order.status) && !completed
   const canShip = !settlementBlocked && order.status === 'paid' && completed && !data?.shipped_on
@@ -143,6 +144,7 @@ export function OemFulfillmentPanel({ order, onChanged, settlementBlocked = fals
   return <section aria-label="製造・発送管理" style={section}>
     <h4 style={heading}>製造・発送管理</h4>
     {settlementBlocked && <p style={danger}>精算状態の確認中、または精算未完了のため、製造・出荷操作を保留しています。</p>}
+    {approvalBlocked && order.status === 'deposit_paid' && <p style={danger}>お客様の承認待ち、または承認状況を確認中です。下の承認管理で最新の回答を確認するまで製造開始を保留しています。</p>}
     {error && <p role="alert" style={danger}>{error} <button type="button" disabled={busy} onClick={() => void load(false)} style={linkButton}>再読み込み</button></p>}
     {!loaded && !error && <p>読み込み中…</p>}
     {loaded && <form onSubmit={submit}>

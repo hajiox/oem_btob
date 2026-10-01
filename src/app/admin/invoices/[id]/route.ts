@@ -10,6 +10,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const id = uuid((await params).id)
     const { data, error } = await adminClient.from('oem_invoices').select('*').eq('id', id).maybeSingle()
     if (error || !data) return unavailableInvoice()
+    if (data.lifecycle_status && data.lifecycle_status !== 'active') return unavailableInvoice()
     await requireOemMailLead(data.lead_id)
     const parent = await adminClient.from('oem_orders').select('status').eq('id', data.order_id).single()
     if (parent.error) return unavailableInvoice()

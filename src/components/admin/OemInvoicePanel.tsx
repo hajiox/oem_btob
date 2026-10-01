@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { getOemInvoices, issueOemInvoice, sendOemInvoice } from '@/actions/oemInvoices'
+import { cancelReissueOemInvoice, correctOemInvoice, getOemInvoices, issueOemInvoice, sendOemInvoice } from '@/actions/oemInvoices'
 import type { OemOrder } from '@/lib/oem-orders'
 import { invoiceTotals, INVOICE_CHANGED, yen, type InvoiceInput, type InvoiceIssuer, type OemInvoice } from '@/lib/oem-invoices-shared'
 import type { PaymentStage } from '@/lib/oem-payments-shared'
@@ -101,11 +101,13 @@ export function OemInvoicePanel({ order, readOnly = false }: { order: OemOrder; 
       const demoBlocked = invoice.snapshot.demo === true && !isDemoTest
       const stageActive = !readOnly && (invoice.stage === 'deposit' ? order.status === 'accepted' : order.status === 'balance_due')
       const alreadyAttempted = ['pending', 'sending', 'unknown', 'failed'].includes(invoice.mail_status || '')
+      const correctionBlocked = ['pending', 'sending', 'sent', 'unknown'].includes(invoice.mail_status || '')
       return <div key={invoice.id} style={card}>
-        <strong>{invoice.invoice_number}</strong>　{invoice.stage === 'deposit' ? '前金' : '残金'}　{yen(invoice.snapshot.amountDue)}　<span>{mailStatusLabels[invoice.mail_status || 'not_sent'] || '確認が必要'}</span>
+        <strong>{invoice.invoice_number}</strong>　{invoice.stage === 'deposit' ? '前金' : '残金'}　{yen(invoice.snapshot.amountDue)}　<span>{invoice.lifecycle_status === 'void' ? '取消済み' : invoice.lifecycle_status === 'superseded' ? '差替済み' : mailStatusLabels[invoice.mail_status || 'not_sent'] || '確認が必要'}</span>
         <p style={muted}>送信元：staff@aizu-tv.com ／ 宛先：{invoice.snapshot.email}</p>
         <a href={`/admin/invoices/${encodeURIComponent(invoice.id)}`} target="_blank" rel="noreferrer" style={{ color: 'var(--admin-accent)' }}>請求書を表示・印刷</a>
-        {invoice.mail_status !== 'sent' && stageActive && <button type="button" disabled={busy || demoBlocked} style={{ ...button, marginLeft: 10 }} onClick={() => send(invoice)}>{alreadyAttempted ? '送信状況を再確認（重複送信なし）' : isDemoTest ? 'テストメールを送信（支払不要）' : demoBlocked ? 'デモ送信先不許可' : 'この請求書をメール送信'}</button>}
+        {invoice.lifecycle_status === 'active' && invoice.mail_status !== 'sent' && stageActive && <button type="button" disabled={busy || demoBlocked} style={{ ...button, marginLeft: 10 }} onClick={() => send(invoice)}>{alreadyAttempted ? '送信状況を再確認（重複送信なし）' : isDemoTest ? 'テストメールを送信（支払不要）' : demoBlocked ? 'デモ送信先不許可' : 'この請求書をメール送信'}</button>}
+        {!readOnly && invoice.lifecycle_status === 'active' && stageActive && <InvoiceRevisionControls invoice={invoice} correctionBlocked={correctionBlocked} onChanged={load} />}
         {alreadyAttempted && <p style={muted}>送信済みか不明な場合は案件メールを同期してください。同じ請求書は自動で再送しません。</p>}
       </div>
     })}</div>}
@@ -123,3 +125,15 @@ export function OemInvoicePanel({ order, readOnly = false }: { order: OemOrder; 
 }
 
 const card = { padding: 12, border: '1px solid var(--admin-border)', borderRadius: 6, background: 'var(--admin-bg)', fontSize: 13 }
+function InvoiceRevisionControls({invoice,correctionBlocked,onChanged}:{invoice:OemInvoice;correctionBlocked:boolean;onChanged:()=>Promise<void>}) {
+  const [description,setDescription]=useState(invoice.snapshot.description),[dueDate,setDueDate]=useState(invoice.snapshot.dueDate),[reason,setReason]=useState(''),[working,setWorking]=useState(false),[message,setMessage]=useState('')
+  const request=useRef<{id:string;key:string}|null>(null),busyRef=useRef(false)
+  const run=async(action:'correct'|'reissue')=>{
+    if(busyRef.current)return
+    const key=JSON.stringify({action,description,dueDate,reason})
+    if(request.current?.key!==key)request.current={id:crypto.randomUUID(),key}
+    busyRef.current=true;setWorking(true)
+    try{const r=action==='correct'?await correctOemInvoice(invoice.id,{requestId:request.current.id,stage:invoice.stage,amountDue:invoice.snapshot.amountDue,description,dueDate}):await cancelReissueOemInvoice(invoice.id,reason,request.current.id);setMessage(r.error||r.message||'');if(r.success)await onChanged()}catch{setMessage('結果を確認できませんでした。同じ内容で再確認するか請求書履歴を更新してください。')}finally{busyRef.current=false;setWorking(false)}
+  }
+  return <details style={{marginTop:12}}><summary style={{cursor:'pointer'}}>同額訂正・取消再発行</summary><p style={muted}>元の請求書と金額・入金履歴を残し、新しい番号で発行します。メールは送信しません。金額変更・入金後の訂正は精算管理をご利用ください。</p><label>訂正後の請求内容<input value={description} disabled={working||correctionBlocked} maxLength={2000} onChange={e=>setDescription(e.target.value)} style={inputStyle}/></label><label>訂正後の支払期限<input type="date" value={dueDate} disabled={working||correctionBlocked} onChange={e=>setDueDate(e.target.value)} style={inputStyle}/></label><button type="button" disabled={working||correctionBlocked||!description.trim()||!dueDate} onClick={()=>void run('correct')} style={button}>同額訂正を確定</button>{correctionBlocked&&<p style={muted}>送信済み・送信中・結果不明の請求書は同額訂正できません。</p>}<label style={{display:'block',marginTop:12}}>取消・同内容再発行の理由<input value={reason} maxLength={2000} onChange={e=>setReason(e.target.value)} disabled={working} style={inputStyle}/></label><button type="button" disabled={working||!reason.trim()||['pending','sending','unknown'].includes(invoice.mail_status||'')} onClick={()=>void run('reissue')} style={button}>旧請求書を取消して同内容を再発行</button>{message&&<p role="status" style={muted}>{message}</p>}</details>
+}

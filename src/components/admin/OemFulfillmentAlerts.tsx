@@ -8,10 +8,10 @@ import { FULFILLMENT_CHANGED } from './OemFulfillmentPanel'
 import { PAYMENT_CHANGED } from './OemPaymentPanel'
 
 const labels: Record<FulfillmentAlert['kind'], string> = {
-  shipment_overdue: '出荷予定超過', production_overdue: '製造予定超過', unconfigured: '計画未設定', ready_to_ship: '出荷待ち',
+  settlement_hold: '精算保留（製造・出荷停止）', shipment_overdue: '出荷予定超過', production_overdue: '製造予定超過', unconfigured: '計画未設定', ready_to_ship: '出荷待ち',
 }
 const badgeColor: Record<FulfillmentAlert['kind'], string> = {
-  shipment_overdue: '#fca5a5', production_overdue: '#fca5a5', unconfigured: '#fbbf24', ready_to_ship: '#4ade80',
+  settlement_hold: '#fbbf24', shipment_overdue: '#fca5a5', production_overdue: '#fca5a5', unconfigured: '#fbbf24', ready_to_ship: '#4ade80',
 }
 const button = { padding: '7px 12px', background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)', borderRadius: 6, cursor: 'pointer' }
 

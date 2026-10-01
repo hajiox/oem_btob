@@ -42,7 +42,7 @@ export type FulfillmentAlert = {
   quantity_unit: string
   production_due_date: string | null
   shipment_due_date: string | null
-  kind: 'shipment_overdue' | 'production_overdue' | 'unconfigured' | 'ready_to_ship'
+  kind: 'settlement_hold' | 'shipment_overdue' | 'production_overdue' | 'unconfigured' | 'ready_to_ship'
 }
 
 export function tokyoToday(reference: Date = new Date()): string {

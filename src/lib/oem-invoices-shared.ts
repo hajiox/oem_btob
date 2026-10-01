@@ -18,6 +18,8 @@ export type OemInvoice = {
   id: string; order_id: string; lead_id: string; plan_id: string; stage: PaymentStage
   invoice_number: string; snapshot: InvoiceSnapshot; issued_at: string
   send_request_id: string; mail_status?: string | null
+  lifecycle_status?: 'active' | 'superseded' | 'void'; void_reason?: string
+  voided_at?: string | null; superseded_by?: string | null; revision_of?: string | null; revision_no?: number
 }
 export type InvoiceResult = { success: boolean; error?: string; message?: string; uncertain?: boolean; invoice?: OemInvoice }
 export const INVOICE_CHANGED = 'oem-invoice-changed'
@@ -32,4 +34,9 @@ export function invoiceTotals(stage: PaymentStage, taxable8: number, taxable10: 
   const amountDue = stage === 'deposit' ? Math.floor(grossTotal / 2) : grossTotal - depositReceived
   if (netTotal < 1 || grossTotal > 100_000_000 || amountDue <= 0) throw new Error('請求額は1円以上が必要です。精算・返金が必要な案件は個別に確認してください')
   return { netTotal, tax8, tax10, grossTotal, amountDue }
+}
+
+export type InvoiceRevisionInput = {
+  invoiceId: string; requestId: string; stage: PaymentStage; amountDue: number
+  issuer?: Partial<InvoiceIssuer>; description?: string; dueDate?: string
 }
