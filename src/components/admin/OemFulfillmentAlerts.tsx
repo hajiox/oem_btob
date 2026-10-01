@@ -5,6 +5,7 @@ import { getOemFulfillmentAlerts } from '@/actions/oemFulfillment'
 import type { FulfillmentAlert } from '@/lib/oem-fulfillment-shared'
 import { OemOrderPanel } from './OemOrderPanel'
 import { FULFILLMENT_CHANGED } from './OemFulfillmentPanel'
+import { PAYMENT_CHANGED } from './OemPaymentPanel'
 
 const labels: Record<FulfillmentAlert['kind'], string> = {
   shipment_overdue: '出荷予定超過', production_overdue: '製造予定超過', unconfigured: '計画未設定', ready_to_ship: '出荷待ち',
@@ -45,9 +46,10 @@ export function OemFulfillmentAlerts() {
     void reload()
     const refresh = () => { if (document.visibilityState === 'visible') void reload() }
     window.addEventListener(FULFILLMENT_CHANGED, refresh)
+    window.addEventListener(PAYMENT_CHANGED, refresh)
     window.addEventListener('focus', refresh)
     const timer = window.setInterval(refresh, 60_000)
-    return () => { window.removeEventListener(FULFILLMENT_CHANGED, refresh); window.removeEventListener('focus', refresh); window.clearInterval(timer); request.current?.abort() }
+    return () => { window.removeEventListener(FULFILLMENT_CHANGED, refresh); window.removeEventListener(PAYMENT_CHANGED, refresh); window.removeEventListener('focus', refresh); window.clearInterval(timer); request.current?.abort() }
   }, [reload])
 
   return <section aria-label="製造・発送アラート" style={section}>
@@ -61,7 +63,7 @@ export function OemFulfillmentAlerts() {
     </button>)}</div>}
     {!error && hasMore && nextOffset !== null && <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}><button type="button" onClick={() => void reload(nextOffset)} disabled={loading} style={button}>次のページ</button></div>}
     {selected && <div style={{ marginTop: 18, border: '1px solid var(--admin-accent)', padding: 16, borderRadius: 8 }}>
-      <div style={header}><strong>{selected.company_name} ／ {labels[selected.kind]}</strong><button type="button" onClick={() => setSelected(null)} style={button}>案件を閉じる</button></div>
+      <div style={header}><strong>{selected.company_name} ／ 発注・製造・発送情報</strong><button type="button" onClick={() => setSelected(null)} style={button}>案件を閉じる</button></div>
       <OemOrderPanel key={selected.order_id} leadId={selected.lead_id} estimatedTotalPrice={0} />
     </div>}
   </section>

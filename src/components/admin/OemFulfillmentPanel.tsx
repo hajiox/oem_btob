@@ -153,7 +153,7 @@ export function OemFulfillmentPanel({ order, onChanged }: Props) {
       </div>
       <label>メモ<textarea name="notes" maxLength={2000} value={notes} disabled={busy || !canPlan} onChange={e => setNotes(e.target.value)} style={{ ...input, minHeight: 70, resize: 'vertical' }} /></label>
       {canPlan && <button name="action" value="save" type="submit" disabled={busy} style={secondary}>{busy ? '保存中…' : '製造計画を保存'}</button>}
-      <div style={summary}><span>製造開始日：{dateLabel(viewData.started_on)}</span><span>完成数量：{completed ? `${viewData.completed_quantity} ${viewData.quantity_unit}` : '未記録'}</span><span>完成日：{dateLabel(viewData.completed_on)}</span><span>出荷日：{dateLabel(viewData.shipped_on)}</span></div>
+      <div style={summary}><span>製造開始日：{dateLabel(viewData.started_on)}</span><span>完成数量：{completed ? `${viewData.completed_quantity} ${viewData.quantity_unit}` : '未記録'}</span><span>完成日：{dateLabel(viewData.completed_on)}</span><span>出荷日：{dateLabel(viewData.shipped_on)}</span>{completed && order.final_amount != null && <span>最終金額（税別）：¥{order.final_amount.toLocaleString('ja-JP')}</span>}</div>
       {canStart && <button name="action" value="start" type="submit" disabled={busy} style={primary}>製造開始</button>}
       {(canComplete || canBackfill) && <div style={card}>
         <strong>{canComplete ? '製造完了を記録' : '既存案件の完成情報を追加'}</strong>
