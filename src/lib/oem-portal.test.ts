@@ -17,10 +17,11 @@ test('portal expiry is bounded to the post-order window', () => {
   assert.ok(expiry <= Date.now() + 90 * 24 * 60 * 60 * 1000 + 1000)
 })
 
-test('only shipped or settled orders can show reorder CTA', () => {
+test('reorder CTA uses the authoritative DB eligibility rather than status alone', () => {
   const base = { id: 'o', orderNumber: 'n', specification: '', selectedOptions: [], status: 'paid', amountKind: '', agreedAmount: 1, canReorder: false, receivedAmount: 1, outstandingAmount: 0, paymentState: '', productionDueDate: null, shipmentDueDate: null, plannedQuantity: null, quantityUnit: '', completedQuantity: null, completedOn: null, shippedOn: null, carrier: '', trackingNumber: '', settlementState: 'none', documents: [] }
   assert.equal(portalOrderIsReorderable(base), false)
-  assert.equal(portalOrderIsReorderable({ ...base, status: 'shipped' }), true)
-  assert.equal(portalOrderIsReorderable({ ...base, settlementState: 'settled' }), true)
+  assert.equal(portalOrderIsReorderable({ ...base, status: 'shipped' }), false)
+  assert.equal(portalOrderIsReorderable({ ...base, status: 'shipped', canReorder: true }), true)
+  assert.equal(portalOrderIsReorderable({ ...base, settlementState: 'settled', canReorder: true }), true)
   assert.equal(portalOrderIsReorderable({ ...base, settlementState: 'confirmed' }), false)
 })

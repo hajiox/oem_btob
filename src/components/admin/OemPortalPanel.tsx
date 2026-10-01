@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { getOemProgressForAdmin, issueOemProgressLink, renewOemProgressLink, revokeOemProgressLink } from '@/actions/oemPortal'
 
 type LinkRow = { id: string; issued_at: string; expires_at: string; revoked_at: string | null }
 export function OemPortalPanel({ leadId }: { leadId: string }) {
   const [links, setLinks] = useState<LinkRow[]>([]); const [message, setMessage] = useState(''); const [url, setUrl] = useState(''); const [pending, startTransition] = useTransition()
+  const busyRef = useRef(false)
   const reload = useCallback(async () => { const result = await getOemProgressForAdmin(leadId); if (result.success) setLinks(result.links as LinkRow[]); else setMessage(result.error || '進捗リンクを取得できませんでした') }, [leadId])
   useEffect(() => {
     let active = true
@@ -16,7 +17,20 @@ export function OemPortalPanel({ leadId }: { leadId: string }) {
     }).catch(() => { if (active) setMessage('進捗リンクを取得できませんでした') })
     return () => { active = false }
   }, [leadId])
-  const run = (fn: () => Promise<{ success: boolean; message?: string; error?: string; url?: string }>) => startTransition(async () => { const result = await fn(); setMessage(result.error || result.message || ''); if (result.url) setUrl(result.url); if (result.success) await reload() })
+  const run = (fn: () => Promise<{ success: boolean; message?: string; error?: string; url?: string }>) => {
+    if (busyRef.current) return
+    busyRef.current = true
+    startTransition(async () => {
+      try {
+        setMessage('')
+        const result = await fn()
+        setMessage(result.error || result.message || '')
+        if (result.url) setUrl(result.url)
+        if (result.success) await reload()
+      } catch { setMessage('操作結果を確認できませんでした。案件を開き直してリンク履歴を確認してから操作してください。') }
+      finally { busyRef.current = false }
+    })
+  }
   return <section style={{ marginTop: 24, borderTop: '1px solid var(--admin-border)', paddingTop: 20 }}>
     <h4 style={{ margin: '0 0 8px', color: 'var(--admin-text)' }}>お客様向け進捗ポータル</h4>
     <p style={{ margin: '0 0 14px', color: 'var(--admin-text-muted)', fontSize: 13 }}>専用リンクを明示的に発行・失効・更新します。メール送信や自動注文は行いません。</p>
