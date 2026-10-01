@@ -27,3 +27,13 @@
 - 新DB環境では既存008〜017に加えて018を順に適用。018は追加テーブルと既存状態制御・アラートの拡張で、既存業務レコードの削除・更新は行わない。
 - 検証は `verify-oem-settlement-boundaries.cjs`（オフライン）、`verify-oem-settlements.cjs --with-migration`（ロールバック）、既存注文／入金／請求／製造テスト、TypeScript・ESLint・build。
 - 架空デモは `prepare-oem-settlement-demo.cjs --commit`。example.invalid宛て、支払不要・実銀行入出金なしの2案件に限定し、既存デモをリセットしない。
+
+## 確認結果
+
+- 018を本番DBへ適用し、実装commit `ba69f85` の本番デプロイREADYと独自ドメイン割当を確認。
+- 境界検証（24不正入力）、精算DB検証、既存の発注・入金・請求書・製造回帰、ESLint、production buildがPASS。DB検証はROLLBACK。
+- 本番Chrome連携で `DEMO-SETTLEMENT-CANCEL-20261001` を操作。元入金50,000円、精算総額30,000円、返金10,000円×2でsettled・残額0円。
+- `DEMO-SETTLEMENT-ADJUST-20261001` は税込総額110,000円、元入金50,000円、追加受領30,000円×2でsettled・paid・残額0円。精算アラート解消と出荷操作の復帰を確認。発送RPCもSAVEPOINT内で成功を確認しROLLBACK。
+- 2案件とも元の正式見積・最終金額100,000円を変更せず、メール／送信状態レコードは0件。実際の送金・返金は行っていない。
+- 認証済み管理者の精算確認書表示を確認。ログアウト状態はログイン画面へ307リダイレクトされ、金額を返さない。
+- UI証跡はローカル `output/settlements-20261001/`（部分返金・完了・追加受領・精算書）。デモの税区分・合意・銀行確認はすべて架空入力。
