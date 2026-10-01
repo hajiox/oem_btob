@@ -13,6 +13,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     await requireOemMailLead(data.lead_id)
     const parent = await adminClient.from('oem_orders').select('status').eq('id', data.order_id).single()
     if (parent.error) return unavailableInvoice()
-    return invoiceResponse(data as OemInvoice, parent.data.status === 'cancelled')
+    const settlement = await adminClient.from('oem_settlements').select('id').eq('order_id', data.order_id).neq('state', 'void').limit(1)
+    if (settlement.error) return unavailableInvoice()
+    return invoiceResponse(data as OemInvoice, parent.data.status === 'cancelled', Boolean(settlement.data?.length))
   } catch { return unavailableInvoice() }
 }

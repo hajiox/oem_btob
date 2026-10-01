@@ -8,6 +8,7 @@ import { invoiceUrl } from '@/lib/oem-invoices'
 import { invoiceTotals } from '@/lib/oem-invoices-shared'
 import type { InvoiceInput, InvoiceIssuer, InvoiceResult, OemInvoice } from '@/lib/oem-invoices-shared'
 import type { PaymentStage } from '@/lib/oem-payments-shared'
+import { getOemSettlementData } from './oemSettlements'
 
 type GetResult = { success: boolean; error?: string; invoices: OemInvoice[]; depositReceived: number; issuer?: InvoiceIssuer }
 const fail = (error: unknown, fallback: string) => ({ success: false, error: error instanceof MailError ? error.message : fallback })
@@ -82,6 +83,8 @@ export async function sendOemInvoice(invoiceId: string): Promise<InvoiceResult> 
     const { data: invoice, error } = await adminClient.from('oem_invoices').select('id,order_id,lead_id,plan_id,stage,invoice_number,snapshot,send_request_id,mail_status,oem_orders!inner(status)').eq('id', id).single()
     if (error || !invoice) return { success: false, error: '請求書が見つかりません。' }
     const orderStatus = (invoice.oem_orders as { status?: string } | undefined)?.status
+    const settlement = await getOemSettlementData(invoice.order_id)
+    if (!settlement.success || settlement.data?.latest) return { success: false, error: '精算管理を開始した発注では、元の請求書案内は送信できません。最新の精算内容を確認してください。' }
     if (orderStatus === 'cancelled' || (invoice.stage === 'deposit' && orderStatus !== 'accepted') || (invoice.stage === 'balance' && orderStatus !== 'balance_due')) return { success: false, error: '現在の発注状態では請求案内を送信できません。' }
     if (invoice.mail_status === 'sent') return { success: true, message: '請求書案内は送信済みです。' }
     const receiptCheck = await adminClient.from('oem_payment_receipts').select('id').eq('plan_id', invoice.plan_id).limit(1)

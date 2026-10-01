@@ -11,7 +11,7 @@ const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' })
 const names = { deposit: '前金', balance: '残金' }
 export const PAYMENT_CHANGED = 'oem-payment-changed'
 
-export function OemPaymentPanel({ orderId, status, onChanged }: { orderId: string; status: OemOrderStatus; onChanged?: () => void | Promise<void> }) {
+export function OemPaymentPanel({ orderId, status, onChanged, readOnly = false }: { orderId: string; status: OemOrderStatus; onChanged?: () => void | Promise<void>; readOnly?: boolean }) {
   const [data, setData] = useState<PaymentData | null>(null)
   const [error, setError] = useState('')
   const reload = useCallback(async () => {
@@ -34,11 +34,12 @@ export function OemPaymentPanel({ orderId, status, onChanged }: { orderId: strin
   return <section aria-label="入金管理" style={{ marginTop: 20, borderTop: '1px solid var(--admin-border)', paddingTop: 18 }}>
     <h4 style={{ margin: '0 0 8px' }}>入金管理（銀行で確認して手動登録）</h4>
     <p style={muted}>銀行との自動連携はありません。実際の請求額（税込）と、銀行で確認した入金を記録します。</p>
+    {readOnly && <p style={muted}>元の前金・残金履歴は閲覧のみです。変更後の入出金は精算管理で記録してください。</p>}
     {error && <p role="alert" style={{ color: '#fca5a5' }}>{error} <button type="button" onClick={() => void reload().catch(e => setError(String(e.message)))}>再読み込み</button></p>}
     {!data && !error && <p>入金情報を読み込み中…</p>}
     {data && (['deposit', 'balance'] as PaymentStage[]).map(stage => {
       const plan = data.plans.find(item => item.stage === stage)
-      const active = (stage === 'deposit' && status === 'accepted') || (stage === 'balance' && status === 'balance_due')
+      const active = !readOnly && ((stage === 'deposit' && status === 'accepted') || (stage === 'balance' && status === 'balance_due'))
       if (!plan && !active) return null
       return <PaymentStagePanel key={`${orderId}-${stage}`} orderId={orderId} stage={stage} plan={plan} receipts={data.receipts} active={active} onChanged={changed} />
     })}

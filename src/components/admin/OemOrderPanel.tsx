@@ -7,6 +7,7 @@ import { OEM_ORDER_STATUS_LABELS } from '@/lib/oem-order-shared'
 import { OemPaymentPanel, PAYMENT_CHANGED } from './OemPaymentPanel'
 import { OemInvoicePanel } from './OemInvoicePanel'
 import { OemFulfillmentPanel } from './OemFulfillmentPanel'
+import { OemSettlementPanel } from './OemSettlementPanel'
 
 export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string; estimatedTotalPrice: number }) {
   const [order, setOrder] = useState<OemOrder | null>(null)
@@ -17,6 +18,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
   const [issuedUrl, setIssuedUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, startTransition] = useTransition()
+  const [settlementState, setSettlementState] = useState({ ready: false, hasSettlement: false, blocked: true, canReissue: false })
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -56,7 +58,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
   })
   const cancel = () => startTransition(async () => {
-    if (!order || !window.confirm('この正式発注をキャンセルします。発注URLも利用できなくなります。よろしいですか？')) return
+    if (!order || order.status !== 'issued' || !window.confirm('規約同意前の発注を取り下げます。発注URLは利用できなくなります。よろしいですか？')) return
     const result = await cancelOemOrder(order.id)
     setMessage(result.error || result.message || '')
     if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
@@ -65,8 +67,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
   return <div style={{ marginTop: 28, borderTop: '1px solid var(--admin-border)', paddingTop: 24 }} onClick={event => event.stopPropagation()}>
     <h4 style={{ fontSize: 17, color: 'var(--admin-text)', marginBottom: 8 }}>正式発注・規約同意</h4>
     <p style={{ margin: '0 0 16px', color: 'var(--admin-text-muted)', fontSize: 14 }}>お客様が専用ページで規約に同意するまで、前金確認以降には進めません。</p>
-    {loading && !order ? <p>読み込み中...</p> : !order || order.status === 'cancelled' ? <div style={cardStyle}>
-      {order?.status === 'cancelled' && <p style={{ color: '#fbbf24' }}>直前の正式発注はキャンセル済みです。必要なら改訂版を発行できます。</p>}
+    {loading && !order ? <p>読み込み中...</p> : !order ? <div style={cardStyle}>
       <label style={labelStyle}>正式見積額（税別）<input type="number" min="1" max="100000000" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} /></label>
       <label style={labelStyle}>正式な商品仕様<textarea value={specification} onChange={e => setSpecification(e.target.value)} maxLength={10000} style={{ ...inputStyle, minHeight: 130, resize: 'vertical' }} /></label>
       <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>発行時点の正式見積・仕様・規約版が固定保存されます。前金は正式見積額の50％です。</p>
@@ -82,10 +83,22 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
         <button type="button" onClick={reissue} disabled={pending} style={secondaryButton}>期限を延長して発注リンクを再送</button>
       </div>}
       {acceptance && <p style={{ margin: '14px 0 0', color: '#4ade80', fontSize: 14 }}>規約同意：{String(acceptance.contact_name)} 様／{new Date(String(acceptance.accepted_at)).toLocaleString('ja-JP')}</p>}
-      <OemFulfillmentPanel key={order.id} order={order} onChanged={reload} />
-      <OemInvoicePanel order={order} />
-      <OemPaymentPanel orderId={order.id} status={order.status} onChanged={reload} />
-      {!['shipped', 'cancelled'].includes(order.status) && <button type="button" onClick={cancel} disabled={pending} style={{ ...secondaryButton, marginTop: 16, marginLeft: 10, color: '#fca5a5' }}>キャンセル</button>}
+      <OemSettlementPanel key={`settlement-${order.id}`} order={order} onChanged={reload} onState={setSettlementState} />
+      <OemFulfillmentPanel key={order.id} order={order} onChanged={reload} settlementBlocked={!settlementState.ready || settlementState.blocked} />
+      <OemInvoicePanel key={`invoice-${order.id}`} order={order} readOnly={!settlementState.ready || settlementState.hasSettlement} />
+      <OemPaymentPanel key={`payment-${order.id}`} orderId={order.id} status={order.status} onChanged={reload} readOnly={!settlementState.ready || settlementState.hasSettlement} />
+      {order.status === 'issued' && <button type="button" onClick={cancel} disabled={pending} style={{ ...secondaryButton, marginTop: 16, marginLeft: 10, color: '#fca5a5' }}>同意前の発注を取り下げる</button>}
+      {order.status === 'cancelled' && <div style={{ marginTop: 18 }}>
+        <p style={{ color: '#fbbf24' }}>この正式発注はキャンセル済みです。元の見積・請求・入金履歴は上に残しています。</p>
+        {settlementState.ready && settlementState.canReissue ? <details><summary style={{ cursor: 'pointer' }}>改訂版の正式発注を発行する</summary>
+          <div style={{ marginTop: 16 }}>
+            <label style={labelStyle}>正式見積額（税別）<input type="number" min="1" max="100000000" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} /></label>
+            <label style={labelStyle}>正式な商品仕様<textarea value={specification} onChange={e => setSpecification(e.target.value)} maxLength={10000} style={{ ...inputStyle, minHeight: 130 }} /></label>
+            <p style={{ fontSize: 13 }}>新しい発注として発行します。旧発注の精算・入金履歴は引き継がず保存されます。</p>
+            <button type="button" onClick={issue} disabled={pending} style={primaryButton}>改訂版を発行してメール送信</button>
+          </div>
+        </details> : <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>キャンセル精算が完了するまで、改訂版の発行を保留します。</p>}
+      </div>}
     </div>}
     {issuedUrl && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--admin-text-muted)', overflowWrap: 'anywhere' }}>今回発行したURL（再表示不可）：<a href={issuedUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--admin-accent)' }}>{issuedUrl}</a></div>}
     {message && <p role="status" style={{ marginTop: 12, color: message.includes('できません') || message.includes('必要') ? '#f87171' : '#4ade80' }}>{message}</p>}

@@ -10,6 +10,7 @@ import { OemMailboxConnection } from "@/components/admin/OemMailboxConnection";
 import { OemPaymentAlerts } from "@/components/admin/OemPaymentAlerts";
 import { OemConversationAlerts } from "@/components/admin/OemConversationAlerts";
 import { OemFulfillmentAlerts } from "@/components/admin/OemFulfillmentAlerts";
+import { OemSettlementAlerts } from "@/components/admin/OemSettlementAlerts";
 
 function StatCard({
   title,
@@ -199,6 +200,7 @@ export default function DashboardClient() {
     <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
       <OemMailboxConnection />
       <OemPaymentAlerts />
+      <OemSettlementAlerts />
       <OemConversationAlerts />
       <OemFulfillmentAlerts />
       {loadError && (

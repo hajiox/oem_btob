@@ -18,7 +18,7 @@ const button = { padding: '9px 13px', border: '1px solid var(--admin-border)', b
 const primary = { ...button, background: 'var(--admin-accent)', borderColor: 'var(--admin-accent)', color: '#fff', fontWeight: 700 }
 const muted = { color: 'var(--admin-text-muted)', fontSize: 13 }
 
-export function OemInvoicePanel({ order }: { order: OemOrder }) {
+export function OemInvoicePanel({ order, readOnly = false }: { order: OemOrder; readOnly?: boolean }) {
   // Kept as the single vocabulary for status rendering when the compact list is expanded.
   const [invoices, setInvoices] = useState<OemInvoice[]>([])
   const [depositReceived, setDepositReceived] = useState(0)
@@ -58,7 +58,7 @@ export function OemInvoicePanel({ order }: { order: OemOrder }) {
   const totals = useMemo(() => { try { return invoiceTotals(stage, values.taxable8, values.taxable10, values.nonTaxable, depositReceived) } catch { return null } }, [stage, values.taxable8, values.taxable10, values.nonTaxable, depositReceived])
   const issuerComplete = ['name', 'address', 'email', 'bankName', 'branchName', 'accountType', 'accountNumber', 'accountHolder'].every(field => issuer[field as keyof InvoiceIssuer].trim().length > 0)
   const canIssue = Boolean(totals && values.taxable8 + values.taxable10 + values.nonTaxable === target && dueDate && description && issuerComplete)
-  const active = (stage === 'deposit' && order.status === 'accepted') || (stage === 'balance' && order.status === 'balance_due')
+  const active = !readOnly && ((stage === 'deposit' && order.status === 'accepted') || (stage === 'balance' && order.status === 'balance_due'))
   const hasActiveInvoice = invoices.some(invoice => invoice.stage === stage)
 
   function setField(field: keyof InvoiceIssuer, value: string) { setIssuer(previous => ({ ...previous, [field]: value })) }
@@ -95,10 +95,11 @@ export function OemInvoicePanel({ order }: { order: OemOrder }) {
   return <section aria-label="請求書管理" style={{ marginTop: 20, borderTop: '1px solid var(--admin-border)', paddingTop: 18 }}>
     <h4 style={{ margin: '0 0 8px' }}>請求書</h4>
     <p style={muted}>請求書の発行とメール送信は別操作です。金額は税率別に明示入力してください。</p>
+    {readOnly && <p style={muted}>元の請求書は固定された履歴です。現在の追加請求・返金額は精算管理を確認してください。</p>}
     {invoices.length > 0 && <div style={{ display: 'grid', gap: 8, margin: '12px 0 18px' }}>{invoices.map(invoice => {
       const isDemoTest = invoice.snapshot.demo === true && invoice.snapshot.email === 'ts@ai.aizu-tv.com'
       const demoBlocked = invoice.snapshot.demo === true && !isDemoTest
-      const stageActive = invoice.stage === 'deposit' ? order.status === 'accepted' : order.status === 'balance_due'
+      const stageActive = !readOnly && (invoice.stage === 'deposit' ? order.status === 'accepted' : order.status === 'balance_due')
       const alreadyAttempted = ['pending', 'sending', 'unknown', 'failed'].includes(invoice.mail_status || '')
       return <div key={invoice.id} style={card}>
         <strong>{invoice.invoice_number}</strong>　{invoice.stage === 'deposit' ? '前金' : '残金'}　{yen(invoice.snapshot.amountDue)}　<span>{mailStatusLabels[invoice.mail_status || 'not_sent'] || '確認が必要'}</span>

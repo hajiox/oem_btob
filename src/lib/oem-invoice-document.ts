@@ -4,7 +4,7 @@ import { yen } from './oem-invoices-shared'
 const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
 /** Standalone document: no trackers, external assets, or customer values in scripts. */
-export function invoiceDocument(invoice: OemInvoice, nonce: string, cancelled = false): string {
+export function invoiceDocument(invoice: OemInvoice, nonce: string, cancelled = false, superseded = false): string {
   const s = invoice.snapshot, issuer = s.issuer
   const title = s.stage === 'deposit' ? '前金請求書' : '残金請求書'
   const row = (name: string, value: number) => `<tr><th>${escape(name)}</th><td>${escape(yen(value))}</td></tr>`
@@ -14,6 +14,7 @@ export function invoiceDocument(invoice: OemInvoice, nonce: string, cancelled = 
   </style></head><body><div class="controls"><button id="print">印刷・PDF保存</button></div><main>
   ${s.demo ? '<p class="notice">動作テスト用の見本です。実際の請求・支払いは発生しません。</p>' : ''}
   ${cancelled ? '<p class="notice">この注文はキャンセル済みです。お振込みはせず、担当者へご確認ください。</p>' : ''}
+  ${superseded ? '<p class="notice">変更・キャンセル精算が別途管理されています。この書面は元の請求履歴です。現在の振込額として使用せず、最新の精算内容を確認してください。</p>' : ''}
   <div class="top"><h1>${title}</h1><div class="meta">請求書番号：${escape(invoice.invoice_number)}<br>発行日：${escape(s.issuedDate)}<br>注文番号：${escape(s.orderNumber)}</div></div>
   <div class="parties"><div><p class="customer">${escape(s.companyName)} 御中</p><p>${escape(s.contactName)} 様</p></div><div class="issuer"><strong>${escape(issuer.name)}</strong><br>${escape(issuer.address)}<br>${escape(issuer.email)}${issuer.registrationNumber ? `<br>登録番号：${escape(issuer.registrationNumber)}` : ''}</div></div>
   <p>下記のとおり${s.stage === 'deposit' ? '前金' : '残金'}をご請求申し上げます。</p>

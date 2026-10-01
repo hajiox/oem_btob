@@ -23,11 +23,13 @@ export async function getInvoiceForToken(token: string): Promise<OemInvoice | nu
   if (error || !data) return null
   const parent = await adminClient.from('oem_orders').select('status').eq('id', data.order_id).maybeSingle()
   if (parent.error || !parent.data || parent.data.status === 'cancelled') return null
+  const settlement = await adminClient.from('oem_settlements').select('id').eq('order_id', data.order_id).neq('state', 'void').limit(1)
+  if (settlement.error || settlement.data?.length) return null
   return data as OemInvoice
 }
-export function invoiceResponse(invoice: OemInvoice, cancelled = false): Response {
+export function invoiceResponse(invoice: OemInvoice, cancelled = false, superseded = false): Response {
   const nonce = randomBytes(18).toString('base64')
-  return new Response(invoiceDocument(invoice, nonce, cancelled), { headers: {
+  return new Response(invoiceDocument(invoice, nonce, cancelled, superseded), { headers: {
     'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store, max-age=0',
     'X-Robots-Tag': 'noindex, nofollow, noarchive', 'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',

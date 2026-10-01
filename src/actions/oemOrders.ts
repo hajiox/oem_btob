@@ -14,6 +14,7 @@ import {
   type OemOrder,
 } from '@/lib/oem-orders'
 import { canAdvanceOemOrder, type OemOrderStatus } from '@/lib/oem-order-shared'
+import { getOemSettlementData } from './oemSettlements'
 
 type ActionResult = { success: boolean; error?: string; message?: string; order?: OemOrder; url?: string; mailWarning?: string }
 type AcceptState = { success: boolean; error?: string; orderNumber?: string }
@@ -63,11 +64,15 @@ export async function issueOemOrder(leadId: string, input: { formalQuoteAmount: 
     if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) return { success: false, error: '正式見積額を1円〜1億円の整数で入力してください' }
     if (!specification || specification.length > 10000) return { success: false, error: '正式仕様を1〜10,000文字で入力してください' }
     const [{ data: current, error: currentError }, { data: leadDetail, error: leadError }] = await Promise.all([
-      adminClient.from('oem_orders').select('id,status,revision').eq('lead_id', lead.id).order('revision', { ascending: false }).limit(1).maybeSingle(),
+      adminClient.from('oem_orders').select('id,status,revision,accepted_at').eq('lead_id', lead.id).order('revision', { ascending: false }).limit(1).maybeSingle(),
       adminClient.from('leads').select('selected_options,estimated_total_price').eq('id', lead.id).eq('page_id', OEM_PAGE_ID).single(),
     ])
     if (currentError || leadError || !leadDetail) throw currentError || leadError || new Error('案件が見つかりません')
     if (current && current.status !== 'cancelled') return { success: false, error: '有効な正式発注があります。二重発行はできません' }
+    if (current?.accepted_at) {
+      const settlement = await getOemSettlementData(current.id)
+      if (!settlement.success || settlement.data?.latest?.kind !== 'cancellation' || settlement.data.latest.state !== 'settled') return { success: false, error: '旧発注のキャンセル精算を完了してから改訂版を発行してください' }
+    }
     const revision = (current?.revision || 0) + 1
     const deposit = depositAmount(amount)
     const quoteSnapshot = {
@@ -170,7 +175,7 @@ export async function cancelOemOrder(orderId: string): Promise<ActionResult> {
     const id = uuid(orderId)
     const { data: order, error } = await adminClient.from('oem_orders').select('*').eq('id', id).single()
     if (error || !order) return { success: false, error: '正式発注が見つかりません' }
-    if (['shipped', 'cancelled'].includes(order.status)) return { success: false, error: 'この正式発注はキャンセルできません' }
+    if (order.status !== 'issued') return { success: false, error: '規約同意後のキャンセルは、変更・キャンセル精算で費用と返金額を確認して確定してください' }
     const { data: updated, error: updateError } = await adminClient.from('oem_orders').update({ status: 'cancelled' }).eq('id', id).eq('status', order.status).select('*').maybeSingle()
     if (updateError) throw updateError
     if (!updated) return { success: false, error: '他の管理者が更新しました。最新情報を読み込んでください' }

@@ -14,9 +14,9 @@ const completeStatuses = ['in_production']
 const backfillStatuses = ['balance_due', 'paid']
 const dateLabel = (value: string | null | undefined) => value || '未設定'
 
-type Props = { order: OemOrder; onChanged: () => Promise<void> | void }
+type Props = { order: OemOrder; onChanged: () => Promise<void> | void; settlementBlocked?: boolean }
 
-export function OemFulfillmentPanel({ order, onChanged }: Props) {
+export function OemFulfillmentPanel({ order, onChanged, settlementBlocked = false }: Props) {
   const [data, setData] = useState<OemFulfillment | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
@@ -102,7 +102,7 @@ export function OemFulfillmentPanel({ order, onChanged }: Props) {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (busyRef.current) return
+    if (busyRef.current || settlementBlocked) return
     const form = event.currentTarget
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     const action = String(submitter?.value || 'save') as FulfillmentAction
@@ -134,14 +134,15 @@ export function OemFulfillmentPanel({ order, onChanged }: Props) {
   if (!editableStatuses.includes(order.status) && !data) return null
   const viewData: OemFulfillment = data || { order_id: order.id, planned_quantity: null, quantity_unit: quantityUnit || '個', production_due_date: null, shipment_due_date: null, started_on: null, completed_quantity: null, completed_on: null, shipped_on: null, carrier: '', tracking_number: '', notes: '', version: 0, updated_at: '', updated_by: null }
   const completed = viewData.completed_quantity != null
-  const canPlan = editableStatuses.includes(order.status) && !['shipped', 'cancelled'].includes(order.status)
-  const canStart = order.status === 'deposit_paid' && viewData.planned_quantity != null && Number(plannedQuantity) === viewData.planned_quantity && quantityUnit.trim() === viewData.quantity_unit
-  const canComplete = completeStatuses.includes(order.status) && !completed
-  const canBackfill = backfillStatuses.includes(order.status) && !completed
-  const canShip = order.status === 'paid' && completed && !data?.shipped_on
+  const canPlan = !settlementBlocked && editableStatuses.includes(order.status) && !['shipped', 'cancelled'].includes(order.status)
+  const canStart = !settlementBlocked && order.status === 'deposit_paid' && viewData.planned_quantity != null && Number(plannedQuantity) === viewData.planned_quantity && quantityUnit.trim() === viewData.quantity_unit
+  const canComplete = !settlementBlocked && completeStatuses.includes(order.status) && !completed
+  const canBackfill = !settlementBlocked && backfillStatuses.includes(order.status) && !completed
+  const canShip = !settlementBlocked && order.status === 'paid' && completed && !data?.shipped_on
 
   return <section aria-label="製造・発送管理" style={section}>
     <h4 style={heading}>製造・発送管理</h4>
+    {settlementBlocked && <p style={danger}>精算状態の確認中、または精算未完了のため、製造・出荷操作を保留しています。</p>}
     {error && <p role="alert" style={danger}>{error} <button type="button" disabled={busy} onClick={() => void load(false)} style={linkButton}>再読み込み</button></p>}
     {!loaded && !error && <p>読み込み中…</p>}
     {loaded && <form onSubmit={submit}>
