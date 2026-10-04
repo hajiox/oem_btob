@@ -1,0 +1,103 @@
+.page {
+    min-height: 100svh;
+    padding: clamp(32px, 7vh, 80px) 20px;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.card {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: clamp(24px, 5vw, 40px);
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 8px 28px rgb(15 23 42 / 5%);
+}
+
+.brand {
+    margin-bottom: 12px;
+    color: #047857;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.heading {
+    margin-bottom: 18px;
+    font-size: clamp(22px, 4vw, 26px);
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.lead {
+    margin-bottom: 24px;
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.9;
+}
+
+.status {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.7;
+}
+
+.excluded {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+    color: #064e3b;
+}
+
+.button {
+    display: block;
+    width: 100%;
+    padding: 14px 20px;
+    border: 0;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.6;
+    cursor: pointer;
+}
+
+.button:hover {
+    background: #334155;
+}
+
+.button:focus-visible {
+    outline: 2px solid #047857;
+    outline-offset: 4px;
+}
+
+.link {
+    display: inline-block;
+    margin-top: 20px;
+    color: #065f46;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.note {
+    margin-top: 24px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.9;
+}
+
+.error {
+    margin-top: 12px;
+    color: #b91c1c;
+    font-size: 14px;
+    line-height: 1.8;
+}

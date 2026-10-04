@@ -7,6 +7,7 @@ import {
     OEM_INTERNAL_TRAFFIC_STORAGE_KEY,
     setOemInternalTrafficExcluded,
 } from '@/lib/oem-analytics'
+import styles from './AnalyticsSettings.module.css'
 
 function subscribe(onChange: () => void) {
     function handleStorage(event: StorageEvent) {
@@ -34,18 +35,18 @@ export default function AnalyticsTrafficControl() {
 
     return (
         <div>
-            <div role="status" aria-live="polite" className={`mb-5 rounded-xl border p-4 text-sm font-semibold ${excluded ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+            <div role="status" aria-live="polite" className={`${styles.status} ${excluded ? styles.excluded : ''}`}>
                 {excluded ? 'このブラウザーは集計から除外されています。' : 'このブラウザーは通常どおり集計されます。'}
             </div>
             <button
                 type="button"
                 onClick={() => update(!excluded)}
-                className="w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
+                className={styles.button}
             >
                 {excluded ? '通常の集計に戻す' : 'このブラウザーを集計から除外'}
             </button>
-            {error && <p role="alert" className="mt-3 text-sm leading-6 text-red-700">{error}</p>}
-            <Link href="/btob" className="mt-5 inline-block text-sm font-semibold text-emerald-800 underline underline-offset-4">
+            {error && <p role="alert" className={styles.error}>{error}</p>}
+            <Link href="/btob" className={styles.link}>
                 OEMサイトを開く →
             </Link>
         </div>

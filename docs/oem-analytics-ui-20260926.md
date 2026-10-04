@@ -14,3 +14,5 @@
 - Analytics用Membrane接続は本人によるGoogle再認証後にREADYへ復旧。読み取り専用のまま、OEMプロパティ555029617の集計取得をHTTP 200で確認した。
 - 組み込みRun ReportアクションはbaseUri不足のエラーを返したため、CLIの認証済みproxyで `https://analyticsdata.googleapis.com/v1beta/properties/555029617:runReport` を明示して取得する。認証情報は手動で取り出さない。
 - 検証: Analyticsユニットテスト9件・変更した4つのTypeScript/TSXファイルのESLint・型確認・Next.js本番ビルドが成功。全体の `npm run lint` は既存スクリプトや未変更ソースにある152エラー・17警告で失敗しており、本変更とは分けて扱う。
+- 本番では除外登録・再読込後の保持・解除・再登録、登録済みブラウザーおよび未登録ブラウザーのテストURLでGoogleタグが読み込まれないことを確認した。社内IPの一括除外は未設定であり、別ブラウザーでは上記設定画面から個別登録する。
+- 設定画面は既存のグローバルresetによるTailwind余白の上書きを避けるため、画面内限定のCSS Moduleを使用する。公開LPのCSSは変更しない。
