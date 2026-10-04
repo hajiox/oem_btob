@@ -235,8 +235,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 // メインページ
-export default async function HomePage({ params }: { params: { slug: string } }) {
+export default async function HomePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ product?: string | string[] }> }) {
   const { slug } = await params
+  const requestedProduct = (await searchParams).product
+  const initialProductId = slug === 'btob' && typeof requestedProduct === 'string'
+    ? ({ curry: 'c0000001-0000-0000-0000-000000000001', ramen: 'c0000001-0000-0000-0000-000000000002' } as Record<string, string>)[requestedProduct]
+    : undefined
   let sections: LpSection[] = []
   let formSteps: any[] = []
   let products: Product[] = []
@@ -394,7 +398,7 @@ export default async function HomePage({ params }: { params: { slug: string } })
             <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.8, color: '#c7d2fe' }}>※サイトの概算確認・ご相談だけで、お支払いが発生することはありません。</p>
           </aside>
         )}
-        <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} />
+        <InteractiveForm steps={formSteps} products={products} pageId={currentPageId} initialProductId={initialProductId} />
         {currentPageId === SAMPLE_PAGE_ID && (
           <div style={{ position: 'relative', maxWidth: 900, margin: '32px auto 0', color: '#e2e8f0', fontSize: 14, lineHeight: 1.8 }}>
             <p>包装画像は実際の容器を参考にしたAI生成の写真風サンプルです。実物写真・実寸比較ではありません。色味・内容物・ラベルは見本で、最終仕様は正式見積もり時に確認します。</p>

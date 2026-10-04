@@ -1,5 +1,6 @@
 export const OEM_ANALYTICS_HOST = 'oem.aizubrandhall.com'
 export const OEM_ANALYTICS_PATH = '/btob'
+export const OEM_ANALYTICS_PATHS = new Set([OEM_ANALYTICS_PATH, '/curry-oem', '/ramen-oem'])
 export const OEM_INTERNAL_TRAFFIC_STORAGE_KEY = 'oem_analytics_internal_v1'
 export const OEM_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
@@ -60,7 +61,7 @@ const pendingEvents = new Map<string, { name: OemEventName; productId: string }>
 let loadingPromise: Promise<boolean> | null = null
 
 export function isOemAnalyticsPage(location: Pick<Location, 'hostname' | 'pathname'>): boolean {
-    return location.hostname === OEM_ANALYTICS_HOST && location.pathname === OEM_ANALYTICS_PATH
+    return location.hostname === OEM_ANALYTICS_HOST && OEM_ANALYTICS_PATHS.has(location.pathname)
 }
 
 function isOemAnalyticsHost(location: Pick<Location, 'hostname'>): boolean {

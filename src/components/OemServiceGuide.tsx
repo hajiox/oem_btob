@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import styles from './OemServiceGuide.module.css'
 
 // Server-rendered copy for the OEM page only; quote rules remain in the BTO.
@@ -21,6 +22,7 @@ export function OemServiceQuestions() {
         <details className={styles.disclosure}>
           <summary>どんな食品を作れますか？</summary>
           <p>レトルトカレー、2食入りラーメン、たれ・ソース・ドレッシング、ふりかけ、ジャム・ご飯のお供などの瓶詰め、お茶のティーバッグに対応しています。商品と包装を選ぶと、概算費用を確認できます。</p>
+          <p className={styles.followup}>詳しく見る：<Link href="/curry-oem">レトルトカレー</Link>・<Link href="/ramen-oem">お土産用ラーメン</Link></p>
         </details>
         <details className={styles.disclosure}>
           <summary>小ロットは何個ですか？</summary>

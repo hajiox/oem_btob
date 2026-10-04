@@ -59,17 +59,18 @@ const ONE_YEAR_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000005',
 ])
 
-export default function InteractiveForm({ steps: allSteps, products, pageId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string }) {
+export default function InteractiveForm({ steps: allSteps, products, pageId, initialProductId }: { steps: FormStepWithItems[]; products: Product[]; pageId: string; initialProductId?: string }) {
     const firstStep = pageId === BTOB_QUOTE_PAGE_ID ? 1 : 0
-    const [currentStep, setCurrentStep] = useState(firstStep)
+    const initialSelectedProduct = pageId === BTOB_QUOTE_PAGE_ID && products.some(product => product.id === initialProductId) ? initialProductId! : null
+    const [currentStep, setCurrentStep] = useState(initialSelectedProduct ? 2 : firstStep)
     const [direction, setDirection] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [errorData, setErrorData] = useState<string | null>(null)
     const [enteredQuantity, setOemQuantity] = useState<number>(400)
-    const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
+    const [selectedProduct, setSelectedProduct] = useState<string | null>(initialSelectedProduct)
     const [isMobile, setIsMobile] = useState(false)
-    const [navigationHistory, setNavigationHistory] = useState<number[]>([])
+    const [navigationHistory, setNavigationHistory] = useState<number[]>(initialSelectedProduct ? [1] : [])
     const panelRef = useRef<HTMLDivElement>(null)
     const formCardRef = useRef<HTMLDivElement>(null)
     const submittingRef = useRef(false)
@@ -77,6 +78,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId }: {
     const idempotencyKeyRef = useRef<string | null>(null)
     const contactFormId = useId()
     const previousScreen = useRef(currentStep)
+
+    useEffect(() => {
+        if (initialSelectedProduct) trackOemEvent('oem_select_product', initialSelectedProduct)
+    }, [initialSelectedProduct])
 
     useEffect(() => {
         if (pageId !== BTOB_QUOTE_PAGE_ID || previousScreen.current === currentStep) return

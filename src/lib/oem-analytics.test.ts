@@ -24,8 +24,10 @@ test('test campaign detection is exact and does not set persistent state', () =>
     assert.equal(hasOemTestCampaign('?utm_campaign=oem_tracking_test&utm_campaign=oem_fukushima'), true)
 })
 
-test('OEM analytics is restricted to the canonical public page', () => {
+test('OEM analytics is restricted to the three public acquisition pages', () => {
     assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/btob' }), true)
+    assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/curry-oem' }), true)
+    assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/ramen-oem' }), true)
     assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/admin' }), false)
     assert.equal(isOemAnalyticsPage({ hostname: 'localhost', pathname: '/btob' }), false)
 })
@@ -164,7 +166,7 @@ test('internal exclusion settings work on the host settings route and protect st
 test('excluded test campaign does not create a GA script or queue', async () => {
     let created = 0
     const fakeWindow = {
-        location: { hostname: 'oem.aizubrandhall.com', pathname: '/btob', search: '?utm_campaign=oem_tracking_test' },
+        location: { hostname: 'oem.aizubrandhall.com', pathname: '/curry-oem', search: '?utm_campaign=oem_tracking_test' },
     } as unknown as Window
     const fakeDocument = {
         createElement: () => { created += 1; throw new Error('GA script must not be created') },
