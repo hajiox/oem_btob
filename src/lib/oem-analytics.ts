@@ -1,5 +1,6 @@
 export const OEM_ANALYTICS_HOST = 'oem.aizubrandhall.com'
 export const OEM_ANALYTICS_PATH = '/btob'
+export const OEM_INTERNAL_TRAFFIC_STORAGE_KEY = 'oem_analytics_internal_v1'
 export const OEM_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
     'c0000001-0000-0000-0000-000000000002',
@@ -26,6 +27,10 @@ export const OEM_CAMPAIGN_VALUES = {
     utm_campaign: ['oem_fukushima', 'oem_curry', 'oem_ramen', 'oem_furikake', 'oem_sauce', 'oem_jar', 'oem_tea', 'oem_tracking_test'],
     utm_content: ['profile', 'post', 'story', 'reel', 'banner', 'text_ad', 'qr'],
 } as const
+
+export function hasOemTestCampaign(search: string = ''): boolean {
+    return new URLSearchParams(search).getAll('utm_campaign').some(value => value.toLowerCase() === 'oem_tracking_test')
+}
 
 export function getSafeCampaign(search: string = ''): Record<string, string> {
     const query = new URLSearchParams(search)
@@ -58,6 +63,10 @@ export function isOemAnalyticsPage(location: Pick<Location, 'hostname' | 'pathna
     return location.hostname === OEM_ANALYTICS_HOST && location.pathname === OEM_ANALYTICS_PATH
 }
 
+function isOemAnalyticsHost(location: Pick<Location, 'hostname'>): boolean {
+    return location.hostname === OEM_ANALYTICS_HOST
+}
+
 export function isValidMeasurementId(value: string | undefined | null): value is string {
     return typeof value === 'string' && /^G-[A-Z0-9]+$/i.test(value.trim())
 }
@@ -81,12 +90,55 @@ export function resetOemAnalyticsDedupe() {
     pendingEvents.clear()
 }
 
+export function getOemInternalTrafficExcluded(): boolean {
+    if (typeof window === 'undefined' || !isOemAnalyticsHost(window.location)) return false
+    try {
+        return window.localStorage.getItem(OEM_INTERNAL_TRAFFIC_STORAGE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+export function isOemAnalyticsExcluded(): boolean {
+    if (typeof window === 'undefined' || !isOemAnalyticsHost(window.location)) return false
+    return (isOemAnalyticsPage(window.location) && hasOemTestCampaign(window.location.search)) || getOemInternalTrafficExcluded()
+}
+
+function setGaDisabledFlag(excluded: boolean) {
+    if (typeof window === 'undefined' || !isOemAnalyticsHost(window.location)) return
+    const target = window as OemWindow
+    if (!target.__oemGaLoaded || !target.__oemGaMeasurementId) return
+    ;(target as Window & Record<string, unknown>)[`ga-disable-${target.__oemGaMeasurementId}`] = excluded
+}
+
+export function setOemInternalTrafficExcluded(excluded: boolean): boolean {
+    if (typeof window === 'undefined' || !isOemAnalyticsHost(window.location)) return false
+    try {
+        if (excluded) window.localStorage.setItem(OEM_INTERNAL_TRAFFIC_STORAGE_KEY, '1')
+        else window.localStorage.removeItem(OEM_INTERNAL_TRAFFIC_STORAGE_KEY)
+    } catch {
+        return false
+    }
+    if (excluded) pendingEvents.clear()
+    setGaDisabledFlag(isOemAnalyticsExcluded())
+    if (typeof window.Event === 'function') window.dispatchEvent?.(new window.Event('oem-internal-traffic-changed'))
+    return true
+}
+
 function canSend(): boolean {
     if (typeof window === 'undefined' || !isOemAnalyticsPage(window.location)) return false
+    if (isOemAnalyticsExcluded()) {
+        pendingEvents.clear()
+        return false
+    }
     return Boolean((window as OemWindow).__oemGaLoaded)
 }
 
 export function trackOemEvent(name: OemEventName, productId?: string | null): boolean {
+    if (isOemAnalyticsExcluded()) {
+        pendingEvents.clear()
+        return false
+    }
     if (!productId || !OEM_PRODUCT_IDS.has(productId)) return false
     if (!['oem_select_product', 'oem_view_quote', 'oem_start_consultation', 'generate_lead'].includes(name)) return false
     const dedupeKey = `${name}:${productId}`
@@ -115,6 +167,11 @@ export function installOemGoogleTag(measurementId: string): Promise<boolean> {
     if (typeof window === 'undefined' || typeof document === 'undefined') return Promise.resolve(false)
     if (!isValidMeasurementId(measurementId) || !isOemAnalyticsPage(window.location)) return Promise.resolve(false)
     const target = window as OemWindow
+    if (isOemAnalyticsExcluded()) {
+        pendingEvents.clear()
+        setGaDisabledFlag(true)
+        return Promise.resolve(false)
+    }
     if (target.__oemGaLoaded) return Promise.resolve(true)
     if (loadingPromise) return loadingPromise
     loadingPromise = new Promise(resolve => {
@@ -135,6 +192,13 @@ export function installOemGoogleTag(measurementId: string): Promise<boolean> {
         script.onload = () => {
             const gtag = w.gtag
             if (typeof gtag !== 'function') { resolve(false); return }
+            if (isOemAnalyticsExcluded()) {
+                pendingEvents.clear()
+                loadingPromise = null
+                setGaDisabledFlag(true)
+                resolve(false)
+                return
+            }
             gtag('config', measurementId, {
                 send_page_view: false,
                 allow_google_signals: false,
