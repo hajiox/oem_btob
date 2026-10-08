@@ -29,7 +29,7 @@ export type PaymentAlert = {
   lead_id: string
   order_number: string
   company_name: string
-  stage: PaymentStage | 'trial'
+  stage: PaymentStage | 'trial' | 'trial-extra'
   expected_amount: number | null
   received_amount: number
   due_date: string | null

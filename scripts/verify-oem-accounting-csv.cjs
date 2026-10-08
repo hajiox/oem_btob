@@ -47,6 +47,13 @@ async function main() {
   assert(!trialAlerts.error, `trial alert readonly join: ${trialAlerts.error?.message || ''}`)
   const activeTrialInvoices=await supabase.from('oem_trial_prepayment_invoices').select('id,prepayment_id,lead_id,invoice_number,snapshot,issued_at,lifecycle_status,oem_trial_prepayments!inner(status)').neq('oem_trial_prepayments.status','void').range(0,0)
   assert(!activeTrialInvoices.error, `active trial invoice readonly join: ${activeTrialInvoices.error?.message || ''}`)
+  const extraInvoices=await supabase.from('oem_additional_trial_payments').select('id,invoice_number,snapshot,status,created_at,leads!inner(company_name,page_id)').eq('leads.page_id',PAGE).order('created_at').order('id').range(0,0)
+  assert(!extraInvoices.error, `additional trial invoice readonly join: ${extraInvoices.error?.message || ''}`)
+  const extraReceipts=await supabase.from('oem_additional_trial_payment_receipts').select('id,amount,paid_on,oem_additional_trial_payments!inner(invoice_number,leads!inner(company_name,page_id))').eq('oem_additional_trial_payments.leads.page_id',PAGE).order('paid_on').order('id').range(0,0)
+  assert(!extraReceipts.error, `additional trial receipt readonly nested join: ${extraReceipts.error?.message || ''}`)
+  const extraAlerts=await supabase.from('oem_additional_trial_payments').select('id,lead_id,gross_amount,status,invoice_number,snapshot,created_at,leads!inner(company_name,page_id),oem_additional_trial_payment_receipts(amount)', {count:'exact'}).eq('leads.page_id',PAGE).eq('status','awaiting_payment').order('created_at').order('id').range(0,0)
+  assert(!extraAlerts.error, `additional trial alert readonly join: ${extraAlerts.error?.message || ''}`)
+  assert(actionSource.includes("'追加試作費請求'") && actionSource.includes("'追加試作費銀行入金'") && paymentSource.includes("stage: 'trial-extra'"), 'additional trial accounting and alerts are wired')
   console.log(`OEM accounting CSV verification: passed (JST inclusive bounds, date validation, formula/control escaping, BOM/CRLF, stable OEM filters, readonly invoice/receipt/cash/trial joins)`)
 }
 main().catch(error => { console.error('OEM accounting CSV verification failed:', error.message); process.exitCode = 1 })

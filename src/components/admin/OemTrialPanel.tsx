@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createOemTrial, getOemTrials, recordOemTrialResult } from '@/actions/oemTrials'
+import { getOemAdditionalTrialPayments } from '@/actions/oemAdditionalTrialPayments'
 import { OEM_SPECIAL_INGREDIENT_NOTE } from '@/lib/oem-offer-pricing'
+import type { AdditionalTrialPaymentData } from '@/lib/oem-additional-trial-payments-shared'
 import { OemTrialPaymentPanel } from './OemTrialPaymentPanel'
+import { OemAdditionalTrialPaymentPanel } from './OemAdditionalTrialPaymentPanel'
+import { PAYMENT_CHANGED } from './OemPaymentPanel'
 type TrialRow = { id: string; trial_number: number; status: string; result: string | null; result_notes: string | null; fee_advisory: number; version: number; payment_required: boolean; label: string | null }
 const results = { pass: '試作完了', fail: '不適合', needs_revision: '再試作が必要', cancelled: '取下げ' } as const
 export function OemTrialPanel({ leadId }: { leadId: string }) {
   const [rows, setRows] = useState<TrialRow[]>([])
+  const [additionalPayments, setAdditionalPayments] = useState<AdditionalTrialPaymentData[]>([])
   const [companyKey, setCompanyKey] = useState('')
   const [evidence, setEvidence] = useState('')
   const [claim, setClaim] = useState(false)
@@ -23,9 +28,11 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
   const [trialPaid, setTrialPaid] = useState(false)
   const load = useCallback(async () => {
     try {
-      const r = await getOemTrials(leadId)
+      const [r, additional] = await Promise.all([getOemTrials(leadId), getOemAdditionalTrialPayments(leadId)])
       if (!r.success) { setReady(false); setMessage(r.error || '試作情報を取得できませんでした'); return }
       setRows(r.trials as TrialRow[]); setReady(true)
+      if (additional.success) setAdditionalPayments(additional.payments)
+      else setMessage(additional.error || '追加試作請求情報を取得できませんでした')
       if ('benefit' in r && r.benefit && typeof r.benefit === 'object') { setBenefit(r.benefit); setCompanyKey(previous=>previous||r.benefit!.companyKey); const first=r.trials[0] as {identity_evidence?:string};setEvidence(previous=>previous||first?.identity_evidence||'') } else setBenefit(null)
     } catch { setReady(false); setMessage('試作情報を取得できませんでした') }
   }, [leadId])
@@ -39,7 +46,7 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
     try {
       const r = await createOemTrial(leadId, { companyKey, identityEvidence:evidence, label, claimIncluded:claim, requestId:key })
       setMessage(r.error || r.message || '')
-      if (r.success) { setRequest(null); setLabel(''); await load() }
+      if (r.success) { setRequest(null); setLabel(''); window.dispatchEvent(new Event(PAYMENT_CHANGED)); await load() }
     } catch { setMessage('登録結果を確認できませんでした。同じ内容で再確認してください。新しい試作を重ねて登録しないでください。') }
     finally { setBusy(false) }
   }
@@ -56,11 +63,11 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
     </div>
     <button type="button" disabled={busy || !ready || (!trialPaid && !legacyContract) || !companyKey.trim() || !evidence.trim()} onClick={()=>void create()} style={button}>{busy ? '処理中…' : trialPaid || legacyContract ? '試作を登録' : '入金確認後に試作を登録'}</button>
     <button type="button" disabled={busy} onClick={()=>void load()} style={{ ...button, marginLeft:8 }}>履歴を更新</button>
-    {rows.map(row=><TrialResult key={row.id} row={row} onSaved={load} />)}
+    {rows.map(row=><TrialResult key={row.id} row={row} payment={additionalPayments.find(payment => payment.trial_id === row.id)} legacyContract={legacyContract} onSaved={load} />)}
     {message && <p role="status" style={muted}>{message}</p>}
   </section>
 }
-function TrialResult({ row, onSaved }: { row:TrialRow; onSaved:()=>Promise<void> }) {
+function TrialResult({ row, payment, legacyContract, onSaved }: { row:TrialRow; payment?: AdditionalTrialPaymentData; legacyContract: boolean; onSaved:()=>Promise<void> }) {
   const [result,setResult]=useState<keyof typeof results>('pass')
   const [notes,setNotes]=useState('')
   const [message,setMessage]=useState('')
@@ -68,7 +75,7 @@ function TrialResult({ row, onSaved }: { row:TrialRow; onSaved:()=>Promise<void>
   const save=async()=>{setBusy(true);try{const r=await recordOemTrialResult(row.id,result,notes,row.version);setMessage(r.success?'結果を保存しました':r.error||'保存できませんでした');if(r.success)await onSaved()}catch{setMessage('保存結果を確認できませんでした。履歴を更新してください。')}finally{setBusy(false)}}
   return <div style={{ marginTop:14,padding:14,border:'1px solid var(--admin-border)',borderRadius:8 }}>
     <strong>試作{row.trial_number} {row.label||''}</strong>　{row.status==='pending'?'結果未記録':results[row.result as keyof typeof results]||'記録済み'}
-    <p style={muted}>追加試作費（税別・参考）：{row.fee_advisory?`${row.fee_advisory.toLocaleString()}円`:'なし（標準料金内または初回特典）'}</p>
+    {payment ? <OemAdditionalTrialPaymentPanel payment={payment} onChanged={onSaved} /> : legacyContract && row.fee_advisory > 0 && <p style={muted}>既存契約の追加試作費：{row.fee_advisory.toLocaleString()}円（税別）。既存契約への遡及請求はありません。</p>}
     {row.result_notes&&<p style={{...muted,whiteSpace:'pre-wrap'}}>{row.result_notes}</p>}
     {row.status==='pending'&&<><label>結果<select value={result} onChange={e=>setResult(e.target.value as keyof typeof results)} style={input}>{Object.entries(results).map(([key,text])=><option key={key} value={key}>{text}</option>)}</select></label><label>結果メモ<textarea value={notes} onChange={e=>setNotes(e.target.value)} maxLength={2000} style={input}/></label><button type="button" disabled={busy} onClick={()=>void save()} style={button}>結果を保存</button></>}
     {message&&<p role="status" style={muted}>{message}</p>}

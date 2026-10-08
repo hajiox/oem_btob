@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 export async function middleware(request: NextRequest) {
     // Bearer customer links must not leak in referrers or shared caches. These
     // routes do not need a Supabase login refresh and load no marketing tags.
-    if (/^\/btob\/(order|invoice|approval|progress|document)\//.test(request.nextUrl.pathname)) {
+    if (/^\/btob\/(order|invoice|trial-invoice|additional-trial-invoice|approval|progress|document)\//.test(request.nextUrl.pathname)) {
         const response = NextResponse.next({ request })
         response.headers.set('Cache-Control', 'private, no-store, max-age=0')
         response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')

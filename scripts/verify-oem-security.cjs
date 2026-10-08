@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const Module = require('node:module')
+const path = require('node:path')
 const ts = require('typescript')
 const { createClient } = require('@supabase/supabase-js')
 
@@ -12,13 +13,30 @@ const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\
   .map(x => { const i = x.indexOf('='); return [x.slice(0, i), x.slice(i + 1).replace(/^"|"$/g, '')] }))
 
 function loadValidator() {
-  const source = fs.readFileSync('src/lib/oem-quote-validation.ts', 'utf8')
-  const out = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
-  const mod = new Module(require.resolve('../package.json'))
-  mod.filename = require('path').resolve('src/lib/oem-quote-validation.ts')
-  mod.paths = Module._nodeModulePaths(process.cwd())
-  mod._compile(out, mod.filename)
-  return mod.exports
+  const sourceRoot = path.resolve(__dirname, '../src')
+  const validatorPath = path.join(sourceRoot, 'lib/oem-quote-validation.ts')
+  const oldTsExtension = Module._extensions['.ts']
+  const oldResolveFilename = Module._resolveFilename
+  Module._extensions['.ts'] = (mod, filename) => {
+    const source = fs.readFileSync(filename, 'utf8')
+    const out = ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      fileName: filename,
+    }).outputText
+    mod._compile(out, filename)
+  }
+  Module._resolveFilename = function resolveFilename(request, parent, isMain, options) {
+    const resolvedRequest = request.startsWith('@/') ? path.join(sourceRoot, request.slice(2)) : request
+    return oldResolveFilename.call(this, resolvedRequest, parent, isMain, options)
+  }
+  try {
+    delete require.cache[validatorPath]
+    return require(validatorPath)
+  } finally {
+    if (oldTsExtension) Module._extensions['.ts'] = oldTsExtension
+    else delete Module._extensions['.ts']
+    Module._resolveFilename = oldResolveFilename
+  }
 }
 
 async function snapshot() {

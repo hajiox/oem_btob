@@ -4,6 +4,9 @@ const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { connection } = require('./oem-db-migrate.cjs')
 const PAGE = '35e7d402-0443-4703-94a4-fc2873b8f933'
+const dateAtJst = offset => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(date) }
+const TODAY = dateAtJst(0)
+const YESTERDAY = dateAtJst(-1)
 const id = () => crypto.randomUUID()
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const q = (db, sql, values = []) => db.query(sql, values)
@@ -18,9 +21,9 @@ async function fixture(db, actor, suffix, options = [{ question: '商品', answe
   const leadId = lead.rows[0].id; const orderId = id(); const orderNumber = `VERIFY-PORTAL-${suffix}-${id()}`
   await q(db, `INSERT INTO public.oem_orders(id,lead_id,revision,order_number,status,formal_quote_amount,deposit_amount,final_amount,specification,quote_snapshot,quote_sha256,terms_version,terms_title,terms_body,terms_sha256,access_token_hash,expires_at,accepted_at)
     VALUES($1,$2,1,$3,$4,1000,500,1000,'公開仕様のサンプル','{"selectedOptions": [{"question":"商品","answer":"定番","key":"product-1","product":"商品A","internal_notes":"秘密"}],"private_cost":999999}', $5,'test','規約','秘密規約は返さない',$6,$7,'2099-01-01',now())`, [orderId, leadId, orderNumber, status, hash(orderNumber), hash(`terms-${orderId}`), hash(`order-${orderId}`)])
-  await q(db, `INSERT INTO public.oem_order_fulfillment(order_id,planned_quantity,quantity_unit,completed_quantity,completed_on,shipped_on,carrier,tracking_number) VALUES($1,10,'個',10,'2026-09-30','2026-10-01','架空配送','TRACK-${suffix}')`, [orderId])
+  await q(db, `INSERT INTO public.oem_order_fulfillment(order_id,planned_quantity,quantity_unit,completed_quantity,completed_on,shipped_on,carrier,tracking_number) VALUES($1,10,'個',10,$2,$3,'架空配送','TRACK-${suffix}')`, [orderId, YESTERDAY, TODAY])
   const plan = await q(db, `INSERT INTO public.oem_payment_plans(order_id,stage,expected_amount,payer_name) VALUES($1,'balance',1100,'架空支払人') RETURNING id`, [orderId])
-  await q(db, `INSERT INTO public.oem_payment_receipts(plan_id,request_id,amount,paid_on,payer_name,note,confirmed_by) VALUES($1,$2,$3,'2026-10-01','架空支払人','検証用',$4)`, [plan.rows[0].id, id(), paidAmount, actor])
+  await q(db, `INSERT INTO public.oem_payment_receipts(plan_id,request_id,amount,paid_on,payer_name,note,confirmed_by) VALUES($1,$2,$3,$4,'架空支払人','検証用',$5)`, [plan.rows[0].id, id(), paidAmount, TODAY, actor])
   await q(db, `INSERT INTO public.oem_invoices(order_id,lead_id,plan_id,stage,invoice_number,snapshot,input_hash,request_id,send_request_id,created_by)
     VALUES($1,$2,$3,'balance',$4,$5::jsonb,$6,$7,$8,$9)`, [orderId, leadId, plan.rows[0].id, `INV-${id()}`, JSON.stringify({ grossTotal: 1100, netTotal: 1000 }), hash(id()), id(), id(), actor])
   return { leadId, orderId }
@@ -42,7 +45,12 @@ async function main() {
     await db.connect(); await q(db, 'BEGIN')
     if (process.argv.includes('--with-migration')) {
       stage = 'migration'
-      for (const file of ['sql/022_oem_invoice_documents.sql', 'sql/023_oem_portal_reorder.sql']) {
+      const invoiceApplied = await q(db, "SELECT to_regprocedure('public.issue_oem_document(uuid,text,uuid,uuid,jsonb)') AS function")
+      const portalApplied = await q(db, "SELECT to_regclass('public.oem_progress_links') AS table")
+      const files = []
+      if (!invoiceApplied.rows[0].function) files.push('sql/022_oem_invoice_documents.sql')
+      if (!portalApplied.rows[0].table) files.push('sql/023_oem_portal_reorder.sql')
+      for (const file of files) {
         const sql = fs.readFileSync(file, 'utf8').replace(/^BEGIN;\s*$/gm, '').replace(/^COMMIT;\s*$/gm, '')
         await q(db, sql)
       }

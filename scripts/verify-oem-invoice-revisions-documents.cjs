@@ -4,7 +4,9 @@ const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { connection } = require('./oem-db-migrate.cjs')
 const PAGE = '35e7d402-0443-4703-94a4-fc2873b8f933'
-const TODAY = '2026-10-01'
+const dateAtJst = offset => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(date) }
+const TODAY = dateAtJst(0)
+const YESTERDAY = dateAtJst(-1)
 const id = () => crypto.randomUUID()
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const q = (db, sql, values = []) => db.query(sql, values)
@@ -24,7 +26,7 @@ async function issue(db, orderId, actor, stage, requestId = id()) {
 }
 async function receipt(db, planId, actor, amount) { return rpc(db, 'SELECT * FROM public.record_oem_payment_receipt($1,$2,$3,$4,$5,$6,$7)', [planId, id(), amount, TODAY, '検証支払人', '検証入金', actor]) }
 async function fulfillment(db, orderId, actor) {
-  let row = await rpc(db, 'SELECT * FROM public.update_oem_fulfillment($1,$2,$3,$4,$5::jsonb)', [orderId, actor, 0, 'save', JSON.stringify({ plannedQuantity: 105, quantityUnit: '個', productionDueDate: '2026-09-30', shipmentDueDate: TODAY, notes: '検証' })]); assert(row.result === 'saved', 'fulfillment save')
+  let row = await rpc(db, 'SELECT * FROM public.update_oem_fulfillment($1,$2,$3,$4,$5::jsonb)', [orderId, actor, 0, 'save', JSON.stringify({ plannedQuantity: 105, quantityUnit: '個', productionDueDate: YESTERDAY, shipmentDueDate: TODAY, notes: '検証' })]); assert(row.result === 'saved', 'fulfillment save')
   row = await rpc(db, 'SELECT * FROM public.update_oem_fulfillment($1,$2,$3,$4,$5::jsonb)', [orderId, actor, row.current_version, 'start', '{}']); assert(row.result === 'started', 'fulfillment start')
   row = await rpc(db, 'SELECT * FROM public.update_oem_fulfillment($1,$2,$3,$4,$5::jsonb)', [orderId, actor, row.current_version, 'complete', JSON.stringify({ completedQuantity: 105, completedOn: TODAY, finalAmount: 100000 })]); assert(row.result === 'completed', 'fulfillment complete')
   return row
@@ -33,7 +35,7 @@ async function main() {
   const db = connection(); let stage = 'connect'
   try {
     await db.connect(); await q(db, 'BEGIN')
-    if (process.argv.includes('--with-migration')) { stage = 'migration'; const sql = fs.readFileSync('sql/022_oem_invoice_documents.sql', 'utf8').replace(/^BEGIN;\s*$/gm, '').replace(/^COMMIT;\s*$/gm, ''); await q(db, sql) }
+    if (process.argv.includes('--with-migration')) { stage = 'migration'; const applied = await q(db, "SELECT to_regprocedure('public.issue_oem_document(uuid,text,uuid,uuid,jsonb)') AS function"); if (!applied.rows[0].function) { const sql = fs.readFileSync('sql/022_oem_invoice_documents.sql', 'utf8').replace(/^BEGIN;\s*$/gm, '').replace(/^COMMIT;\s*$/gm, ''); await q(db, sql) } }
     const admins = await q(db, 'SELECT user_id FROM public.oem_mail_admins ORDER BY user_id LIMIT 1'); assert(admins.rowCount, 'OEM admin required'); const actor = admins.rows[0].user_id
     stage = 'invoice amount and revision paths'
     const order = await fixture(db, actor, id()); const deposit = await issue(db, order.orderId, actor, 'deposit'); assert(deposit.result === 'issued', `deposit invoice: ${deposit.result}`); assert(deposit.snapshot.grossTotal === 108120 && deposit.snapshot.amountDue === 54060, '94000 + 6000 tax arithmetic')

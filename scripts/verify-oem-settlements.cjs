@@ -4,7 +4,9 @@ const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { connection } = require('./oem-db-migrate.cjs')
 const PAGE = '35e7d402-0443-4703-94a4-fc2873b8f933'
-const TODAY = '2026-10-01'
+const dateAtJst = offset => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(date) }
+const TODAY = dateAtJst(0)
+const YESTERDAY = dateAtJst(-1)
 const id = () => crypto.randomUUID()
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const assert = (value, message) => { if (!value) throw new Error(message) }
@@ -48,7 +50,8 @@ async function main() {
     if (process.argv.includes('--with-migration')) {
       stage = 'migration'
       const sql = fs.readFileSync('sql/018_oem_settlements.sql', 'utf8').replace(/^BEGIN;\s*$/gm, '').replace(/^COMMIT;\s*$/gm, '')
-      await q(db, sql)
+      const applied = await q(db, "SELECT to_regclass('public.oem_settlements') AS table")
+      if (!applied.rows[0].table) await q(db, sql)
     }
     stage = 'schema and permissions'
     const tables = await q(db, "SELECT relname,relrowsecurity FROM pg_class WHERE relname IN ('oem_settlements','oem_settlement_cash')")
@@ -121,7 +124,7 @@ async function main() {
 
     stage = 'adjustment collection and payment/invoice freezes'
     const adjust = await fixture(db, `adjust-${id()}`, 'accepted'); await deposit(db, adjust.orderId, actor)
-    const plan = await q(db, 'SELECT * FROM public.update_oem_fulfillment($1::uuid,$2::uuid,$3::integer,$4::text,$5::jsonb)', [adjust.orderId, actor, 0, 'save', JSON.stringify({ plannedQuantity: 100, quantityUnit: '個', productionDueDate: '2026-09-30', shipmentDueDate: TODAY, notes: '架空テスト' })]); assert(plan.rows[0]?.result === 'saved', `adjust fulfillment save: ${plan.rows[0]?.result}`)
+    const plan = await q(db, 'SELECT * FROM public.update_oem_fulfillment($1::uuid,$2::uuid,$3::integer,$4::text,$5::jsonb)', [adjust.orderId, actor, 0, 'save', JSON.stringify({ plannedQuantity: 100, quantityUnit: '個', productionDueDate: YESTERDAY, shipmentDueDate: TODAY, notes: '架空テスト' })]); assert(plan.rows[0]?.result === 'saved', `adjust fulfillment save: ${plan.rows[0]?.result}`)
     const started = await q(db, 'SELECT * FROM public.update_oem_fulfillment($1::uuid,$2::uuid,$3::integer,$4::text,$5::jsonb)', [adjust.orderId, actor, plan.rows[0].current_version, 'start', '{}']); assert(started.rows[0]?.result === 'started', `adjust fulfillment start: ${started.rows[0]?.result}`)
     const completed = await q(db, 'SELECT * FROM public.update_oem_fulfillment($1::uuid,$2::uuid,$3::integer,$4::text,$5::jsonb)', [adjust.orderId, actor, started.rows[0].current_version, 'complete', JSON.stringify({ completedQuantity: 100, completedOn: TODAY, finalAmount: 100000 })]); assert(completed.rows[0]?.result === 'completed', `adjust fulfillment complete: ${completed.rows[0]?.result}`)
     const depositPlanRow = await q(db, 'SELECT id FROM public.oem_payment_plans WHERE order_id=$1 AND stage=$2', [adjust.orderId, 'deposit'])

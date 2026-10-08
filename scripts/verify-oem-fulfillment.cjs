@@ -4,7 +4,10 @@ const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { connection } = require('./oem-db-migrate.cjs')
 const PAGE = '35e7d402-0443-4703-94a4-fc2873b8f933'
-const TODAY = '2026-10-01'
+const dateAtJst = offset => { const date = new Date(); date.setUTCDate(date.getUTCDate() + offset); return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(date) }
+const TODAY = dateAtJst(0)
+const YESTERDAY = dateAtJst(-1)
+const TOMORROW = dateAtJst(1)
 const id = () => crypto.randomUUID()
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const assert = (value, message) => { if (!value) throw new Error(message) }
@@ -67,7 +70,8 @@ async function main() {
     if (process.argv.includes('--with-migration')) {
       stage = 'migration'
       const sql = fs.readFileSync('sql/017_oem_fulfillment.sql', 'utf8').replace(/^BEGIN;\s*$/gm, '').replace(/^COMMIT;\s*$/gm, '')
-      await q(db, sql)
+      const applied = await q(db, "SELECT to_regclass('public.oem_order_fulfillment') AS table")
+      if (!applied.rows[0].table) await q(db, sql)
     }
     stage = 'schema and privileges'
     const table = await q(db, "SELECT relrowsecurity FROM pg_class WHERE relname='oem_order_fulfillment'")
@@ -82,7 +86,7 @@ async function main() {
     const outsider = nonOem.rows[0]?.id || id()
 
     stage = 'normal plan and start gates'
-    const base = await leadAndOrder(db, 'normal'); let r = await expectRpc(db, [base.orderId, actor, 0, 'save', { plannedQuantity: 100, quantityUnit: '個', productionDueDate: '2026-09-30', shipmentDueDate: TODAY }], 'saved', 'save plan'); assert(r.current_version === 1, 'save increments version')
+    const base = await leadAndOrder(db, 'normal'); let r = await expectRpc(db, [base.orderId, actor, 0, 'save', { plannedQuantity: 100, quantityUnit: '個', productionDueDate: YESTERDAY, shipmentDueDate: TODAY }], 'saved', 'save plan'); assert(r.current_version === 1, 'save increments version')
     const stateBeforeStart = await q(db, 'SELECT status FROM public.oem_orders WHERE id=$1', [base.orderId]); assert(stateBeforeStart.rows[0].status === 'accepted', 'save must not start production')
     await expectRpc(db, [base.orderId, actor, 1, 'start', {}], 'state', 'start before deposit')
     await receipt(db, base.orderId, actor)
@@ -99,7 +103,7 @@ async function main() {
     await expectRpc(db, [base.orderId, actor, 2, 'save', { unexpectedField: true }], 'invalid', 'unknown input field')
     await expectRpc(db, [base.orderId, actor, 2, 'no_such_action', {}], 'invalid', 'unknown action')
     await expectRpc(db, [base.orderId, actor, 2, 'save', { quantityUnit: '   ' }], 'invalid', 'blank quantity unit')
-    await expectRpc(db, [base.orderId, actor, 2, 'save', { plannedQuantity: 100, productionDueDate: '2026-10-02', shipmentDueDate: '2026-10-01' }], 'invalid', 'due date order')
+    await expectRpc(db, [base.orderId, actor, 2, 'save', { plannedQuantity: 100, productionDueDate: TOMORROW, shipmentDueDate: TODAY }], 'invalid', 'due date order')
     await invalidOrRejected(db, [base.orderId, actor, 2, 'complete', { completedQuantity: 99, completedOn: '1899-12-31', finalAmount: 100000 }], 'pre-1900 actual date')
     await invalidOrRejected(db, [base.orderId, actor, 2, 'complete', { completedQuantity: 99, completedOn: '2099-01-01', finalAmount: 100000 }], 'future actual date')
     await rejected(db, 'UPDATE public.oem_orders SET status=$1 WHERE id=$2', ['balance_due', base.orderId], 'status trigger missing completion')

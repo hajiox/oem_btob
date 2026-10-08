@@ -99,6 +99,29 @@ export async function exportOemAccountantCsv(from?: string, to?: string): Promis
       }
       if (!result.data || result.data.length < page) break; trialReceiptOffset += page
     }
+    let extraInvoiceOffset = 0
+    while (true) {
+      let query = adminClient.from('oem_additional_trial_payments').select('id,invoice_number,snapshot,status,created_at,leads!inner(company_name,page_id)').eq('leads.page_id', OEM_ACCOUNTING_PAGE).order('created_at', { ascending: true }).order('id', { ascending: true }).range(extraInvoiceOffset, extraInvoiceOffset + page - 1)
+      if (since) query = query.gte('created_at', since); if (until) query = query.lt('created_at', until)
+      const result = await query; if (result.error) throw result.error
+      for (const invoice of result.data || []) {
+        const snapshot = (invoice.snapshot && typeof invoice.snapshot === 'object' ? invoice.snapshot : {}) as Record<string, unknown>
+        const lead = one(invoice.leads)
+        rows.push(['追加試作費請求', String(invoice.invoice_number), '', String(snapshot.companyName || lead?.company_name || ''), String(snapshot.issuedDate || invoice.created_at), String(snapshot.grossAmount || ''), 'trial-extra', String(invoice.status)])
+      }
+      if (!result.data || result.data.length < page) break; extraInvoiceOffset += page
+    }
+    let extraReceiptOffset = 0
+    while (true) {
+      let query = adminClient.from('oem_additional_trial_payment_receipts').select('id,amount,paid_on,oem_additional_trial_payments!inner(invoice_number,leads!inner(company_name,page_id))').eq('oem_additional_trial_payments.leads.page_id', OEM_ACCOUNTING_PAGE).order('paid_on', { ascending: true }).order('id', { ascending: true }).range(extraReceiptOffset, extraReceiptOffset + page - 1)
+      if (start) query = query.gte('paid_on', start); if (end) query = query.lte('paid_on', end)
+      const result = await query; if (result.error) throw result.error
+      for (const receipt of result.data || []) {
+        const payment = one(receipt.oem_additional_trial_payments); const lead = one(payment?.leads)
+        rows.push(['追加試作費銀行入金', `additional-trial-receipt:${receipt.id}`, '', String(lead?.company_name || ''), String(receipt.paid_on), String(receipt.amount), 'trial-extra', '確認済み'])
+      }
+      if (!result.data || result.data.length < page) break; extraReceiptOffset += page
+    }
     return { success: true, csv: accountantCsv(rows) }
   } catch (error) { return { success: false, error: error instanceof MailError ? error.message : '会計CSVを出力できませんでした。', status: error instanceof MailError ? error.status : 500 } }
 }

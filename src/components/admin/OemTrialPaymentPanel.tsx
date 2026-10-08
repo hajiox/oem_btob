@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createOemTrialPrepayment, getOemTrialPrepayment, recordOemTrialPrepaymentReceipt, voidOemTrialPrepayment } from '@/actions/oemTrialPayments'
 import { TRIAL_PREPAYMENT_INITIAL_GROSS, type TrialPrepayment, type TrialPrepaymentInvoice } from '@/lib/oem-trial-payments-shared'
+import { PAYMENT_CHANGED } from './OemPaymentPanel'
 
 type Props = { leadId: string; companyKey: string; identityEvidence: string; claimIncluded: boolean; onPaid?: (paid: boolean) => void; onIdentity?: (value: { companyKey: string; identityEvidence: string; claimIncluded: boolean }) => void }
 type Issuer = { name: string; address: string; email: string; registrationNumber: string; bankName: string; branchName: string; accountType: string; accountNumber: string; accountHolder: string }
@@ -38,7 +39,7 @@ export function OemTrialPaymentPanel({ leadId, companyKey, identityEvidence, cla
       const r = await createOemTrialPrepayment(leadId, { companyKey, identityEvidence, claimIncluded, requestId, issuer })
       if (!r.success && 'uncertain' in r && r.uncertain) setUncertain(true)
       setMessage(('error' in r ? r.error : '') || (r.success ? `試作前払い請求を発行しました（税込${yen(Number('grossAmount' in r ? r.grossAmount : TRIAL_PREPAYMENT_INITIAL_GROSS))}）。` : ''))
-      if (r.success) { createRequest.current = null; setUncertain(false); await load() }
+      if (r.success) { createRequest.current = null; setUncertain(false); window.dispatchEvent(new Event(PAYMENT_CHANGED)); await load().catch(() => setMessage('試作前払い請求は発行済みです。履歴を更新して請求書を確認してください。')) }
     } catch { setUncertain(true); setMessage('発行結果を確認できませんでした。同じ内容で再確認してください。') } finally { setBusy(false) }
   }
   const record = async () => {
@@ -51,10 +52,10 @@ export function OemTrialPaymentPanel({ leadId, companyKey, identityEvidence, cla
       const r = await recordOemTrialPrepaymentReceipt(data.prepayment.id, { requestId, amount: Number(amount), paidOn, payerName: payer, note })
       if (!r.success && 'uncertain' in r && r.uncertain) setUncertain(true)
       setMessage(('error' in r ? r.error : '') || (r.success ? ('status' in r && r.status === 'partial' ? '部分入金を記録しました。全額の入金確認後に試作を開始できます。' : '試作前払いの入金を記録しました。履歴の入金確認済み表示を確認してから試作を開始してください。') : ''))
-      if (r.success) { receiptRequest.current = null; setUncertain(false); setAmount(''); setPayer(''); setNote(''); setConfirmed(false); await load() }
+      if (r.success) { receiptRequest.current = null; setUncertain(false); setAmount(''); setPayer(''); setNote(''); setConfirmed(false); window.dispatchEvent(new Event(PAYMENT_CHANGED)); await load().catch(() => setMessage('入金記録は保存済みです。履歴を更新して入金状態を確認してください。')) }
     } catch { setUncertain(true); setMessage('入金結果を確認できませんでした。同じ内容で再確認してください。') } finally { setBusy(false) }
   }
-  const voidPrepayment = async () => { if (!prepayment || received !== 0 || prepayment.status !== 'awaiting_payment' || busy) return; const reason = window.prompt('未入金の試作前払いを取り下げる理由を入力してください。'); if (!reason?.trim()) return; setBusy(true); setMessage(''); try { const r = await voidOemTrialPrepayment(prepayment.id, reason); setMessage(('error' in r ? r.error : '') || (r.success ? '試作前払いを取り下げました。' : '')); if (r.success) await load() } catch { setMessage('取り下げ結果を確認できませんでした。再読み込みして確認してください。') } finally { setBusy(false) } }
+  const voidPrepayment = async () => { if (!prepayment || received !== 0 || prepayment.status !== 'awaiting_payment' || busy) return; const reason = window.prompt('未入金の試作前払いを取り下げる理由を入力してください。'); if (!reason?.trim()) return; setBusy(true); setMessage(''); try { const r = await voidOemTrialPrepayment(prepayment.id, reason); setMessage(('error' in r ? r.error : '') || (r.success ? '試作前払いを取り下げました。' : '')); if (r.success) { window.dispatchEvent(new Event(PAYMENT_CHANGED)); await load() } } catch { setMessage('取り下げ結果を確認できませんでした。再読み込みして確認してください。') } finally { setBusy(false) } }
   const prepayment = data?.prepayment
   const received = (data?.receipts || []).reduce((n: number, r: { amount: number }) => n + Number(r.amount || 0), 0)
   return <section aria-label="試作前払い管理" style={{ marginTop: 16, padding: 16, border: '1px solid var(--admin-border)', borderRadius: 8 }}>

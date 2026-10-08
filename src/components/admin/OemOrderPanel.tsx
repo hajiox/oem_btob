@@ -34,7 +34,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
       if (result.defaultSpecification) setSpecification(previous => previous || result.defaultSpecification || '')
     } else setMessage(result.error || '正式発注情報を取得できませんでした')
     setLoading(false)
-  }, [leadId])
+  }, [estimatedTotalPrice, leadId])
   useEffect(() => {
     let active = true
     getOemOrder(leadId).then(result => {
@@ -48,7 +48,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     }).catch(() => { if (active) setMessage('正式発注情報を取得できませんでした') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [leadId])
+  }, [estimatedTotalPrice, leadId])
 
   const issue = () => startTransition(async () => {
     if (!window.confirm('表示中の正式見積・仕様・規約を固定し、お客様へ正式発注メールを送信します。よろしいですか？')) return
