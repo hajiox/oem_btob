@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { adminClient } from '@/lib/supabase/admin'
 import { MailError, requireMailAdmin, requireOemMailLead, uuid } from '@/lib/oem-mail-security'
 import type { PaymentAlert, PaymentData, PaymentPlan, PaymentReceipt, PaymentStage } from '@/lib/oem-payments-shared'
+import { trialPrepaymentInvoiceUrl } from '@/lib/oem-trial-prepayment-invoices'
 
 type Result = { success: boolean; error?: string; message?: string; uncertain?: boolean }
 function fail(error: unknown, fallback: string): Result { return { success: false, error: error instanceof MailError ? error.message : fallback } }
@@ -78,9 +79,21 @@ export async function recordOemPayment(planId: string, input: { requestId: strin
 export async function getOemPaymentAlerts(): Promise<{ success: boolean; error?: string; items: PaymentAlert[]; total: number }> {
   try {
     await requireMailAdmin()
-    const { data, error } = await adminClient.rpc('get_oem_payment_alerts', { p_limit: 100, p_offset: 0 })
-    if (error) throw error
+    const [{ data, error }, { data: trials, error: trialError, count: trialCount }] = await Promise.all([
+      adminClient.rpc('get_oem_payment_alerts', { p_limit: 100, p_offset: 0 }),
+      adminClient.from('oem_trial_prepayments').select('id,lead_id,gross_amount,status,created_at,leads!inner(company_name,page_id),oem_trial_prepayment_invoices!inner(id,invoice_number,lifecycle_status,snapshot),oem_trial_prepayment_receipts(amount)', { count: 'exact' }).eq('leads.page_id', '35e7d402-0443-4703-94a4-fc2873b8f933').eq('status', 'awaiting_payment').order('created_at', { ascending: true }).order('id', { ascending: true }).range(0, 99),
+    ])
+    if (error) throw error; if (trialError) throw trialError
     const rows = (Array.isArray(data) ? data : []) as Array<PaymentAlert & { total_count: number }>
-    return { success: true, items: rows.map(row => { const { total_count, ...item } = row; void total_count; return item }), total: Number(rows[0]?.total_count || 0) }
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date())
+    const trialItems: PaymentAlert[] = (trials || []).map(row => {
+      const lead = Array.isArray(row.leads) ? row.leads[0] : row.leads
+      const invoice = Array.isArray(row.oem_trial_prepayment_invoices) ? row.oem_trial_prepayment_invoices[0] : row.oem_trial_prepayment_invoices
+      const snapshot = invoice?.snapshot && typeof invoice.snapshot === 'object' ? invoice.snapshot as Record<string, unknown> : {}
+      const received = (Array.isArray(row.oem_trial_prepayment_receipts) ? row.oem_trial_prepayment_receipts : []).reduce((sum: number, receipt: { amount?: unknown }) => sum + (Number.isSafeInteger(Number(receipt.amount)) ? Number(receipt.amount) : 0), 0)
+      const dueDate = typeof snapshot.dueDate === 'string' ? snapshot.dueDate : null
+      return { order_id: null, lead_id: row.lead_id, order_number: '', company_name: lead?.company_name || '', stage: 'trial', expected_amount: row.gross_amount, received_amount: received, due_date: dueDate, kind: dueDate && dueDate < today ? 'overdue' : 'waiting', trial_id: row.id, trial_status: row.status, invoice_number: invoice?.invoice_number, invoice_url: invoice?.id ? trialPrepaymentInvoiceUrl(invoice.id) : undefined }
+    })
+    return { success: true, items: [...trialItems, ...rows.map(row => { const { total_count, ...item } = row; void total_count; return item })], total: Number(trialCount || 0) + Number(rows[0]?.total_count || 0) }
   } catch (error) { return { ...fail(error, '入金アラートを取得できませんでした'), items: [], total: 0 } }
 }

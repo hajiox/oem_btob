@@ -8,7 +8,7 @@ import { INVOICE_CHANGED } from '@/lib/oem-invoices-shared'
 
 const yen = (amount: number) => `¥${amount.toLocaleString('ja-JP')}`
 const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(new Date())
-const names = { deposit: '前金', balance: '残金' }
+const names = { deposit: '製造着手金（見積50％）', balance: '出荷前精算金' }
 export const PAYMENT_CHANGED = 'oem-payment-changed'
 
 export function OemPaymentPanel({ orderId, status, onChanged, readOnly = false }: { orderId: string; status: OemOrderStatus; onChanged?: () => void | Promise<void>; readOnly?: boolean }) {
@@ -33,7 +33,7 @@ export function OemPaymentPanel({ orderId, status, onChanged, readOnly = false }
   if (status === 'issued') return null
   return <section aria-label="入金管理" style={{ marginTop: 20, borderTop: '1px solid var(--admin-border)', paddingTop: 18 }}>
     <h4 style={{ margin: '0 0 8px' }}>入金管理（銀行で確認して手動登録）</h4>
-    <p style={muted}>銀行との自動連携はありません。実際の請求額（税込）と、銀行で確認した入金を記録します。</p>
+    <p style={muted}>試作前払い（初回5,000円税別）は別管理です。ここでは製造着手金（見積50％）と出荷前精算金を、銀行で確認した入金とともに記録します。</p>
     {readOnly && <p style={muted}>元の前金・残金履歴は閲覧のみです。変更後の入出金は精算管理で記録してください。</p>}
     {error && <p role="alert" style={{ color: '#fca5a5' }}>{error} <button type="button" onClick={() => void reload().catch(e => setError(String(e.message)))}>再読み込み</button></p>}
     {!data && !error && <p>入金情報を読み込み中…</p>}

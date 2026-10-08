@@ -38,10 +38,10 @@ export default async function OemOrderPage({ params }: { params: Promise<{ token
           <h2 style={{ margin: '0 0 18px', fontSize: 24 }}>正式お見積り</h2>
           <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '10px 24px', margin: 0 }}>
             <dt>正式見積額（税別）</dt><dd style={{ margin: 0, fontWeight: 800, fontSize: 22 }}>{yen(order.formal_quote_amount)}</dd>
-            <dt>正式発注後の前金（50％）</dt><dd style={{ margin: 0, fontWeight: 800 }}>{yen(order.deposit_amount)}</dd>
-            <dt>残額の目安</dt><dd style={{ margin: 0 }}>{yen(order.formal_quote_amount - order.deposit_amount)}</dd>
+            <dt>製造着手金（50％）</dt><dd style={{ margin: 0, fontWeight: 800 }}>{yen(order.deposit_amount)}</dd>
+            <dt>出荷前精算金の目安</dt><dd style={{ margin: 0 }}>{yen(order.formal_quote_amount - order.deposit_amount)}</dd>
           </dl>
-          <p style={{ margin: '16px 0 0', color: '#52645e', fontSize: 14, lineHeight: 1.8 }}>製造数量確定後、実際の完成数量に基づいて最終金額を確定し、前金を差し引いた残額を出荷前にご精算いただきます。</p>
+          <p style={{ margin: '16px 0 0', color: '#52645e', fontSize: 14, lineHeight: 1.8 }}>初回試作費5,000円（税別・税込5,500円）は別請求で先入金し、入金確認後に試作を開始します。試作のみで終了できます。製造へ進む場合は、製造着手金50％と出荷前精算金の計3回入金です。製造数量確定後、実際の完成数量に基づいて精算します。</p>
         </section>
 
         <section style={{ padding: 28, borderRadius: 16, background: '#fff', border: '1px solid #dbe3df', marginBottom: 20 }}>

@@ -6,7 +6,7 @@ const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => 
 /** Standalone document: no trackers, external assets, or customer values in scripts. */
 export function invoiceDocument(invoice: OemInvoice, nonce: string, cancelled = false, superseded = false): string {
   const s = invoice.snapshot, issuer = s.issuer
-  const title = s.stage === 'deposit' ? '前金請求書' : '残金請求書'
+  const title = s.stage === 'deposit' ? '製造着手金請求書' : '出荷前精算金請求書'
   const row = (name: string, value: number) => `<tr><th>${escape(name)}</th><td>${escape(yen(value))}</td></tr>`
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer"><title>${s.demo ? '【見本】' : ''}${title} ${escape(invoice.invoice_number)}</title>
   <style nonce="${nonce}">
@@ -17,7 +17,7 @@ export function invoiceDocument(invoice: OemInvoice, nonce: string, cancelled = 
   ${superseded ? '<p class="notice">変更・キャンセル精算が別途管理されています。この書面は元の請求履歴です。現在の振込額として使用せず、最新の精算内容を確認してください。</p>' : ''}
   <div class="top"><h1>${title}</h1><div class="meta">請求書番号：${escape(invoice.invoice_number)}<br>発行日：${escape(s.issuedDate)}<br>注文番号：${escape(s.orderNumber)}</div></div>
   <div class="parties"><div><p class="customer">${escape(s.companyName)} 御中</p><p>${escape(s.contactName)} 様</p></div><div class="issuer"><strong>${escape(issuer.name)}</strong><br>${escape(issuer.address)}<br>${escape(issuer.email)}${issuer.registrationNumber ? `<br>登録番号：${escape(issuer.registrationNumber)}` : ''}</div></div>
-  <p>下記のとおり${s.stage === 'deposit' ? '前金' : '残金'}をご請求申し上げます。</p>
+  <p>下記のとおり${s.stage === 'deposit' ? '製造着手金（正式見積額の50％）' : '出荷前精算金'}をご請求申し上げます。</p>
   <div class="amount"><span>今回のご請求額（税込）</span><strong>${escape(yen(s.amountDue))}</strong></div>
   <p><strong>お支払期限：${escape(s.dueDate)}</strong></p>
   <h2>ご注文内容</h2><div class="description">${escape(s.description)}</div>
@@ -27,7 +27,7 @@ export function invoiceDocument(invoice: OemInvoice, nonce: string, cancelled = 
   ${s.nonTaxable ? row('課税対象外', s.nonTaxable) : ''}
   ${row('合計（税込）', s.grossTotal)}
   ${s.stage === 'balance' ? row('前金入金済額（税込・控除）', -s.depositReceived) : ''}
-  <tr class="total"><th>${s.stage === 'deposit' ? '今回の前金（合計の50％）' : '今回の残金'}</th><td>${escape(yen(s.amountDue))}</td></tr>
+  <tr class="total"><th>${s.stage === 'deposit' ? '今回の製造着手金（合計の50％）' : '今回の出荷前精算金'}</th><td>${escape(yen(s.amountDue))}</td></tr>
   </tbody></table><p class="muted">税額は税率ごとの合計額に対して円未満切捨て。${s.stage === 'deposit' ? '前金の円未満は切捨て。残金は製造数量確定後に、入金済みの前金を差し引いてご案内します。' : '前金の入金記録に基づき控除しています。'}</p>
   <h2>お振込先</h2><div class="bank">${escape(issuer.bankName)}　${escape(issuer.branchName)}
   ${escape(issuer.accountType)}　${escape(issuer.accountNumber)}

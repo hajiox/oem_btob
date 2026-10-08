@@ -48,11 +48,11 @@ try {
 
   const curry = run(product('c0000001-0000-0000-0000-000000000001', 100, 'fixture curry'), [radio('packaging', 'standard', 0)], { 'q-packaging': 'o-packaging' })
   assert.equal(curry.error, undefined)
-  assert.deepEqual({ subtotal: curry.subtotal, offerFee: curry.offerFee, total: curry.total, quantity: curry.quantity }, { subtotal: 40000, offerFee: 5000, total: 51000, quantity: 400 })
+  assert.deepEqual({ subtotal: curry.subtotal, offerFee: curry.offerFee, total: curry.total, quantity: curry.quantity }, { subtotal: 40000, offerFee: 5000, total: 46000, quantity: 400 })
 
   const ramen = run(product('c0000001-0000-0000-0000-000000000002', 120, 'fixture ramen'), [radio('packaging', 'standard', 0)], { 'q-packaging': 'o-packaging' })
   assert.equal(ramen.error, undefined)
-  assert.deepEqual({ subtotal: ramen.subtotal, offerFee: ramen.offerFee, total: ramen.total, quantity: ramen.quantity, quantityUnit: ramen.quantityUnit }, { subtotal: 48000, offerFee: 5000, total: 59000, quantity: 400, quantityUnit: 'セット' })
+  assert.deepEqual({ subtotal: ramen.subtotal, offerFee: ramen.offerFee, total: ramen.total, quantity: ramen.quantity, quantityUnit: ramen.quantityUnit }, { subtotal: 48000, offerFee: 5000, total: 54000, quantity: 400, quantityUnit: 'セット' })
 
   const teaProduct = product('c0000001-0000-0000-0000-000000000006', 0, 'fixture tea')
   const teaQuestions = [
@@ -62,7 +62,7 @@ try {
   ]
   const tea = run(teaProduct, teaQuestions, { 'q-supply': 'o-supply', 'q-name': '桑の葉', 'q-plan': 'o-plan' })
   assert.equal(tea.error, undefined)
-  assert.deepEqual({ subtotal: tea.subtotal, offerFee: tea.offerFee, total: tea.total, quantity: tea.quantity, quantityUnit: tea.quantityUnit }, { subtotal: 250000, offerFee: 5000, total: 261000, quantity: 100, quantityUnit: '袋' })
+  assert.deepEqual({ subtotal: tea.subtotal, offerFee: tea.offerFee, total: tea.total, quantity: tea.quantity, quantityUnit: tea.quantityUnit }, { subtotal: 250000, offerFee: 5000, total: 256000, quantity: 100, quantityUnit: '袋' })
 
   assert.match(String(run(product('invalid', 100), [radio('x', 'x', 0)], { 'q-x': 'o-x' }).error), /商品を確認できません/)
   assert.match(String(run(product('c0000001-0000-0000-0000-000000000001', 100), [radio('x', 'x', 0)], { 'q-x': 'o-x', tampered: '999999' }).error), /現在の経路にない回答/)
@@ -71,14 +71,29 @@ try {
   const calculated = pricing.calculateOemQuoteTotals({ subtotal: 40000, offerFee: pricing.OEM_INITIAL_OFFER_FEE, shippingFee: validation.SHIPPING_PACKING_FEE })
   assert.equal(calculated.subtotal, 40000)
   assert.equal(calculated.offerFee, 5000)
-  assert.equal(calculated.total, 51000)
+  assert.equal(calculated.total, 46000)
+  assert.equal(calculated.trialTax, 500)
+  assert.equal(calculated.trialGross, 5500)
+  assert.equal(calculated.projectNetTotal, 51000)
   assert.equal(calculated.shippingFee, 6000)
-  assert.deepEqual(pricing.calculateOemQuoteTotals({ subtotal: 40000, offerFee: 0, shippingFee: 6000 }), { subtotal: 40000, offerFee: 0, shippingFee: 6000, total: 46000 })
+  assert.deepEqual(pricing.calculateOemQuoteTotals({ subtotal: 40000, offerFee: 0, shippingFee: 6000 }), { subtotal: 40000, offerFee: 0, shippingFee: 6000, total: 46000, trialTax: 0, trialGross: 0, projectNetTotal: 46000 })
+  for (const quote of [curry, ramen, tea]) {
+    assert.equal(quote.total, quote.subtotal + 6000)
+    assert.equal(quote.trialGross, 5500)
+    assert.equal(quote.projectNetTotal, quote.total + 5000)
+  }
+  const oldRows = [{ question: '商品小計(税抜)', answer: '¥40,000' }, { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: '¥6,000' }, { question: '試作・表示・簡易デザイン費(税抜・初回特典適用)', answer: '¥5,000' }]
+  const oldLead = { estimated_total_price: 51000, selected_options: oldRows }
+  assert.equal(pricing.getOemManufacturingEstimate(oldLead), 46000)
+  assert.equal(oldLead.estimated_total_price, 51000, 'historical estimate stays intact')
+  assert.equal(pricing.getOemManufacturingEstimate({ estimated_total_price: 51000, selected_options: [oldRows[2]] }), 46000)
+  assert.equal(pricing.getOemManufacturingEstimate({ estimated_total_price: 46000, selected_options: [{ question: '試作費（別途先入金・税抜・初回特典）', answer: '¥5,000' }] }), 46000, 'new separate trial must not be subtracted twice')
+  assert.equal(pricing.getOemManufacturingEstimate({ estimated_total_price: 46000, selected_options: null }), 46000)
   assert.match(read('src/components/OemQuoteResult.tsx'), /const unitCost = Math\.ceil\(productSubtotal \/ safeQuantity\)/)
   assert.match(read('src/components/InteractiveForm.tsx'), /const unitCost = Math\.ceil\(productSubtotal \/ \(oemQuantity \|\| 1\)\)/)
 
   const mail = loadTs('src/lib/oem-mail.ts')
-  const mailPayloads = await mail.buildOemMailPayloads({ pageId: validation.OEM_PAGE_ID, companyName: 'Fixture', contactName: 'Tester', email: 'fixture@example.invalid', phone: '', notes: '', estimatedTotalPrice: 51000, offerFee: 5000, selectedOptions: [{ question: 'OEM開発基本費', answer: '¥5,000' }, { question: '送料', answer: '¥6,000' }] })
+  const mailPayloads = await mail.buildOemMailPayloads({ pageId: validation.OEM_PAGE_ID, companyName: 'Fixture', contactName: 'Tester', email: 'fixture@example.invalid', phone: '', notes: '', estimatedTotalPrice: 46000, offerFee: 5000, selectedOptions: [{ question: '試作費（別途先入金・税抜・初回特典）', answer: '¥5,000' }, { question: '送料', answer: '¥6,000' }] })
   for (const payload of [mailPayloads.customer, mailPayloads.admin]) {
     assert.match(payload.html, /5,000/)
     assert.match(payload.html, /6,000/)

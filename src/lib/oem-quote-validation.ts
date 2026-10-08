@@ -25,7 +25,7 @@ export function validateContactInfo(contact: ContactInfo): string | null {
 }
 
 export type QuoteSnapshot = { product: Product; steps: (FormStep & { questions: (FormQuestion & { options: FormOption[] })[] })[] }
-export type QuoteValidation = { selectedOptions: Array<{ question: string; answer: string; type: string }>; subtotal: number; offerFee: number; total: number; quantity: number; quantityLabel: string; quantityUnit: string; conditionNote: string } | { error: string }
+export type QuoteValidation = { selectedOptions: Array<{ question: string; answer: string; type: string }>; subtotal: number; offerFee: number; total: number; trialTax: number; trialGross: number; projectNetTotal: number; quantity: number; quantityLabel: string; quantityUnit: string; conditionNote: string } | { error: string }
 const teaId = 'c0000001-0000-0000-0000-000000000006'
 const answerIds = (value: unknown): string[] => {
     if (Array.isArray(value)) return value.filter(v => typeof v === 'string')

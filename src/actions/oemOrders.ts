@@ -15,6 +15,7 @@ import {
 } from '@/lib/oem-orders'
 import { canAdvanceOemOrder, type OemOrderStatus } from '@/lib/oem-order-shared'
 import { getOemSettlementData } from './oemSettlements'
+import { getOemManufacturingEstimate } from '@/lib/oem-offer-pricing'
 
 type ActionResult = { success: boolean; error?: string; message?: string; order?: OemOrder; url?: string; mailWarning?: string }
 type AcceptState = { success: boolean; error?: string; orderNumber?: string }
@@ -35,7 +36,7 @@ async function addEvent(leadId: string, eventType: string, details: Record<strin
   if (error) throw new Error('発注履歴を保存できませんでした')
 }
 
-export async function getOemOrder(leadId: string): Promise<ActionResult & { acceptance?: Record<string, unknown> | null; defaultSpecification?: string }> {
+export async function getOemOrder(leadId: string): Promise<ActionResult & { acceptance?: Record<string, unknown> | null; defaultSpecification?: string; defaultManufacturingAmount?: number }> {
   try {
     await requireMailAdmin()
     const lead = await requireOemMailLead(leadId)
@@ -51,16 +52,19 @@ export async function getOemOrder(leadId: string): Promise<ActionResult & { acce
       if (result.error) throw result.error
       acceptance = result.data
     }
-    return { success: true, order: order as OemOrder | undefined, acceptance, defaultSpecification: caseData?.final_spec_revision || '' }
+    const { data: estimate, error: estimateError } = await adminClient.from('leads').select('selected_options,estimated_total_price').eq('id', lead.id).single()
+    if (estimateError || !estimate) throw estimateError || new Error('見積情報を取得できません')
+    return { success: true, order: order as OemOrder | undefined, acceptance, defaultSpecification: caseData?.final_spec_revision || '', defaultManufacturingAmount: getOemManufacturingEstimate(estimate) }
   } catch (error) { return failure(error, '正式発注情報を取得できませんでした') }
 }
 
-export async function issueOemOrder(leadId: string, input: { formalQuoteAmount: number; specification: string }): Promise<ActionResult> {
+export async function issueOemOrder(leadId: string, input: { formalQuoteAmount: number; specification: string; trialFeeSeparateConfirmed: boolean }): Promise<ActionResult> {
   try {
     const user = await requireMailAdmin()
     const lead = await requireOemMailLead(leadId)
     const amount = Number(input?.formalQuoteAmount)
     const specification = typeof input?.specification === 'string' ? input.specification.trim() : ''
+    if (input?.trialFeeSeparateConfirmed !== true) return { success: false, error: '試作費が製造見積に含まれていないことを確認してください' }
     if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) return { success: false, error: '正式見積額を1円〜1億円の整数で入力してください' }
     if (!specification || specification.length > 10000) return { success: false, error: '正式仕様を1〜10,000文字で入力してください' }
     const [{ data: current, error: currentError }, { data: leadDetail, error: leadError }] = await Promise.all([
@@ -81,6 +85,8 @@ export async function issueOemOrder(leadId: string, input: { formalQuoteAmount: 
       balanceBeforeFinalAdjustment: amount - deposit,
       specification,
       originalEstimate: leadDetail.estimated_total_price,
+      manufacturingOnly: true,
+      trialFeeBilledSeparately: true,
       selectedOptions: leadDetail.selected_options,
       customer: { companyName: lead.company_name, contactName: lead.contact_name },
       revision,

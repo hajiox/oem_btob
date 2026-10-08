@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { OEM_SPECIAL_INGREDIENT_NOTE } from '@/lib/oem-offer-pricing'
+import { OEM_SPECIAL_INGREDIENT_NOTE, calculateOemQuoteTotals } from '@/lib/oem-offer-pricing'
 
 export type OemQuoteSummaryItem = {
   question: string
@@ -31,7 +31,7 @@ export type OemQuoteResultProps = {
 }
 
 const yen = (amount: number) => `¥${Math.round(amount).toLocaleString('ja-JP')}`
-const INITIAL_OFFER_ESTIMATE_NOTE = '初回特典適用時の概算です。1企業（個人は1名）につき1回限り、試作2回まで5,000円、原材料表示・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。特典対象外では通常料金が適用され、追加試作は1回3,000円（税別）です。原料・製造費・送料は無料ではありません。'
+const INITIAL_OFFER_ESTIMATE_NOTE = '初回特典は1企業（個人は1名）につき1回限り。試作2回まで5,000円（税別）、原材料表示作成・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。特典対象外では通常料金が適用され、追加試作は1回3,000円（税別）です。原料・製造費・送料は無料ではありません。'
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -63,6 +63,7 @@ export default function OemQuoteResult({
   const safeQuantity = quantity > 0 ? quantity : 1
   const unitCost = Math.ceil(productSubtotal / safeQuantity)
   const unitCostWithShipping = Math.ceil(total / safeQuantity)
+  const { trialTax, trialGross } = calculateOemQuoteTotals({ subtotal: productSubtotal, offerFee, shippingFee })
   const isEstimate = /概算|目安|参考|見積/.test(conditionNote)
   const conditionText = conditionNote || '正式な仕様確認後に確定する概算です。'
 
@@ -88,17 +89,23 @@ export default function OemQuoteResult({
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.75)', fontSize: 16 }}>{quantityLabel}</p>
       </header>
 
-      <div style={{ padding: 20, borderRadius: 16, background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(236,72,153,0.12))', border: '1px solid rgba(129,140,248,0.3)' }}>
-        <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)', fontSize: 14 }}>概算合計（税抜）</p>
-        <p style={{ margin: '2px 0 2px', fontSize: 'clamp(32px, 9vw, 46px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em' }}>{yen(total)}</p>
-        <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>送料・発送梱包手数料込み／消費税別</p>
+      <div data-testid="quote-trial-prepayment" style={{ marginBottom: 16, padding: 20, borderRadius: 16, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)' }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 19 }}>① まずは試作費を先入金</h3>
+        <p style={{ margin: 0, fontSize: 30, fontWeight: 800 }}>{yen(trialGross)}<small style={{ fontSize: 16 }}>（税込）</small></p>
+        <p style={{ margin: '6px 0 0', fontSize: 15 }}>試作費 {yen(offerFee)}（税別）＋消費税10％ {yen(trialTax)}</p>
+        <p style={{ margin: '10px 0 0' }}>ご相談後に試作内容と請求をご案内し、入金確認後に試作を開始します。試作だけで終了しても構いません。製造発注の義務はありません。</p>
         <p style={{ margin: '10px 0 0', color: '#fde68a', fontSize: 14 }}>{INITIAL_OFFER_ESTIMATE_NOTE}</p>
         <p style={{ margin: '8px 0 0', color: '#fde68a', fontSize: 14 }}>{OEM_SPECIAL_INGREDIENT_NOTE}</p>
+      </div>
+      <div style={{ padding: 20, borderRadius: 16, background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(236,72,153,0.12))', border: '1px solid rgba(129,140,248,0.3)' }}>
+        <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)', fontSize: 14 }}>製造に進む場合の概算合計（税抜・試作費別）</p>
+        <p style={{ margin: '2px 0 2px', fontSize: 'clamp(32px, 9vw, 46px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em' }}>{yen(total)}</p>
+        <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>送料・発送梱包手数料込み／消費税別</p>
+        <p style={{ margin: '10px 0 0', color: '#e0e7ff', fontSize: 15 }}>② 正式発注後に製造代金の50％を着手金として入金。③ 完成数量確定後、着手金を差し引いた精算金を出荷前に入金。試作費はこの製造見積に含めず、二重に請求しません。税額は正式請求書の明細ごとに確定します。</p>
         <div data-testid="quote-order-breakdown" style={{ marginTop: 16 }}>
           <div style={rowStyle}><span>商品小計（税別）</span><strong>{yen(productSubtotal)}</strong></div>
-          <div style={rowStyle}><span>試作・表示・簡易デザイン<br /><small>初回特典適用・税別</small></span><strong>{yen(offerFee)}</strong></div>
           <div style={rowStyle}><span>送料・発送梱包手数料<br /><small>税別・1注文につき</small></span><strong style={{ whiteSpace: 'nowrap' }}>{yen(shippingFee)}</strong></div>
-          <div style={{ ...rowStyle, borderBottom: 0, paddingBottom: 0, fontWeight: 800 }}><span>概算合計（税別）</span><strong>{yen(total)}</strong></div>
+          <div style={{ ...rowStyle, borderBottom: 0, paddingBottom: 0, fontWeight: 800 }}><span>製造概算合計（税別）</span><strong>{yen(total)}</strong></div>
         </div>
         <button type="button" onClick={onConsult} style={{ width: '100%', marginTop: 20, padding: '14px 16px', border: 0, borderRadius: 999, background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 24px rgba(16,185,129,0.25)' }}>
           この内容で相談する
@@ -115,7 +122,7 @@ export default function OemQuoteResult({
           {isTea ? ' お茶は原料のご支給が必須です。' : ''}
           {isRamen ? ' ラーメンは1セット（2食入り）単位での表示です。' : ''}
         </p>
-        <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>表示価格はすべて税抜です。販売シミュレーションの売価には送料・その他費用を含みません。</p>
+        <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>「税込」と明記した試作先入金額以外は税抜です。販売シミュレーションの売価には送料・その他費用を含みません。</p>
       </details>
 
       <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -132,8 +139,8 @@ export default function OemQuoteResult({
         <div style={{ marginTop: 12 }}>
           {unitBreakdown.map((item, index) => <div key={`${item.label}-${index}`} style={rowStyle}><span style={{ overflowWrap: 'anywhere' }}>{item.label}</span><strong>{yen(item.amount)}</strong></div>)}
           <div style={rowStyle}><span>1{quantityUnit}あたり（送料等別）</span><strong>{yen(unitCost)}</strong></div>
-          <div style={{ ...rowStyle, borderBottom: 0 }}><span>1{quantityUnit}あたり（初回費用・送料込み参考）</span><strong>{yen(unitCostWithShipping)}</strong></div>
-          <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>初回費用と送料を1{quantityUnit}に按分すると{yen((offerFee + shippingFee) / safeQuantity)}です。税込売価や販売手数料などは別途ご検討ください。</p>
+          <div style={{ ...rowStyle, borderBottom: 0 }}><span>1{quantityUnit}あたり（送料込み・試作費別）</span><strong>{yen(unitCostWithShipping)}</strong></div>
+          <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>送料を1{quantityUnit}に按分すると{yen(shippingFee / safeQuantity)}です。別請求の試作費、税込売価や販売手数料などは別途ご検討ください。</p>
         </div>
       </details>
 

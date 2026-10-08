@@ -21,6 +21,11 @@
 .offerHeader > span + span { border-left-color: rgba(255,255,255,.25); }
 .offerRow:not(.offerHeader) > span:last-child { color: #9b2c20; font-weight: 800; }
 .offerTotal { margin-top: 18px !important; color: #5b4313; }
+.offerSteps { margin-top: 22px; padding: 18px 20px; border-radius: 10px; background: rgba(255,255,255,.7); border: 1px solid #eadfbc; }
+.offerSteps h3 { margin: 0 0 8px; color: #5b4313; }
+.offerSteps ol { margin: 0; padding-left: 1.4em; }
+.offerSteps li, .offerSteps p { font-size: 15px; line-height: 1.8; }
+.offerSteps p { margin: 10px 0 0; color: #475569; }
 .headingLine { display: block; }
 .phrase { display: inline-block; }
 .intro h1 { color: #254c3c; margin-bottom: 24px; letter-spacing: .015em; }

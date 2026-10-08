@@ -16,6 +16,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
   const [order, setOrder] = useState<OemOrder | null>(null)
   const [acceptance, setAcceptance] = useState<Record<string, unknown> | null>(null)
   const [amount, setAmount] = useState(String(estimatedTotalPrice || ''))
+  const [trialFeeSeparateConfirmed, setTrialFeeSeparateConfirmed] = useState(false)
   const [specification, setSpecification] = useState('')
   const [message, setMessage] = useState('')
   const [issuedUrl, setIssuedUrl] = useState('')
@@ -29,6 +30,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     const result = await getOemOrder(leadId)
     if (result.success) {
       setOrder(result.order || null); setAcceptance(result.acceptance || null)
+      if (!result.order && result.defaultManufacturingAmount != null) setAmount(previous => previous === String(estimatedTotalPrice || '') ? String(result.defaultManufacturingAmount) : previous)
       if (result.defaultSpecification) setSpecification(previous => previous || result.defaultSpecification || '')
     } else setMessage(result.error || '正式発注情報を取得できませんでした')
     setLoading(false)
@@ -39,6 +41,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
       if (!active) return
       if (result.success) {
         setOrder(result.order || null); setAcceptance(result.acceptance || null)
+        if (!result.order && result.defaultManufacturingAmount != null) setAmount(previous => previous === String(estimatedTotalPrice || '') ? String(result.defaultManufacturingAmount) : previous)
         if (result.defaultSpecification) setSpecification(previous => previous || result.defaultSpecification || '')
         setMessage('')
       } else setMessage(result.error || '正式発注情報を取得できませんでした')
@@ -49,7 +52,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
 
   const issue = () => startTransition(async () => {
     if (!window.confirm('表示中の正式見積・仕様・規約を固定し、お客様へ正式発注メールを送信します。よろしいですか？')) return
-    const result = await issueOemOrder(leadId, { formalQuoteAmount: Number(amount), specification })
+    const result = await issueOemOrder(leadId, { formalQuoteAmount: Number(amount), specification, trialFeeSeparateConfirmed })
     setMessage(result.error || result.mailWarning || result.message || '')
     if (result.url) setIssuedUrl(result.url)
     if (result.success) { await reload(); window.dispatchEvent(new Event(PAYMENT_CHANGED)) }
@@ -70,16 +73,17 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
 
   return <div style={{ marginTop: 28, borderTop: '1px solid var(--admin-border)', paddingTop: 24 }} onClick={event => event.stopPropagation()}>
     <h4 style={{ fontSize: 17, color: 'var(--admin-text)', marginBottom: 8 }}>正式発注・規約同意</h4>
-    <p style={{ margin: '0 0 16px', color: 'var(--admin-text-muted)', fontSize: 14 }}>お客様が専用ページで規約に同意するまで、前金確認以降には進めません。</p>
+    <p style={{ margin: '0 0 16px', color: 'var(--admin-text-muted)', fontSize: 14 }}>試作費5,000円（税別・税込5,500円）は別請求の先入金です。入金確認後に試作を開始できます。製造へ進む場合は製造着手金50％、出荷前精算金を加えた計3回入金です。</p>
     {loading && !order ? <p>読み込み中...</p> : !order ? <div style={cardStyle}>
       <label style={labelStyle}>正式見積額（税別）<input type="number" min="1" max="100000000" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} /></label>
       <label style={labelStyle}>正式な商品仕様<textarea value={specification} onChange={e => setSpecification(e.target.value)} maxLength={10000} style={{ ...inputStyle, minHeight: 130, resize: 'vertical' }} /></label>
-      <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>発行時点の正式見積・仕様・規約版が固定保存されます。前金は正式見積額の50％です。</p>
-      <button type="button" onClick={issue} disabled={pending} style={primaryButton}>{pending ? '発行中...' : '正式発注を発行してメール送信'}</button>
+      <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>発行時点の製造見積・仕様・規約版が固定保存されます。製造着手金は製造見積額の50％です。試作費5,000円（税別）は別請求です。</p>
+      <label style={{ ...labelStyle, display: 'flex', gap: 8, alignItems: 'flex-start' }}><input type="checkbox" checked={trialFeeSeparateConfirmed} onChange={e => setTrialFeeSeparateConfirmed(e.target.checked)} /> 試作費5,000円（税別・税込5,500円）は製造見積に含めず、別請求であることを確認しました。</label>
+      <button type="button" onClick={issue} disabled={pending || !trialFeeSeparateConfirmed} style={primaryButton}>{pending ? '発行中...' : '正式発注を発行してメール送信'}</button>
     </div> : <div style={cardStyle}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}><strong>{order.order_number}</strong><span style={badgeStyle}>{OEM_ORDER_STATUS_LABELS[order.status]}</span></div>
       <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, fontSize: 14 }}>
-        <span>正式見積（税別）：¥{order.formal_quote_amount.toLocaleString()}</span><span>前金（税別）：¥{order.deposit_amount.toLocaleString()}</span><span>規約版：{order.terms_version}</span>
+        <span>製造見積（税別）：¥{order.formal_quote_amount.toLocaleString()}</span><span>製造着手金（税別）：¥{order.deposit_amount.toLocaleString()}</span><span>規約版：{order.terms_version}</span>
       </div>
       <details style={{ marginTop: 14 }}><summary style={{ cursor: 'pointer' }}>固定済みの商品仕様</summary><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{order.specification}</p></details>
       {order.status === 'issued' && <div style={{ marginTop: 16 }}>
@@ -99,8 +103,9 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
           <div style={{ marginTop: 16 }}>
             <label style={labelStyle}>正式見積額（税別）<input type="number" min="1" max="100000000" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} /></label>
             <label style={labelStyle}>正式な商品仕様<textarea value={specification} onChange={e => setSpecification(e.target.value)} maxLength={10000} style={{ ...inputStyle, minHeight: 130 }} /></label>
-            <p style={{ fontSize: 13 }}>新しい発注として発行します。旧発注の精算・入金履歴は引き継がず保存されます。</p>
-            <button type="button" onClick={issue} disabled={pending} style={primaryButton}>改訂版を発行してメール送信</button>
+            <p style={{ fontSize: 13 }}>新しい発注として発行します。旧発注の精算・入金履歴は引き継がず保存されます。試作費5,000円（税別）は別請求です。</p>
+            <label style={{ ...labelStyle, display: 'flex', gap: 8, alignItems: 'flex-start' }}><input type="checkbox" checked={trialFeeSeparateConfirmed} onChange={e => setTrialFeeSeparateConfirmed(e.target.checked)} /> 試作費5,000円（税別・税込5,500円）は製造見積に含めず、別請求であることを確認しました。</label>
+            <button type="button" onClick={issue} disabled={pending || !trialFeeSeparateConfirmed} style={primaryButton}>改訂版を発行してメール送信</button>
           </div>
         </details> : <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>キャンセル精算が完了するまで、改訂版の発行を保留します。</p>}
       </div>}

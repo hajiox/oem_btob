@@ -41,7 +41,8 @@ function chain(result) {
   const db = { from(table) { if (table === 'pages') return chain({ data: pages, error: null }); if (table === 'oem_mail_deliveries') return deliveryTable; return chain({ data: null, error: null }) }, rpc: async () => ({ data: claim ? [claim] : [], error: null }) }
   const fakeResend = { Resend: class { constructor() {} get emails() { return { send: async (payload, options) => { sends.push({ payload, options }); return { data: { id: 'provider-1' }, error: null } } } } } }
   process.env.RESEND_API_KEY = 'mock-only'
-  const mail = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: db }, resend: fakeResend })
+  const pricing = load('src/lib/oem-offer-pricing.ts', {})
+  const mail = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: db }, '@/lib/oem-offer-pricing': pricing, resend: fakeResend })
   const payloads = await mail.buildOemMailPayloads({ pageId: 'page', companyName: '<会社>', contactName: '担当&名', email: 'buyer@example.com', phone: '', notes: '<script>x</script>', estimatedTotalPrice: 12000, selectedOptions: [{ question: '仕様', answer: '<bad>' }] })
   assert(payloads.customer.html.includes('&lt;会社&gt;') && payloads.customer.html.includes('&lt;script&gt;x&lt;/script&gt;'), 'mail HTML must escape user values')
   assert.equal(payloads.customer.replyTo, 'from@example.com'); assert.equal(payloads.admin.replyTo, 'buyer@example.com')
@@ -64,7 +65,7 @@ function chain(result) {
     }
     const localDb = { rpc: async () => ({ data: [claim], error: null }), from: () => localDelivery }
     const sender = { Resend: class { get emails() { return { send: async () => outcome.throw ? (() => { throw new Error('network') })() : { data: null, error: outcome.error } } } } }
-    const m = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: localDb }, resend: sender })
+    const m = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: localDb }, '@/lib/oem-offer-pricing': pricing, resend: sender })
     await m.dispatchOemMail('delivery-1')
     assert.equal(localUpdates[0].status, outcome.error?.name === 'validation_error' ? 'failed' : 'unknown')
   }
@@ -77,7 +78,7 @@ function chain(result) {
     },
   }
   const noSenderDb = { rpc: async () => ({ data: [claim], error: null }), from: () => noSenderDelivery }
-  const noSender = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: noSenderDb }, resend: fakeResend }); await noSender.dispatchOemMail('delivery-1'); assert.equal(noSenderUpdates[0].status, 'failed'); assert.equal(noSenderUpdates[0].error_code, 'sender_not_configured')
+  const noSender = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: noSenderDb }, '@/lib/oem-offer-pricing': pricing, resend: fakeResend }); await noSender.dispatchOemMail('delivery-1'); assert.equal(noSenderUpdates[0].status, 'failed'); assert.equal(noSenderUpdates[0].error_code, 'sender_not_configured')
 
   // Admin-only operations must fail closed, while retry converts operational
   // failures to its stable user-facing result.
@@ -94,6 +95,6 @@ function chain(result) {
 
   // The claim RPC is the concurrency boundary: a no-row claim must not send/update.
   const emptyDb = { rpc: async () => ({ data: [], error: null }), from: () => { throw new Error('must not query/update') } }
-  const empty = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: emptyDb }, resend: fakeResend }); await empty.dispatchOemMail('already-claimed')
+  const empty = load('src/lib/oem-mail.ts', { '@/lib/supabase/admin': { adminClient: emptyDb }, '@/lib/oem-offer-pricing': pricing, resend: fakeResend }); await empty.dispatchOemMail('already-claimed')
   console.log('OEM mail checks: PASS (escaping, claim key, provider states, no-row concurrency)')
 })().catch(error => { console.error('OEM mail checks: FAIL'); console.error(error.stack || error); process.exitCode = 1 })

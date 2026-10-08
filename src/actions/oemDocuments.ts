@@ -41,6 +41,9 @@ export async function issueOemDocument(orderId: string, type: OemDocumentType, r
 }
 
 type CsvOrder = { order_number: string; leads: { company_name: string; page_id: string } }
+type TrialInvoiceRow = { invoice_number?: unknown; snapshot?: unknown; issued_at?: unknown; lifecycle_status?: unknown; oem_trial_prepayments?: { status?: unknown } | Array<{ status?: unknown }>; leads?: { company_name?: unknown } | Array<{ company_name?: unknown }> }
+type TrialReceiptRow = { id: string; amount: number; paid_on: string; oem_trial_prepayments?: { gross_amount?: number; lead_id?: string; oem_trial_prepayment_invoices?: { invoice_number?: string } | Array<{ invoice_number?: string }>; leads?: { company_name?: string } | Array<{ company_name?: string }> } | Array<{ gross_amount?: number; lead_id?: string; oem_trial_prepayment_invoices?: { invoice_number?: string } | Array<{ invoice_number?: string }>; leads?: { company_name?: string } | Array<{ company_name?: string }> }> }
+function one<T>(value: T | T[] | null | undefined): T | undefined { return Array.isArray(value) ? value[0] : value || undefined }
 export async function exportOemAccountantCsv(from?: string, to?: string): Promise<{ success: boolean; error?: string; csv?: string; status?: number }> {
   try {
     await requireMailAdmin()
@@ -71,6 +74,30 @@ export async function exportOemAccountantCsv(from?: string, to?: string): Promis
       const result = await query; if (result.error) throw result.error
       for (const cash of result.data || []) { const order = cash.oem_orders as unknown as CsvOrder; rows.push([cash.direction === 'refund' ? '精算返金' : '精算入金', `cash:${cash.id}`, order.order_number, order.leads.company_name, String(cash.happened_on), String(cash.amount), '精算台帳', cash.direction === 'refund' ? '返金' : '確認済み']) }
       if (!result.data || result.data.length < page) break; cashOffset += page
+    }
+    let trialInvoiceOffset = 0
+    while (true) {
+      let query = adminClient.from('oem_trial_prepayment_invoices').select('id,invoice_number,snapshot,issued_at,lifecycle_status,oem_trial_prepayments!inner(status),leads!inner(company_name,page_id)').eq('leads.page_id', OEM_ACCOUNTING_PAGE).order('issued_at', { ascending: true }).order('id', { ascending: true }).range(trialInvoiceOffset, trialInvoiceOffset + page - 1)
+      if (since) query = query.gte('issued_at', since); if (until) query = query.lt('issued_at', until)
+      const result = await query; if (result.error) throw result.error
+      for (const invoice of (result.data || []) as TrialInvoiceRow[]) {
+        const snapshot = (invoice.snapshot && typeof invoice.snapshot === 'object' ? invoice.snapshot : {}) as Record<string, unknown>
+        const lead = one(invoice.leads)
+        const prepayment = one(invoice.oem_trial_prepayments)
+        rows.push(['試作費請求', String(invoice.invoice_number || snapshot.invoiceNumber || ''), '', String(snapshot.companyName || lead?.company_name || ''), String(snapshot.issuedDate || invoice.issued_at || ''), String(snapshot.grossAmount || ''), 'trial', prepayment?.status === 'void' ? 'void' : String(invoice.lifecycle_status || 'active')])
+      }
+      if (!result.data || result.data.length < page) break; trialInvoiceOffset += page
+    }
+    let trialReceiptOffset = 0
+    while (true) {
+      let query = adminClient.from('oem_trial_prepayment_receipts').select('id,amount,paid_on,oem_trial_prepayments!inner(gross_amount,lead_id,oem_trial_prepayment_invoices(invoice_number),leads!inner(company_name,page_id))').eq('oem_trial_prepayments.leads.page_id', OEM_ACCOUNTING_PAGE).order('paid_on', { ascending: true }).order('id', { ascending: true }).range(trialReceiptOffset, trialReceiptOffset + page - 1)
+      if (start) query = query.gte('paid_on', start); if (end) query = query.lte('paid_on', end)
+      const result = await query; if (result.error) throw result.error
+      for (const receipt of (result.data || []) as TrialReceiptRow[]) {
+        const prepayment = one(receipt.oem_trial_prepayments); const lead = one(prepayment?.leads)
+        rows.push(['試作費銀行入金', `trial-receipt:${receipt.id}`, '', String(lead?.company_name || ''), String(receipt.paid_on), String(receipt.amount), 'trial', '確認済み'])
+      }
+      if (!result.data || result.data.length < page) break; trialReceiptOffset += page
     }
     return { success: true, csv: accountantCsv(rows) }
   } catch (error) { return { success: false, error: error instanceof MailError ? error.message : '会計CSVを出力できませんでした。', status: error instanceof MailError ? error.status : 500 } }

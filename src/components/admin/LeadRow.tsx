@@ -18,6 +18,7 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
     const options = Array.isArray(lead.selected_options)
         ? lead.selected_options as Array<{ question?: string; answer?: string }>
         : null
+    const hasSeparatedManufacturingEstimate = options?.some(option => option.question === '製造概算お見積り金額(税抜・試作費別)') === true
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -33,9 +34,9 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
 
     return (
         <React.Fragment>
-            <tr 
-                style={{ 
-                    borderBottom: '1px solid var(--admin-border)', 
+            <tr
+                style={{
+                    borderBottom: '1px solid var(--admin-border)',
                     cursor: 'pointer',
                     background: isExpanded ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
                     transition: 'all 0.1s ease',
@@ -65,7 +66,10 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                     </div>
                 </td>
                 <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '800', color: 'var(--admin-text)' }}>
-                    ¥{(lead.estimated_total_price || 0).toLocaleString()}
+                    <div>¥{(lead.estimated_total_price || 0).toLocaleString()}</div>
+                    {lead.page_id === OEM_PAGE_ID && <small style={{ display: 'block', marginTop: 4, fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>
+                        {hasSeparatedManufacturingEstimate ? '製造概算（税別・試作費別）' : '保存時点のOEM見積（内訳を確認）'}
+                    </small>}
                 </td>
                 <td style={{ padding: '16px 24px' }} onClick={(e) => e.stopPropagation()}>
                     <LeadStatusSelect leadId={lead.id} currentStatus={lead.status} onChanged={onChanged} />
@@ -109,9 +113,9 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                     </h4>
                                 </div>
                                 {options && options.length > 0 ? (
-                                    <div style={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: 'repeat(2, 1fr)', 
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(2, 1fr)',
                                         gap: '24px',
                                         background: 'var(--admin-card)',
                                         border: '1px solid var(--admin-border)',
@@ -119,9 +123,9 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                         padding: '24px'
                                     }}>
                                         {options.map((opt, idx) => (
-                                            <div key={idx} style={{ 
-                                                display: 'flex', 
-                                                flexDirection: 'column', 
+                                            <div key={idx} style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
                                                 gap: '6px',
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
                                                 paddingBottom: '12px'
@@ -148,10 +152,10 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                         連絡先・備考
                                     </h4>
                                 </div>
-                                <div style={{ 
-                                    background: 'var(--admin-card)', 
-                                    border: '1px solid var(--admin-border)', 
-                                    borderRadius: '4px', 
+                                <div style={{
+                                    background: 'var(--admin-card)',
+                                    border: '1px solid var(--admin-border)',
+                                    borderRadius: '4px',
                                     padding: '24px',
                                     display: 'flex',
                                     flexDirection: 'column',

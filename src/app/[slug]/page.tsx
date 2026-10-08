@@ -86,7 +86,7 @@ function StoreSection() {
                 style={{ objectFit: 'cover' }}
               />
             </div>
-            
+
             {/* 店舗情報 */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <h3 style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.2em', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -95,7 +95,7 @@ function StoreSection() {
               <p style={{ fontSize: '20px', fontWeight: 600, color: '#111', marginBottom: '32px', letterSpacing: '0.05em' }}>
                 会津ブランド館
               </p>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '14px', color: '#333', letterSpacing: '0.05em', lineHeight: 1.6 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
                   <MapPin size={18} style={{ color: '#ccc', flexShrink: 0, marginTop: '2px' }} />
@@ -317,8 +317,8 @@ export default async function HomePage({ params, searchParams }: { params: Promi
                       width: '100%',
                       borderRadius: section.section_type === 'hero' ? '32px' : '24px',
                       overflow: 'hidden',
-                      boxShadow: section.section_type === 'hero' 
-                        ? '0 30px 60px -12px rgba(0,0,0,0.3)' 
+                      boxShadow: section.section_type === 'hero'
+                        ? '0 30px 60px -12px rgba(0,0,0,0.3)'
                         : '0 25px 50px -12px rgba(0,0,0,0.25)',
                       transition: 'transform 0.3s ease',
                     }}
@@ -394,7 +394,8 @@ export default async function HomePage({ params, searchParams }: { params: Promi
         {currentPageId === SAMPLE_PAGE_ID && (
           <aside aria-labelledby="oem-payment-title" data-testid="oem-payment-notice" style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto 28px', padding: '20px 24px', border: '1px solid rgba(165,180,252,0.3)', borderRadius: 12, background: 'rgba(15,23,42,0.55)', color: '#e2e8f0', textAlign: 'left', overflowWrap: 'anywhere' }}>
             <h3 id="oem-payment-title" style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#fff' }}>お支払いについて</h3>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.9 }}>正式発注後に、お見積金額の<strong>50％を前金</strong>としてお支払いいただきます。ご入金確認後に製造を開始し、残額は製造数量の確定後、<strong>出荷前にご精算</strong>いただきます。</p>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.9 }}><strong>試作着手前：</strong>初回試作費5,000円（税別・税込5,500円）を先にお支払いいただき、入金確認後に試作を開始します。試作のみで終了でき、製造発注の義務はありません。</p>
+            <p style={{ margin: '10px 0 0', fontSize: 16, lineHeight: 1.9 }}><strong>製造に進む場合：</strong>製造代金の50％を着手金としてお支払いいただき、完成数量確定後に残額を<strong>出荷前にご精算</strong>いただきます。通常は3回のお支払いです。</p>
             <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.8, color: '#c7d2fe' }}>※サイトの概算確認・ご相談だけで、お支払いが発生することはありません。</p>
           </aside>
         )}

@@ -16,7 +16,7 @@ export async function buildOemMailPayloads(input: {
     const paragraphs = (text: string) => escapeHtml(text).split('\n').map(line => `<p>${line}</p>`).join('')
     const specialIngredientNotice = paragraphs(OEM_SPECIAL_INGREDIENT_NOTE)
     const answers = (Array.isArray(input.selectedOptions) ? input.selectedOptions : []).map(opt => `<li><strong>${escapeHtml(opt.question ?? opt.question_text ?? opt.step_title)}:</strong> ${escapeHtml(opt.answer ?? opt.selected_label)}</li>`).join('')
-    const details = `<h3>概算お見積り内容</h3><p>概算総額：¥${input.estimatedTotalPrice.toLocaleString()}（税別）</p><p>初回特典適用時の概算です。1企業（個人は1名）につき1回限り、試作2回まで5,000円、原材料表示・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。特典対象外では通常料金が適用され、追加試作は1回3,000円（税別）です。原料・製造費・送料は無料ではありません。</p><p>販売シミュレーションの粗利率・粗利は商品原価ベースの参考値で、試作・表示・デザインの初回費用、送料・発送梱包手数料、販売手数料、消費税などを含みません。</p><ul>${answers}</ul><p>ご要望：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p>`
+    const details = `<h3>概算お見積り内容</h3><p>製造概算：¥${input.estimatedTotalPrice.toLocaleString()}（税別・試作費別）</p><p>初回特典は1企業（個人は1名）につき1回限りです。試作費5,000円（税別・税込5,500円）は試作着手前に全額先入金いただき、入金確認後に試作を開始します。試作は2回までで、試作のみで終了でき、製造発注の義務はありません。原材料表示・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。初回特典対象外の場合は通常料金が適用されます。製造へ進む場合は、試作費とは別に製造代金50％の着手金と、完成数量確定後の出荷前精算金が発生します。試作費は製造代金に二重計上しません。追加試作は1回3,000円（税別）です。${OEM_SPECIAL_INGREDIENT_NOTE}。原料・製造費・送料は特典対象外です。</p><p>販売シミュレーションの粗利率・粗利は商品原価ベースの参考値で、試作・表示・デザインの初回費用、送料・発送梱包手数料、販売手数料、消費税などを含みません。</p><ul>${answers}</ul><p>ご要望：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p>`
     return {
         customer: {
             from: `${page.email_from_name || 'OEM自動見積り'} <${fromAddress}>`, to: input.email,

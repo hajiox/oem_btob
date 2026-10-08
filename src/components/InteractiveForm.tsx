@@ -12,7 +12,7 @@ import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
 import { trackOemEvent } from '@/lib/oem-analytics'
-import { calculateOemQuoteTotals, OEM_INITIAL_OFFER_FEE } from '@/lib/oem-offer-pricing'
+import { calculateOemQuoteTotals, OEM_INITIAL_OFFER_FEE, OEM_INITIAL_TRIAL_GROSS } from '@/lib/oem-offer-pricing'
 
 // 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
 const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'いいえ', '否', 'none', 'null', 'n/a']
@@ -417,15 +417,15 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
         try {
         const unitCost = Math.ceil(productSubtotal / (oemQuantity || 1))
         const selectedProd = products.find(p => p.id === selectedProduct)
-        
+
         const selectedOptionsDetails = [
             { question: 'OEM製造数', answer: quantityLabel, type: 'number' },
             { question: '商品', answer: selectedProd?.name || '', type: 'text' },
-            { question: '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
+            { question: isBtoBQuotePage ? '製造概算お見積り金額(税抜・試作費別)' : '概算お見積り金額(税抜)', answer: `¥${estimatedPrice.toLocaleString()}`, type: 'number' },
             { question: `1${quantityUnit}あたり仕入原価(税抜)`, answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
             ...(shippingPackingFee ? [
                 { question: '商品小計(税抜)', answer: `¥${productSubtotal.toLocaleString()}`, type: 'number' },
-                ...(oemOfferFee ? [{ question: 'OEM開発基本費（初回特典対象・概算）', answer: `¥${oemOfferFee.toLocaleString()}`, type: 'number' }] : []),
+                ...(oemOfferFee ? [{ question: '試作費（別途先入金・税抜・初回特典）', answer: `¥${oemOfferFee.toLocaleString()}`, type: 'number' }, { question: '試作費の先入金額（税込・初回特典）', answer: `¥${OEM_INITIAL_TRIAL_GROSS.toLocaleString()}`, type: 'number' }] : []),
                 { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: `¥${shippingPackingFee.toLocaleString()}`, type: 'number' },
             ] : []),
             ...(isFixedLotProduct ? [{ question: '見積条件', answer: fixedLotConditionNote, type: 'text' }] : []),
@@ -491,11 +491,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                 const Choice = isInstantChoice ? 'button' : 'label'
                 const hasImages = q.options.some((o: any) => packageSamplePhoto(pageId, o.id, o.image_url))
                 return (
-                    <div style={{ 
-                        display: 'grid', 
+                    <div style={{
+                        display: 'grid',
                         gridTemplateColumns: isMobile ? '1fr' : (hasImages && isFixedLotProduct ? `repeat(${Math.min(q.options.length, 3)}, minmax(0, 1fr))` : hasImages ? 'repeat(auto-fill, minmax(160px, 1fr))' : 'repeat(auto-fill, minmax(240px, 1fr))'),
-                        gap: '12px', 
-                        marginTop: '16px' 
+                        gap: '12px',
+                        marginTop: '16px'
                     }}>
                         {q.options.map((opt: any) => {
                             const isSelected = val === opt.id
@@ -522,11 +522,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                 )
             }
             case 'checkbox':
-                return (<div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', 
-                    gap: '12px', 
-                    marginTop: '16px' 
+                return (<div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))',
+                    gap: '12px',
+                    marginTop: '16px'
                 }}>
                     {q.options.map((opt: any) => { const checked = Array.isArray(val) && val.includes(opt.id); return (<label key={opt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '16px', border: checked ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: checked ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', cursor: 'pointer' }}><div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><input type="checkbox" value={opt.id} checked={checked} onChange={() => handleAnswerChange(q.id, opt.id, 'checkbox')} style={{ width: '16px', height: '16px', accentColor: '#818cf8' }} /><div><span style={{ fontWeight: 600, color: '#fff', fontSize: '15px' }}>{opt.label}</span>{opt.description && <span style={{ display: 'block', fontSize: '11.5px', color: 'rgba(255,255,255,0.7)', marginTop: '4px', whiteSpace: 'pre-line' }}>{opt.description}</span>}</div></div>{priceLabel(opt) && <span style={{ fontSize: '13px', fontWeight: 700, color: opt.price_modifier_type === 'percentage' ? '#fbbf24' : '#818cf8' }}>{priceLabel(opt)}</span>}</label>) })}
                 </div>)
@@ -657,9 +657,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
 
                         {/* 商品選択 */}
                         {currentStep === PRODUCT_STEP && (<motion.div key="step-product" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>作りたい商品を選んでください</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? '画像を押すと、その商品の仕様を選べます。約400個の小ロット。お茶は専用の2プランをご用意しています。' : '商品に応じた見積もりフォームが表示されます'}</p></div><div style={{
-                            display: 'grid', 
+                            display: 'grid',
                             gridTemplateColumns: isBtoBQuotePage ? `repeat(${isMobile ? 2 : 3}, minmax(0, 1fr))` : isMobile ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))',
-                            gap: '16px' 
+                            gap: '16px'
                         }}>
                         {products.map(p => { const isSelected = selectedProduct === p.id; const isFixedLotCard = isBtoBQuotePage && FIXED_LOT_PRODUCT_IDS.has(p.id); return (
                             <button key={p.id} onClick={() => handleProductSelect(p.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '0', borderRadius: '20px', border: isSelected ? '2px solid #818cf8' : '2px solid rgba(255,255,255,0.1)', background: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 30px rgba(99,102,241,0.2)' : 'none', width: '100%', overflow: 'hidden' }}>
@@ -739,7 +739,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginTop: 8 }}><span>送料・発送梱包手数料<br /><small>税別・1注文につき</small></span><strong style={{ whiteSpace: 'nowrap' }}>¥{shippingPackingFee.toLocaleString()}</strong></div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 12, paddingTop: 12 }}><strong>概算合計（税別）</strong><strong>¥{estimatedPrice.toLocaleString()}</strong></div>
                                     </div>}
-                                    
+
                                     <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
                                         {isFixedLotProduct && <div style={{ fontSize: '15px', lineHeight: 1.8 }}>
                                             <p style={{ color: '#fff', fontWeight: 700 }}>1{quantityUnit}あたりの内訳（税別）{isRamenProduct ? '・2食入り' : ''}</p>
@@ -767,13 +767,13 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                                                 <span>💡</span> 販売プランシミュレーション
                                             </div>
                                             {shippingPackingFee > 0 && <p style={{ fontSize: 14, color: '#fde68a', marginBottom: 16 }}>商品原価ベースの粗利率による参考計算です。送料・発送梱包手数料、販売手数料、消費税などは含みません。</p>}
-                                            
+
                                             <div style={{ display: 'grid', gap: '12px' }}>
                                                 {[30, 40, 50].map(margin => {
                                                     const unitCost = Math.ceil(productSubtotal / (oemQuantity || 1))
                                                     const sellingPrice = Math.ceil(unitCost * 100 / (100 - margin))
                                                     const profit = sellingPrice - unitCost
-                                                    
+
                                                     return (
                                                         <div key={margin} style={{ display: 'grid', gridTemplateColumns: isMobile ? '70px 1fr 1fr' : '80px 1fr 1fr', alignItems: 'center', gap: isMobile ? '8px' : '16px', padding: isMobile ? '12px' : '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                             <div style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.15)', padding: '4px 0', borderRadius: '6px', textAlign: 'center' }}>
@@ -808,9 +808,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                                     <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>お客様情報の入力</h2>
                                     <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>お見積り内容をお送りするため、ご連絡先をご入力ください。</p>
                                     <div style={{ display: 'inline-block', marginTop: '12px', padding: '8px 16px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>お見積り金額: </span>
+                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>{isBtoBQuotePage ? '製造概算（試作費別）: ' : 'お見積り金額: '}</span>
                                         <span style={{ fontSize: '16px', fontWeight: 700, color: '#c7d2fe' }}>¥{estimatedPrice.toLocaleString()}{isBtoBQuotePage ? '（税別・概算）' : '〜'}</span>
                                         {shippingPackingFee > 0 && <p style={{ fontSize: 14, color: '#e0e7ff', marginTop: 8 }}>送料・発送梱包手数料 ¥{shippingPackingFee.toLocaleString()}（税別）を含みます。</p>}
+                                        {isBtoBQuotePage && <p style={{ fontSize: 14, color: '#fde68a', marginTop: 8 }}>試作費は別途5,000円（税別／税込5,500円）を先入金。入金確認後に開始し、試作のみで終了できます。ご相談の送信だけでは請求は発生しません。</p>}
                                     </div>
                                 </div>
                                 {isBtoBQuotePage && <details style={{ marginBottom: 20, color: '#e2e8f0', fontSize: 16 }}>

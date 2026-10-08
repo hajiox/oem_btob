@@ -158,9 +158,12 @@ export async function submitLead(formData: {
             { question: '商品', answer: product.name, type: 'text' },
             { question: 'OEM製造数', answer: checked.quantityLabel, type: 'number' },
             { question: '商品小計(税抜)', answer: `¥${checked.subtotal.toLocaleString()}`, type: 'number' },
-            { question: '試作・表示・簡易デザイン費(税抜・初回特典適用)', answer: `¥${checked.offerFee.toLocaleString()}`, type: 'number' },
+            { question: '試作費（別途先入金・税抜・初回特典）', answer: `¥${checked.offerFee.toLocaleString()}`, type: 'number' },
+            { question: '試作費の消費税（10％）', answer: `¥${checked.trialTax.toLocaleString()}`, type: 'number' },
+            { question: '試作費の先入金額（税込・初回特典）', answer: `¥${checked.trialGross.toLocaleString()}`, type: 'number' },
+            { question: '試作費の支払区分', answer: '製造代金とは別請求。入金確認後に試作開始。試作のみで終了可能。', type: 'text' },
             { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: '¥6,000', type: 'number' },
-            { question: '概算お見積り金額(税抜)', answer: `¥${checked.total.toLocaleString()}`, type: 'number' },
+            { question: '製造概算お見積り金額(税抜・試作費別)', answer: `¥${checked.total.toLocaleString()}`, type: 'number' },
             { question: `1${checked.quantityUnit}あたり仕入原価(税抜・送料等別)`, answer: `¥${Math.ceil(checked.subtotal / checked.quantity).toLocaleString()}`, type: 'number' },
             ...selectedOptions,
             { question: '見積条件', answer: checked.conditionNote, type: 'text' },
@@ -235,7 +238,7 @@ export async function submitLead(formData: {
                 adminIntro = pageData.admin_email_intro || adminIntro
             }
         }
-        
+
         // 改行をHTMLのbrタグに変換
         const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char))
         const introHtml = escapeHtml(customerIntro).split('\n').map(line => `<p>${line}</p>`).join('')

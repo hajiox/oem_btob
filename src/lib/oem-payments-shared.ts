@@ -25,13 +25,17 @@ export type PaymentReceipt = {
 export type PaymentData = { plans: PaymentPlan[]; receipts: PaymentReceipt[] }
 
 export type PaymentAlert = {
-  order_id: string
+  order_id: string | null
   lead_id: string
   order_number: string
   company_name: string
-  stage: PaymentStage
+  stage: PaymentStage | 'trial'
   expected_amount: number | null
   received_amount: number
   due_date: string | null
   kind: 'unconfigured' | 'waiting' | 'overdue' | 'excess'
+  trial_id?: string
+  trial_status?: 'awaiting_payment' | 'paid' | 'void'
+  invoice_number?: string
+  invoice_url?: string
 }

@@ -62,7 +62,8 @@ export default function OemProductLanding(props: OemProductLandingProps) {
         <section className={styles.section} aria-labelledby="flow-title">
           <h2 id="flow-title">ご相談から正式発注まで</h2>
           <p>まずは仕様・包装を選び、概算を確認できます。原料の支給可否や内容の対応可否は、正式見積もり時に確認します。</p>
-          <p>正式発注後に見積金額の<strong>50％を前金</strong>としてお支払いいただき、ご入金確認後に製造を開始します。残額は製造数量の確定後、出荷前にご精算いただきます。</p>
+          <p><strong>試作着手前：</strong>初回試作費5,000円（税別・税込5,500円）を先にお支払いいただき、入金確認後に試作を開始します。試作のみで終了でき、製造発注の義務はありません。</p>
+          <p><strong>製造に進む場合：</strong>製造代金の50％を着手金としてお支払いいただき、完成数量確定後に残額を出荷前にご精算いただきます。通常は試作費（先払い）・製造着手金・出荷前精算金の3回です。</p>
           <div className={styles.actions}>
             <Link href={quoteHref} className={styles.primary}>この商品で概算を確認する</Link>
           </div>

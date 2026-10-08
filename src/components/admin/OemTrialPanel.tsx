@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createOemTrial, getOemTrials, recordOemTrialResult } from '@/actions/oemTrials'
 import { OEM_SPECIAL_INGREDIENT_NOTE } from '@/lib/oem-offer-pricing'
-type TrialRow = { id: string; trial_number: number; status: string; result: string | null; result_notes: string | null; fee_advisory: number; version: number; label: string | null }
+import { OemTrialPaymentPanel } from './OemTrialPaymentPanel'
+type TrialRow = { id: string; trial_number: number; status: string; result: string | null; result_notes: string | null; fee_advisory: number; version: number; payment_required: boolean; label: string | null }
 const results = { pass: '試作完了', fail: '不適合', needs_revision: '再試作が必要', cancelled: '取下げ' } as const
 export function OemTrialPanel({ leadId }: { leadId: string }) {
   const [rows, setRows] = useState<TrialRow[]>([])
@@ -16,6 +17,10 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
   const [ready, setReady] = useState(false)
   const [request, setRequest] = useState<{ id: string; input: string } | null>(null)
   const [benefit, setBenefit] = useState<{companyKey:string;includedUsed:number;isCurrentBenefit:boolean} | null>(null)
+  const restoreIdentity = useCallback((value: { companyKey: string; identityEvidence: string; claimIncluded: boolean }) => {
+    setCompanyKey(value.companyKey); setEvidence(value.identityEvidence); setClaim(value.claimIncluded)
+  }, [])
+  const [trialPaid, setTrialPaid] = useState(false)
   const load = useCallback(async () => {
     try {
       const r = await getOemTrials(leadId)
@@ -25,6 +30,7 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
     } catch { setReady(false); setMessage('試作情報を取得できませんでした') }
   }, [leadId])
   useEffect(() => { void load() }, [load])
+  const legacyContract = rows.some(row => row.payment_required === false)
   const create = async () => {
     if (busy || !ready) return
     const inputKey = JSON.stringify({ companyKey, evidence, claim, label })
@@ -39,15 +45,16 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
   }
   return <section aria-label="試作管理" style={{ marginTop:16 }}>
     <p style={muted}>{OEM_SPECIAL_INGREDIENT_NOTE}</p>
-    <p style={muted}>初回特典は1企業・個人1名につき1回、同じ案件の試作2回まで。通常は試作2回まで10,000円、原材料表示5,000円、栄養成分表示（計算値）5,000円、簡易パッケージデザイン30,000円（合計50,000円）、初回特典では試作2回まで5,000円、その他3項目は各0円です。追加試作は1回3,000円（いずれも税別）。原料・製造費・送料は無料ではありません。ここでは履歴と参考費用を管理し、請求額は正式見積で確認します。</p>
+    <p style={muted}>初回特典は1企業・個人1名につき1回、同じ案件の試作2回まで。通常は試作2回まで10,000円、原材料表示5,000円、栄養成分表示（計算値）5,000円、簡易パッケージデザイン30,000円（合計50,000円）、初回特典では試作2回まで5,000円、その他3項目は各0円です。追加試作は1回3,000円（いずれも税別）。原料・製造費・送料は無料ではありません。試作費は独立した試作前払い請求として管理します。</p>
     {benefit && <p style={muted}>登録済み企業キー：{benefit.companyKey} ／ 初回特典：{benefit.isCurrentBenefit ? `この案件に適用（${benefit.includedUsed}/2回利用）` : 'この案件には適用されていません'}</p>}
+    {legacyContract ? <p style={muted}>既存の試作契約です。新しい前払い料金を遡って請求せず、従来の契約条件で継続します。新規契約は別案件として登録してください。</p> : <OemTrialPaymentPanel leadId={leadId} companyKey={companyKey} identityEvidence={evidence} claimIncluded={claim} onPaid={setTrialPaid} onIdentity={restoreIdentity} />}
     <div style={{ display:'grid', gap:12 }}>
       <label>企業・個人の識別キー<input value={companyKey} onChange={e=>setCompanyKey(e.target.value)} maxLength={200} style={input} placeholder="同じ企業では同じキーを使用" /></label>
       <label>同一企業・本人の確認根拠<textarea value={evidence} onChange={e=>setEvidence(e.target.value)} maxLength={2000} style={input} placeholder="既存取引先番号、企業情報・担当者確認など" /></label>
       <label>試作名<input value={label} onChange={e=>setLabel(e.target.value)} maxLength={500} style={input} /></label>
       <label style={muted}><input type="checkbox" checked={claim} onChange={e=>setClaim(e.target.checked)} /> 初回特典（試作2回まで・1企業または個人1名につき1回）の対象と確認し、今回の案件へ適用する</label>
     </div>
-    <button type="button" disabled={busy || !ready || !companyKey.trim() || !evidence.trim()} onClick={()=>void create()} style={button}>{busy ? '処理中…' : '試作を登録'}</button>
+    <button type="button" disabled={busy || !ready || (!trialPaid && !legacyContract) || !companyKey.trim() || !evidence.trim()} onClick={()=>void create()} style={button}>{busy ? '処理中…' : trialPaid || legacyContract ? '試作を登録' : '入金確認後に試作を登録'}</button>
     <button type="button" disabled={busy} onClick={()=>void load()} style={{ ...button, marginLeft:8 }}>履歴を更新</button>
     {rows.map(row=><TrialResult key={row.id} row={row} onSaved={load} />)}
     {message && <p role="status" style={muted}>{message}</p>}

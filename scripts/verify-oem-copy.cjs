@@ -21,7 +21,14 @@ assert.equal(oemLpImage(PAGE, '/custom-image.jpg', 'custom').src, '/custom-image
 assert.equal(oemMetadataCopy(PAGE, '【小ロット400個〜】食品OEM'), '【1ロット約400個】食品OEM')
 assert.equal(oemMetadataCopy('another-page', '400個から'), '400個から')
 assert.match(oemLpImage(PAGE, '/images/lp-cta.jpg', '').alt, /栄養成分表示作成/)
-assert.match(fs.readFileSync('src/components/OemQuoteResult.tsx', 'utf8'), /初回特典適用時の概算/)
+function assertCopyMatch(label, source, pattern) {
+  assert.match(source, pattern, `${label}: expected ${pattern}`)
+}
+const quoteResult = fs.readFileSync('src/components/OemQuoteResult.tsx', 'utf8')
+assertCopyMatch('quote manufacturing total', quoteResult, /製造に進む場合の概算合計（税抜・試作費別）/)
+assertCopyMatch('quote trial prepayment', quoteResult, /試作費を先入金/)
+const pricing = fs.readFileSync('src/lib/oem-offer-pricing.ts', 'utf8')
+assertCopyMatch('special ingredient note', pricing, /試作で特殊食材の使用の場合は別途お見積りとなります/)
 assert.match(oemLpNotes(PAGE, '/images/lp-problems.jpg').join(''), /予備100枚/)
 assert.deepEqual(oemLpNotes('another-page', '/images/lp-problems.jpg'), [])
 const guide = fs.readFileSync('src/components/OemServiceGuide.tsx', 'utf8')

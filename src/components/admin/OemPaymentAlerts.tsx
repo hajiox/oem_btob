@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getOemPaymentAlerts } from '@/actions/oemPayments'
 import type { PaymentAlert } from '@/lib/oem-payments-shared'
 import { OemOrderPanel } from './OemOrderPanel'
+import { OemTrialPanel } from './OemTrialPanel'
 import { PAYMENT_CHANGED } from './OemPaymentPanel'
 
 const labels = { unconfigured: '請求額・期限を設定', waiting: '入金待ち', overdue: '支払期限超過', excess: '過入金・要確認' }
@@ -34,17 +35,17 @@ export function OemPaymentAlerts() {
       <h2 style={{ fontSize: 18, margin: 0 }}>入金確認 {error ? '取得エラー' : loading ? '確認中…' : `${total}件`}</h2>
       <button type="button" onClick={() => void reload()} disabled={loading} style={button}>更新</button>
     </div>
-    <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>全OEM案件の前金・残金を確認します。銀行明細の確認は手動です。</p>
+    <p style={{ color: 'var(--admin-text-muted)', fontSize: 13 }}>製造分の着手金・出荷前精算金と、試作費の先入金を分けて確認します。銀行明細の確認は手動です。</p>
     {error && <p role="alert" style={{ color: '#fca5a5' }}>{error}（件数は未確認）</p>}
     {!error && !loading && total === 0 && <p style={{ color: '#4ade80' }}>現在、入金確認が必要な案件はありません。</p>}
-    {!error && <div style={{ display: 'grid', gap: 8 }}>{items.map(item => <button key={`${item.order_id}-${item.stage}`} type="button" onClick={() => setSelected(item)} style={{ ...button, padding: 14, textAlign: 'left', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
-      <span><strong>{item.company_name}</strong>　{item.stage === 'deposit' ? '前金' : '残金'}<small style={{ display: 'block', color: 'var(--admin-text-muted)', marginTop: 4 }}>{item.order_number}</small></span>
+    {!error && <div style={{ display: 'grid', gap: 8 }}>{items.map(item => <button key={`${item.order_id || item.trial_id}-${item.stage}`} type="button" onClick={() => setSelected(item)} style={{ ...button, padding: 14, textAlign: 'left', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
+      <span><strong>{item.company_name}</strong>　{item.stage === 'trial' ? '試作費先入金' : item.stage === 'deposit' ? '製造着手金' : '製造出荷前精算金'}<small style={{ display: 'block', color: 'var(--admin-text-muted)', marginTop: 4 }}>{item.stage === 'trial' ? `請求書 ${item.invoice_number || '準備中'}` : item.order_number}</small></span>
       <span><strong style={{ color: ['overdue', 'excess'].includes(item.kind) ? '#fca5a5' : '#fbbf24' }}>{labels[item.kind]}</strong><small style={{ display: 'block', marginTop: 4 }}>{item.expected_amount === null ? '請求額未設定' : `請求 ¥${item.expected_amount.toLocaleString()} ／ 入金 ¥${item.received_amount.toLocaleString()}`}　期限 {item.due_date || '未設定'}</small></span>
     </button>)}</div>}
     {!error && total > items.length && <p>全{total}件のうち{items.length}件を表示しています。残りは案件一覧から確認してください。</p>}
     {selected && <div style={{ marginTop: 18, border: '1px solid var(--admin-accent)', padding: 16, borderRadius: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><strong>{selected.company_name}</strong><button type="button" onClick={() => setSelected(null)} style={button}>案件を閉じる</button></div>
-      <OemOrderPanel key={selected.order_id} leadId={selected.lead_id} estimatedTotalPrice={0} />
+      {selected.stage === 'trial' ? <OemTrialPanel key={selected.trial_id} leadId={selected.lead_id} /> : <OemOrderPanel key={selected.order_id} leadId={selected.lead_id} estimatedTotalPrice={0} />}
     </div>}
   </section>
 }
