@@ -93,7 +93,7 @@ export default function OemQuoteResult({
         <h3 style={{ margin: '0 0 8px', fontSize: 19 }}>① まずは試作費を先入金</h3>
         <p style={{ margin: 0, fontSize: 30, fontWeight: 800 }}>{yen(trialGross)}<small style={{ fontSize: 16 }}>（税込）</small></p>
         <p style={{ margin: '6px 0 0', fontSize: 15 }}>試作費 {yen(offerFee)}（税別）＋消費税10％ {yen(trialTax)}</p>
-        <p style={{ margin: '10px 0 0' }}>ご相談後に試作内容と請求をご案内し、入金確認後に試作を開始します。試作だけで終了しても構いません。製造発注の義務はありません。</p>
+        <p style={{ margin: '10px 0 0' }}>ご相談後に試作内容とお支払いをご案内します。入金確認後に試作を開始し、試作のみのご依頼も承ります。</p>
         <p style={{ margin: '10px 0 0', color: '#fde68a', fontSize: 14 }}>{INITIAL_OFFER_ESTIMATE_NOTE}</p>
         <p style={{ margin: '8px 0 0', color: '#fde68a', fontSize: 14 }}>{OEM_SPECIAL_INGREDIENT_NOTE}</p>
       </div>
@@ -101,7 +101,7 @@ export default function OemQuoteResult({
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)', fontSize: 14 }}>製造に進む場合の概算合計（税抜・試作費別）</p>
         <p style={{ margin: '2px 0 2px', fontSize: 'clamp(32px, 9vw, 46px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em' }}>{yen(total)}</p>
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>送料・発送梱包手数料込み／消費税別</p>
-        <p style={{ margin: '10px 0 0', color: '#e0e7ff', fontSize: 15 }}>② 正式発注後に製造代金の50％を着手金として入金。③ 完成数量確定後、着手金を差し引いた精算金を出荷前に入金。試作費はこの製造見積に含めず、二重に請求しません。税額は正式請求書の明細ごとに確定します。</p>
+        <p style={{ margin: '10px 0 0', color: '#e0e7ff', fontSize: 15 }}>② 製造をご希望の場合は、正式発注後に製造代金の50％をお支払いいただきます。③ 出荷前に、完成数量に基づく残額を精算します。試作費は別途です。</p>
         <div data-testid="quote-order-breakdown" style={{ marginTop: 16 }}>
           <div style={rowStyle}><span>商品小計（税別）</span><strong>{yen(productSubtotal)}</strong></div>
           <div style={rowStyle}><span>送料・発送梱包手数料<br /><small>税別・1注文につき</small></span><strong style={{ whiteSpace: 'nowrap' }}>{yen(shippingFee)}</strong></div>

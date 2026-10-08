@@ -121,6 +121,7 @@
 .section h2 {
   margin: 0 0 18px;
   font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
   line-height: 1.4;
 }
 
@@ -182,6 +183,7 @@
 .faq h3 {
   margin: 0 0 6px;
   font-size: 16px;
+  font-weight: 700;
 }
 
 .faq p {
@@ -191,7 +193,7 @@
 
 .footer {
   padding: 26px 20px 44px;
-  color: #697770;
+  color: #53625c;
   font-size: 12px;
   text-align: center;
 }

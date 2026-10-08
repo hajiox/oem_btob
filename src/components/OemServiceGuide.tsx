@@ -16,8 +16,8 @@ export function OemExplanation() {
 export function OemFirstOfferSummary() {
   return (
     <section className={styles.offer} aria-labelledby="oem-first-offer-title">
-      <h2 id="oem-first-offer-title">初回限定・商品づくり応援</h2>
-      <p><strong>1企業（個人は1名）につき1回限り</strong>。すべて税別です。</p>
+      <h2 id="oem-first-offer-title">初回の試作・商品化サポート</h2>
+      <p className={styles.offerIntro}>1企業（個人は1名）につき1回限り。表の料金は税別です。</p>
       <div className={styles.offerTable} role="table" aria-label="初回特典の料金比較">
         <div className={styles.offerRow + ' ' + styles.offerHeader} role="row"><span role="columnheader">対象項目</span><span role="columnheader">通常料金</span><span role="columnheader">初回特典</span></div>
         <div className={styles.offerRow} role="row"><span role="cell">試作費（2回まで）</span><span role="cell">10,000円</span><span role="cell">5,000円（50%OFF）</span></div>
@@ -25,16 +25,18 @@ export function OemFirstOfferSummary() {
         <div className={styles.offerRow} role="row"><span role="cell">栄養成分表示作成（計算値）</span><span role="cell">5,000円</span><span role="cell">0円</span></div>
         <div className={styles.offerRow} role="row"><span role="cell">簡易パッケージデザイン</span><span role="cell">30,000円</span><span role="cell">0円</span></div>
       </div>
-      <p className={styles.offerTotal}><strong>通常合計50,000円 → 初回合計5,000円（45,000円軽減）</strong></p>
-      <p className={styles.note}>追加試作は1回3,000円（税別）。試作で特殊食材の使用の場合は別途お見積りとなります。製造代金・原料実費・送料は特典対象外です。</p>
       <div className={styles.offerSteps}>
-        <h3>お支払いの流れ</h3>
+        <h3>お支払い</h3>
         <ol>
-          <li><strong>試作費（先払い）：</strong>初回試作費5,000円（税別・税込5,500円）を全額先にお支払いいただき、入金確認後に試作を開始します。</li>
-          <li><strong>製造に進む場合：</strong>製造代金の50％を着手金としてお支払いいただきます。試作のみで終了することもでき、製造発注の義務はありません。</li>
-          <li><strong>出荷前：</strong>完成数量確定後に製造代金を精算し、着手金との差額を出荷前にお支払いいただきます。</li>
+          <li><strong>試作前</strong><span>5,500円（税込）を先払い</span><small>入金確認後に試作を開始</small></li>
+          <li><strong>製造をご希望の場合</strong><span>製造代金の50％</span><small>正式発注後の着手金</small></li>
+          <li><strong>出荷前</strong><span>製造代金の残額</span><small>完成数量に合わせて精算</small></li>
         </ol>
-        <p>通常は「試作費（先払い）・製造着手金・出荷前精算金」の3回です。試作費は製造代金とは別の初回特典費用で、製造へ進む場合に二重請求しません。</p>
+        <p>試作のみのご依頼も承ります。</p>
+      </div>
+      <div className={styles.offerNotes}>
+        <p>追加試作は1回3,000円（税別）。製造代金・原料実費・送料は別途かかります。</p>
+        <p>試作で特殊食材の使用の場合は別途お見積りとなります。</p>
       </div>
     </section>
   )
@@ -72,7 +74,7 @@ export function OemServiceQuestions() {
             <div><dt>栄養成分表示作成（計算値）</dt><dd>通常5,000円 → 初回0円</dd></div>
             <div><dt>簡易パッケージデザイン</dt><dd>通常30,000円 → 初回0円</dd></div>
           </dl>
-          <p className={styles.note}><strong>そしてなんと、通常合計50,000円の対象費用が初回5,000円（45,000円軽減）です。</strong>1企業（個人は1名）につき1回限り、2回までの試作を含みます。上記の試作・表示・デザイン費が特典の対象です。試作で特殊食材の使用の場合は別途お見積りとなります。製造代金・原料実費・送料は特典対象外です。製造発注は必須ではありません。</p>
+          <p className={styles.note}>初回特典は1企業（個人は1名）につき1回限りです。製造代金・原料実費・送料は特典対象外です。試作で特殊食材の使用の場合は別途お見積りとなります。</p>
         </details>
         <details className={styles.disclosure}>
           <summary>道の駅・ふるさと納税向けの商品も相談できますか？</summary>
