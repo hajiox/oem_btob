@@ -65,4 +65,14 @@
   .audiences { grid-template-columns: 1fr; }
   .process { grid-template-columns: 1fr; }
   .costs > div { grid-template-columns: 1fr; gap: 6px; }
+  .offerTable { overflow-x: visible; }
+  .offerRow { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+  .offerHeader { display: none; }
+  .offerRow > span:first-child { grid-column: 1 / -1; padding-bottom: 6px; font-weight: 700; }
+  .offerRow > span:nth-child(2), .offerRow > span:nth-child(3) { padding-top: 6px; font-size: 16px; }
+  .offerRow > span:nth-child(2)::before, .offerRow > span:nth-child(3)::before { display: block; margin-bottom: 2px; color: #64748b; font-size: 12px; font-weight: 600; }
+  .offerRow > span:nth-child(2)::before { content: '通常料金（税別）'; }
+  .offerRow > span:nth-child(3)::before { content: '初回特典（税別）'; }
+  .offerRow > span + span { border-left: 0; text-align: left; }
+  .offerRow > span:nth-child(3) { border-left: 1px solid #eadfbc; }
 }

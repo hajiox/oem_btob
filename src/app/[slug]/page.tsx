@@ -6,7 +6,7 @@ import InteractiveForm from '@/components/InteractiveForm'
 import OemAnalytics from '@/components/OemAnalytics'
 import PackageShowcase from '@/components/PackageShowcase'
 import OemRankingProof from '@/components/OemRankingProof'
-import { OemExplanation, OemServiceQuestions } from '@/components/OemServiceGuide'
+import { OemExplanation, OemFirstOfferSummary, OemServiceQuestions } from '@/components/OemServiceGuide'
 import { SAMPLE_PAGE_ID } from '@/lib/package-samples'
 import { oemLpImage, oemLpNotes, oemMetadataCopy } from '@/lib/oem-lp-copy'
 import { OEM_METADATA } from '@/lib/oem-seo'
@@ -352,7 +352,7 @@ export default async function HomePage({ params, searchParams }: { params: Promi
               </div>
             ))
           )}
-          {currentPageId === SAMPLE_PAGE_ID && <OemServiceQuestions />}
+          {currentPageId === SAMPLE_PAGE_ID && <><OemFirstOfferSummary /><OemServiceQuestions /></>}
         </div>
       </Suspense>
 
