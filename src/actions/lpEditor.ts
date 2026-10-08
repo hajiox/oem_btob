@@ -141,7 +141,7 @@ export async function seedInitialLpSections(pageId: string) {
         { src: '/images/lp-problems.jpg', alt: 'OEMは地獄？福島の食材で小ロット・低コスト・簡単フロー' },
         { src: '/images/lp-cases.jpg', alt: '農家・自治体・道の駅ホテルの活用事例' },
         { src: '/images/lp-reasons.jpg', alt: '福島専門のOEMプロ集団が企画から販売までフルサポート' },
-        { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
+        { src: '/images/lp-cta.jpg', alt: '初回特典：試作費10,000円→5,000円（50%OFF）。原材料表示・栄養成分表示・簡易パッケージデザインは各0円。試作で特殊食材の使用の場合は別途お見積りとなります' },
     ]
 
     for (let i = 0; i < initialImages.length; i++) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createOemTrial, getOemTrials, recordOemTrialResult } from '@/actions/oemTrials'
+import { OEM_SPECIAL_INGREDIENT_NOTE } from '@/lib/oem-offer-pricing'
 type TrialRow = { id: string; trial_number: number; status: string; result: string | null; result_notes: string | null; fee_advisory: number; version: number; label: string | null }
 const results = { pass: '試作完了', fail: '不適合', needs_revision: '再試作が必要', cancelled: '取下げ' } as const
 export function OemTrialPanel({ leadId }: { leadId: string }) {
@@ -37,13 +38,14 @@ export function OemTrialPanel({ leadId }: { leadId: string }) {
     finally { setBusy(false) }
   }
   return <section aria-label="試作管理" style={{ marginTop:16 }}>
-    <p style={muted}>初回特典は1企業・個人1名につき1回、同じ案件の試作2回まで。通常の試作費は2回まで10,000円、追加は1回3,000円（いずれも税別）。表示・簡易デザインを含む通常費用合計は50,000円です。ここでは履歴と参考費用を管理し、請求額は正式見積で確認します。</p>
+    <p style={muted}>{OEM_SPECIAL_INGREDIENT_NOTE}</p>
+    <p style={muted}>初回特典は1企業・個人1名につき1回、同じ案件の試作2回まで。通常は試作2回まで10,000円、原材料表示5,000円、栄養成分表示（計算値）5,000円、簡易パッケージデザイン30,000円（合計50,000円）、初回特典では試作2回まで5,000円、その他3項目は各0円です。追加試作は1回3,000円（いずれも税別）。原料・製造費・送料は無料ではありません。ここでは履歴と参考費用を管理し、請求額は正式見積で確認します。</p>
     {benefit && <p style={muted}>登録済み企業キー：{benefit.companyKey} ／ 初回特典：{benefit.isCurrentBenefit ? `この案件に適用（${benefit.includedUsed}/2回利用）` : 'この案件には適用されていません'}</p>}
     <div style={{ display:'grid', gap:12 }}>
       <label>企業・個人の識別キー<input value={companyKey} onChange={e=>setCompanyKey(e.target.value)} maxLength={200} style={input} placeholder="同じ企業では同じキーを使用" /></label>
       <label>同一企業・本人の確認根拠<textarea value={evidence} onChange={e=>setEvidence(e.target.value)} maxLength={2000} style={input} placeholder="既存取引先番号、企業情報・担当者確認など" /></label>
       <label>試作名<input value={label} onChange={e=>setLabel(e.target.value)} maxLength={500} style={input} /></label>
-      <label style={muted}><input type="checkbox" checked={claim} onChange={e=>setClaim(e.target.checked)} /> 初回無料特典の対象と確認し、今回の案件へ適用する</label>
+      <label style={muted}><input type="checkbox" checked={claim} onChange={e=>setClaim(e.target.checked)} /> 初回特典（試作2回まで・1企業または個人1名につき1回）の対象と確認し、今回の案件へ適用する</label>
     </div>
     <button type="button" disabled={busy || !ready || !companyKey.trim() || !evidence.trim()} onClick={()=>void create()} style={button}>{busy ? '処理中…' : '試作を登録'}</button>
     <button type="button" disabled={busy} onClick={()=>void load()} style={{ ...button, marginLeft:8 }}>履歴を更新</button>

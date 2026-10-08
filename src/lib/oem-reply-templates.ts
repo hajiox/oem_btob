@@ -1,4 +1,5 @@
 import { mailSubject } from '@/lib/oem-conversations'
+import { OEM_SPECIAL_INGREDIENT_NOTE } from '@/lib/oem-offer-pricing'
 import { OEM_ORDER_STATUS_LABELS } from '@/lib/oem-order-shared'
 import type { ReplyTemplateId, ReplySuggestion } from '@/lib/oem-reply-assist-shared'
 import type { ReplyContext, ValidatedReplyLead } from '@/lib/oem-reply-context'
@@ -36,7 +37,7 @@ export function buildReplyTemplate(c: ReplyContext, id: ReplyTemplateId): ReplyS
   const bodies: Record<ReplyTemplateId, string> = {
     acknowledge: `${salutation(c.lead)}\n\nお問い合わせありがとうございます。内容を確認のうえ、ご案内します。${c.order || c.legacyCancellation || c.settlement ? `現在の発注状態は「${status}」です。` : '現在はご相談・概算確認の段階で、正式発注や料金は確定しておりません。'}${!c.order && !c.legacyCancellation && !c.settlement && c.selectedOptions.length ? `\n\nご相談仕様（確定前）：${c.selectedOptions.map(item => `${item.question}＝${item.answer}`).join('／')}` : ''}`,
     materials: `${salutation(c.lead)}\n\n支給原料について、原料名・状態・ご用意可能な量をお知らせください。原料は原則1種類まで、当店への発送は元払いです。受入可否や加工可否、価格調整は原料確認後に正式見積でご案内します。お茶は原料支給が必須です。`,
-    trial: `${salutation(c.lead)}\n\n初回無料特典は、1企業につき1回（個人は1名につき1回）で、試作2回まで・原材料表示・栄養成分表示（計算値）・簡易パッケージデザインが対象です。通常合計50,000円（税別）の対象で、製造代金・送料は含まれません。追加試作は1回3,000円（税別）です。特典の適用可否は、ご利用状況を確認してご案内します。`,
+    trial: `${salutation(c.lead)}\n\n初回特典は、1企業につき1回（個人は1名につき1回）で、試作2回まで・原材料表示・栄養成分表示（計算値）・簡易パッケージデザインが対象です。通常料金は試作2回まで10,000円、原材料表示5,000円、栄養成分表示（計算値）5,000円、簡易パッケージデザイン30,000円（合計50,000円、すべて税別）です。初回特典では試作2回まで5,000円、その他3項目は各0円です。製造代金・原料・送料は含まれません。追加試作は1回3,000円（税別）です。${OEM_SPECIAL_INGREDIENT_NOTE}。特典の適用可否は、ご利用状況を確認してご案内します。`,
     payment: `${salutation(c.lead)}\n\n現在の発注状態は「${status}」です。確認済みの支払・精算情報は以下のとおりです。\n${paymentFacts}\n${paymentExplanation}`,
     progress: `${salutation(c.lead)}\n\nご注文の現在の状態は「${status}」です。確認済みの進捗情報は以下のとおりです。\n${progressFacts}\n納期は試作、原料準備、包装仕様、製造状況等により異なるため、確定情報のみ別途ご案内します。`,
     shipping: `${salutation(c.lead)}\n\nご注文の現在の状態は「${status}」です。確認済みの出荷情報は以下のとおりです。\n${shippingFacts}\n${cancelled ? 'キャンセル済みのため、新たな出荷のご案内ではありません。精算内容は確認してご案内します。' : c.fulfillment?.shipped_on ? '上記は記録済みの出荷情報です。' : '出荷前に残額の入金を確認します。出荷予定は確認してご案内します。'}`,

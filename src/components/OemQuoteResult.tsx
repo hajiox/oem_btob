@@ -1,6 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import { OEM_SPECIAL_INGREDIENT_NOTE } from '@/lib/oem-offer-pricing'
 
 export type OemQuoteSummaryItem = {
   question: string
@@ -18,6 +19,7 @@ export type OemQuoteResultProps = {
   quantity: number
   quantityUnit: string
   productSubtotal: number
+  offerFee: number
   shippingFee: number
   total: number
   conditionNote: string
@@ -29,7 +31,7 @@ export type OemQuoteResultProps = {
 }
 
 const yen = (amount: number) => `¥${Math.round(amount).toLocaleString('ja-JP')}`
-const INITIAL_FREE_ESTIMATE_NOTE = '初回無料適用時の概算です。1企業（個人は1名）につき1回限り、試作は2回まで無料です。初回無料特典が適用されない場合の試作・表示作成・デザイン費、および追加試作費は別途となります。'
+const INITIAL_OFFER_ESTIMATE_NOTE = '初回特典適用時の概算です。1企業（個人は1名）につき1回限り、試作2回まで5,000円、原材料表示・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。特典対象外では通常料金が適用され、追加試作は1回3,000円（税別）です。原料・製造費・送料は無料ではありません。'
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -48,6 +50,7 @@ export default function OemQuoteResult({
   quantity,
   quantityUnit,
   productSubtotal,
+  offerFee,
   shippingFee,
   total,
   conditionNote,
@@ -89,9 +92,11 @@ export default function OemQuoteResult({
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.72)', fontSize: 14 }}>概算合計（税抜）</p>
         <p style={{ margin: '2px 0 2px', fontSize: 'clamp(32px, 9vw, 46px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em' }}>{yen(total)}</p>
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>送料・発送梱包手数料込み／消費税別</p>
-        <p style={{ margin: '10px 0 0', color: '#fde68a', fontSize: 14 }}>{INITIAL_FREE_ESTIMATE_NOTE}</p>
+        <p style={{ margin: '10px 0 0', color: '#fde68a', fontSize: 14 }}>{INITIAL_OFFER_ESTIMATE_NOTE}</p>
+        <p style={{ margin: '8px 0 0', color: '#fde68a', fontSize: 14 }}>{OEM_SPECIAL_INGREDIENT_NOTE}</p>
         <div data-testid="quote-order-breakdown" style={{ marginTop: 16 }}>
           <div style={rowStyle}><span>商品小計（税別）</span><strong>{yen(productSubtotal)}</strong></div>
+          <div style={rowStyle}><span>試作・表示・簡易デザイン<br /><small>初回特典適用・税別</small></span><strong>{yen(offerFee)}</strong></div>
           <div style={rowStyle}><span>送料・発送梱包手数料<br /><small>税別・1注文につき</small></span><strong style={{ whiteSpace: 'nowrap' }}>{yen(shippingFee)}</strong></div>
           <div style={{ ...rowStyle, borderBottom: 0, paddingBottom: 0, fontWeight: 800 }}><span>概算合計（税別）</span><strong>{yen(total)}</strong></div>
         </div>
@@ -127,15 +132,15 @@ export default function OemQuoteResult({
         <div style={{ marginTop: 12 }}>
           {unitBreakdown.map((item, index) => <div key={`${item.label}-${index}`} style={rowStyle}><span style={{ overflowWrap: 'anywhere' }}>{item.label}</span><strong>{yen(item.amount)}</strong></div>)}
           <div style={rowStyle}><span>1{quantityUnit}あたり（送料等別）</span><strong>{yen(unitCost)}</strong></div>
-          <div style={{ ...rowStyle, borderBottom: 0 }}><span>1{quantityUnit}あたり（送料込み参考）</span><strong>{yen(unitCostWithShipping)}</strong></div>
-          <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>送料等を1{quantityUnit}に按分すると{yen(shippingFee / safeQuantity)}です。税込売価や販売手数料などは別途ご検討ください。</p>
+          <div style={{ ...rowStyle, borderBottom: 0 }}><span>1{quantityUnit}あたり（初回費用・送料込み参考）</span><strong>{yen(unitCostWithShipping)}</strong></div>
+          <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>初回費用と送料を1{quantityUnit}に按分すると{yen((offerFee + shippingFee) / safeQuantity)}です。税込売価や販売手数料などは別途ご検討ください。</p>
         </div>
       </details>
 
       <details style={{ marginTop: 12, padding: '14px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
         <summary style={{ cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#fcd34d' }}>販売シミュレーションを見る</summary>
         <div style={{ marginTop: 12 }}>
-          <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.75)', fontSize: 14 }}>商品原価ベースの粗利率です。商品単価（送料等別）を原価としており、送料・発送梱包手数料、販売手数料、消費税などは含まない参考値です。</p>
+          <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.75)', fontSize: 14 }}>商品原価ベースの粗利率です。商品単価を原価としており、試作・表示・デザインの初回費用、送料・発送梱包手数料、販売手数料、消費税などは含まない参考値です。</p>
           {[30, 40, 50].map((margin) => {
             const sellingPrice = Math.ceil(unitCost * 100 / (100 - margin))
             const profit = sellingPrice - unitCost

@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import OemAnalytics from '@/components/OemAnalytics'
+import { OemFirstOfferSummary } from '@/components/OemServiceGuide'
 import styles from './OemProductLanding.module.css'
 
 export type OemProductLandingProps = {
@@ -55,6 +56,8 @@ export default function OemProductLanding(props: OemProductLandingProps) {
           </div>
           <p className={styles.proof}>会津ブランド館は自社でもカレーや麺商品を企画・販売しています。<Link href="/btob#oem-ranking-heading">販売商品の過去のランキング実績を見る</Link></p>
         </section>
+
+        <OemFirstOfferSummary />
 
         <section className={styles.section} aria-labelledby="flow-title">
           <h2 id="flow-title">ご相談から正式発注まで</h2>

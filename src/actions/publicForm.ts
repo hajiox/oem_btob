@@ -158,6 +158,7 @@ export async function submitLead(formData: {
             { question: '商品', answer: product.name, type: 'text' },
             { question: 'OEM製造数', answer: checked.quantityLabel, type: 'number' },
             { question: '商品小計(税抜)', answer: `¥${checked.subtotal.toLocaleString()}`, type: 'number' },
+            { question: '試作・表示・簡易デザイン費(税抜・初回特典適用)', answer: `¥${checked.offerFee.toLocaleString()}`, type: 'number' },
             { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: '¥6,000', type: 'number' },
             { question: '概算お見積り金額(税抜)', answer: `¥${checked.total.toLocaleString()}`, type: 'number' },
             { question: `1${checked.quantityUnit}あたり仕入原価(税抜・送料等別)`, answer: `¥${Math.ceil(checked.subtotal / checked.quantity).toLocaleString()}`, type: 'number' },

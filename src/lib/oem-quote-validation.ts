@@ -1,4 +1,5 @@
 import type { FormOption, FormQuestion, FormStep, Product } from '@/types/database'
+import { calculateOemQuoteTotals, OEM_INITIAL_OFFER_FEE } from '@/lib/oem-offer-pricing'
 
 export const OEM_PAGE_ID = '35e7d402-0443-4703-94a4-fc2873b8f933'
 export const OEM_PRODUCT_IDS = new Set([
@@ -24,7 +25,7 @@ export function validateContactInfo(contact: ContactInfo): string | null {
 }
 
 export type QuoteSnapshot = { product: Product; steps: (FormStep & { questions: (FormQuestion & { options: FormOption[] })[] })[] }
-export type QuoteValidation = { selectedOptions: Array<{ question: string; answer: string; type: string }>; subtotal: number; total: number; quantity: number; quantityLabel: string; quantityUnit: string; conditionNote: string } | { error: string }
+export type QuoteValidation = { selectedOptions: Array<{ question: string; answer: string; type: string }>; subtotal: number; offerFee: number; total: number; quantity: number; quantityLabel: string; quantityUnit: string; conditionNote: string } | { error: string }
 const teaId = 'c0000001-0000-0000-0000-000000000006'
 const answerIds = (value: unknown): string[] => {
     if (Array.isArray(value)) return value.filter(v => typeof v === 'string')
@@ -107,5 +108,6 @@ export function validateOemQuote(snapshot: QuoteSnapshot, rawAnswers: Record<str
     const conditionNote = product.id === teaId
         ? '表示価格は概算です。乾燥・必要に応じた焙煎・製造・包装込み。食材の種類・状態や加工内容により金額が変わります。乾燥加工をお引き受けできない食材もあります。賞味期限：製造から1年。原料確認後に対応可否と正式見積もりをご案内します。'
         : `概算（製造数量が多少前後し完成全数買い取り、実際の出来上がり数量で精算）／賞味期限：製造から${isRamen ? '60日／1セット2食入り' : '1年'}${product.id.endsWith('000001') ? '／内容量200g' : !isRamen && capacity ? `／容量：${capacity}` : ''}`
-    return { selectedOptions: canonical, subtotal, total: subtotal + SHIPPING_PACKING_FEE, quantity, quantityLabel, quantityUnit, conditionNote }
+    const totals = calculateOemQuoteTotals({ subtotal, offerFee: OEM_INITIAL_OFFER_FEE, shippingFee: SHIPPING_PACKING_FEE })
+    return { selectedOptions: canonical, ...totals, quantity, quantityLabel, quantityUnit, conditionNote }
 }

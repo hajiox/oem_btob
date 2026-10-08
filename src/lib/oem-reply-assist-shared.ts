@@ -1,7 +1,7 @@
 export const REPLY_TEMPLATES = [
   { id: 'acknowledge', label: 'お問い合わせ受付' },
   { id: 'materials', label: '支給原料の確認' },
-  { id: 'trial', label: '試作・初回無料のご案内' },
+  { id: 'trial', label: '試作・初回特典のご案内' },
   { id: 'payment', label: '発注・お支払いのご案内' },
   { id: 'progress', label: '製造状況のご案内' },
   { id: 'shipping', label: '出荷状況のご案内' },

@@ -20,12 +20,12 @@ const LP_IMAGES = [
   { src: '/images/lp-problems.jpg', alt: 'OEMは地獄？福島の食材で小ロット・低コスト・簡単フロー' },
   { src: '/images/lp-cases.jpg', alt: '農家・自治体・道の駅ホテルの活用事例' },
   { src: '/images/lp-reasons.jpg', alt: '福島専門のOEMプロ集団が企画から販売までフルサポート' },
-  { src: '/images/lp-cta.jpg', alt: '先着10社様限定 今なら初期費用0円' },
+  { src: '/images/lp-cta.jpg', alt: '初回特典：通常合計50,000円が初回合計5,000円。1企業（個人は1名）につき1回限り。' },
 ]
 
 // LP セクションスケルトン
 function SamplePurchaseLink({ pageId, src }: { pageId: string; src: string }) {
-  if (pageId !== SAMPLE_PAGE_ID || oemLpImage(pageId, src, '').src !== '/images/btob/oem-notice-copy-v3.webp') return null
+  if (pageId !== SAMPLE_PAGE_ID || oemLpImage(pageId, src, '').src !== '/images/btob/oem-notice-copy-v4.png') return null
   return (
     <a href="https://www.rakuten.co.jp/aizubrandhall/" target="_blank" rel="noopener noreferrer"
       style={{ display: 'inline-block', padding: '8px 12px', color: '#64748b', fontSize: 13, lineHeight: 1.6, textDecoration: 'underline', textUnderlineOffset: 3 }}>

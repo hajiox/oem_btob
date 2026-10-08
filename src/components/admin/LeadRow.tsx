@@ -173,7 +173,7 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                 </div>
                             </div>
                         </div>
-                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><details style={{ marginTop: 24 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>試作・初回無料特典を管理する</summary><OemTrialPanel leadId={lead.id} /></details><OemOrderPanel leadId={lead.id} estimatedTotalPrice={lead.estimated_total_price || 0} /><OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} /></>}
+                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><details style={{ marginTop: 24 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>試作・初回特典を管理する</summary><OemTrialPanel leadId={lead.id} /></details><OemOrderPanel leadId={lead.id} estimatedTotalPrice={lead.estimated_total_price || 0} /><OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} /></>}
                     </td>
                 </tr>
             )}

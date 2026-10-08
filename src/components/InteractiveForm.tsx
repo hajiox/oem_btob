@@ -12,6 +12,7 @@ import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
 import { trackOemEvent } from '@/lib/oem-analytics'
+import { calculateOemQuoteTotals, OEM_INITIAL_OFFER_FEE } from '@/lib/oem-offer-pricing'
 
 // 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
 const EXTRA_EXCLUSION_KEYWORDS = ['ない', 'なし', '無し', '不要', '該当なし', '特になし', '解除', '削除', 'いいえ', '否', 'none', 'null', 'n/a']
@@ -264,7 +265,8 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     const basePrice = unitPrice.fixed * oemQuantity
     const productSubtotal = Math.ceil(basePrice * (1 + unitPrice.percentage / 100))
     const shippingPackingFee = oemShippingPackingFee(pageId, selectedProduct)
-    const estimatedPrice = productSubtotal + shippingPackingFee
+    const oemOfferFee = isBtoBQuotePage ? OEM_INITIAL_OFFER_FEE : 0
+    const { total: estimatedPrice } = calculateOemQuoteTotals({ subtotal: productSubtotal, offerFee: oemOfferFee, shippingFee: shippingPackingFee })
     const estimatedTax = Math.round(estimatedPrice * 10 / 110)
 
     // バリデーション
@@ -423,6 +425,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
             { question: `1${quantityUnit}あたり仕入原価(税抜)`, answer: `¥${unitCost.toLocaleString()}`, type: 'number' },
             ...(shippingPackingFee ? [
                 { question: '商品小計(税抜)', answer: `¥${productSubtotal.toLocaleString()}`, type: 'number' },
+                ...(oemOfferFee ? [{ question: 'OEM開発基本費（初回特典対象・概算）', answer: `¥${oemOfferFee.toLocaleString()}`, type: 'number' }] : []),
                 { question: '送料・発送梱包手数料(税抜・1注文につき)', answer: `¥${shippingPackingFee.toLocaleString()}`, type: 'number' },
             ] : []),
             ...(isFixedLotProduct ? [{ question: '見積条件', answer: fixedLotConditionNote, type: 'text' }] : []),
@@ -716,7 +719,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                         {/* 見積もり結果 */}
                         {currentStep === RESULT_STEP && isBtoBQuotePage && (
                             <motion.div key="step-oem-result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                <OemQuoteResult productName={products.find(p => p.id === selectedProduct)?.name || ''} quantityLabel={quantityLabel} quantity={oemQuantity} quantityUnit={quantityUnit} productSubtotal={productSubtotal} shippingFee={shippingPackingFee} total={estimatedPrice} conditionNote={fixedLotConditionNote} summary={quoteSummary} unitBreakdown={unitBreakdown} isTea={isTeaProduct} isRamen={isRamenProduct} onConsult={handleApply} />
+                                <OemQuoteResult productName={products.find(p => p.id === selectedProduct)?.name || ''} quantityLabel={quantityLabel} quantity={oemQuantity} quantityUnit={quantityUnit} productSubtotal={productSubtotal} offerFee={oemOfferFee} shippingFee={shippingPackingFee} total={estimatedPrice} conditionNote={fixedLotConditionNote} summary={quoteSummary} unitBreakdown={unitBreakdown} isTea={isTeaProduct} isRamen={isRamenProduct} onConsult={handleApply} />
                             </motion.div>
                         )}
                         {currentStep === RESULT_STEP && !isBtoBQuotePage && (

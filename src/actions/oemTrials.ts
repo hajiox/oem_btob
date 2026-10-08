@@ -19,7 +19,7 @@ export async function createOemTrial(leadId: string, input: TrialInput) {
     const user = await requireMailAdmin(); const lead = await requireOemMailLead(leadId); const parsed = validateTrialInput(input)
     const { data, error } = await adminClient.rpc('create_oem_trial', { p_lead_id: lead.id, p_actor: user.id, p_company_key: parsed.companyKey, p_identity_evidence: parsed.identityEvidence, p_claim_included: parsed.claimIncluded, p_label: parsed.label || null, p_notes: parsed.notes || null, p_request_id: parsed.requestId })
     if (error) throw error; const row = Array.isArray(data) ? data[0] : data; const result = String(row?.result || '')
-    if (!['created','duplicate'].includes(result)) return { success: false, error: ({ identity_conflict:'企業識別キーの確認根拠が一致しません。この案件では同じ企業キー・確認根拠を使用してください。', benefit_conflict:'この企業の初回無料特典は別の案件に適用済みです。', conflict:'同じ登録IDで異なる内容が指定されています。履歴を確認してください。' } as Record<string,string>)[result] || '試作を登録できませんでした。' }
+    if (!['created','duplicate'].includes(result)) return { success: false, error: ({ identity_conflict:'企業識別キーの確認根拠が一致しません。この案件では同じ企業キー・確認根拠を使用してください。', benefit_conflict:'この企業の初回特典は別の案件に適用済みです。', conflict:'同じ登録IDで異なる内容が指定されています。履歴を確認してください。' } as Record<string,string>)[result] || '試作を登録できませんでした。' }
     revalidatePath('/admin/dashboard'); return { success: true, duplicate: result === 'duplicate', trialId: row?.trial_id as string, trialNumber: row?.trial_number as number, feeAdvisory: Number(row?.fee_advisory || 0), message: result === 'duplicate' ? '同じリクエストは登録済みです。' : '試作を登録しました。' }
   } catch (e) { return { success: false, error: e instanceof MailError ? e.message : '試作を登録できませんでした。入力内容・履歴を確認してください。' } }
 }

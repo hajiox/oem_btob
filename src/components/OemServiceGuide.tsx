@@ -13,6 +13,24 @@ export function OemExplanation() {
   )
 }
 
+export function OemFirstOfferSummary() {
+  return (
+    <section className={styles.offer} aria-labelledby="oem-first-offer-title">
+      <h2 id="oem-first-offer-title">初回限定・商品づくり応援</h2>
+      <p><strong>1企業（個人は1名）につき1回限り</strong>。すべて税別です。</p>
+      <div className={styles.offerTable} role="table" aria-label="初回特典の料金比較">
+        <div className={styles.offerRow + ' ' + styles.offerHeader} role="row"><span role="columnheader">対象項目</span><span role="columnheader">通常料金</span><span role="columnheader">初回特典</span></div>
+        <div className={styles.offerRow} role="row"><span role="cell">試作費（2回まで）</span><span role="cell">10,000円</span><span role="cell">5,000円（50%OFF）</span></div>
+        <div className={styles.offerRow} role="row"><span role="cell">原材料表示作成</span><span role="cell">5,000円</span><span role="cell">0円</span></div>
+        <div className={styles.offerRow} role="row"><span role="cell">栄養成分表示作成（計算値）</span><span role="cell">5,000円</span><span role="cell">0円</span></div>
+        <div className={styles.offerRow} role="row"><span role="cell">簡易パッケージデザイン</span><span role="cell">30,000円</span><span role="cell">0円</span></div>
+      </div>
+      <p className={styles.offerTotal}><strong>通常合計50,000円 → 初回合計5,000円（45,000円軽減）</strong></p>
+      <p className={styles.note}>追加試作は1回3,000円（税別）。試作で特殊食材の使用の場合は別途お見積りとなります。製造代金・原料実費・送料は特典対象外です。</p>
+    </section>
+  )
+}
+
 export function OemServiceQuestions() {
   return (
     <section className={styles.panel} aria-labelledby="oem-questions-title">
@@ -36,13 +54,16 @@ export function OemServiceQuestions() {
         </details>
         <details className={styles.disclosure} id="oem-cost">
           <summary>食品OEMの費用には、何が含まれますか？</summary>
-          <p>自動見積もりの金額は概算です。食材や仕様によって金額は変わり、正式見積もりで確定します。商品・包装の費用と送料・発送梱包手数料6,000円（税別・1注文につき）を含む内訳は、下の自動見積もりで確認できます。初回無料特典の対象・追加費用も見積もり画面に表示します。</p>
+          <p>自動見積もりの金額は概算です。食材や仕様によって金額は変わり、正式見積もりで確定します。商品・包装の費用と送料・発送梱包手数料6,000円（税別・1注文につき）を含む内訳は、下の自動見積もりで確認できます。初回特典の対象・追加費用も見積もり画面に表示します。</p>
           <dl className={styles.costs}>
             <div><dt>商品・製造・包装</dt><dd>選んだ材料・包装と製造手数料を含みます。お茶は乾燥・必要に応じた焙煎・製造・包装を含む専用プランで、製造手数料の別途加算はありません。</dd></div>
             <div><dt>送料・発送梱包</dt><dd>1注文につき6,000円（税別）を概算総額に加算しています。支給原料を弊社へ送る送料は、お客様のご負担です。</dd></div>
-            <div><dt>試作・表示・デザイン</dt><dd>通常は試作費（2回まで）10,000円、原材料表示作成5,000円、栄養成分表示作成（計算値）5,000円、簡易パッケージデザイン30,000円（すべて税別）。この合計50,000円が、1企業（個人は1名）につき初回1回のみ無料です。追加試作は1回3,000円（税別）、特典対象外の費用は別途となります。</dd></div>
+            <div><dt>試作費（2回まで）</dt><dd>通常10,000円 → 初回5,000円（50%OFF）</dd></div>
+            <div><dt>原材料表示作成</dt><dd>通常5,000円 → 初回0円</dd></div>
+            <div><dt>栄養成分表示作成（計算値）</dt><dd>通常5,000円 → 初回0円</dd></div>
+            <div><dt>簡易パッケージデザイン</dt><dd>通常30,000円 → 初回0円</dd></div>
           </dl>
-          <p className={styles.note}>初回無料は上記の試作・表示・デザイン費が対象です。商品の製造代金や送料まで無料になる特典ではありません。</p>
+          <p className={styles.note}><strong>そしてなんと、通常合計50,000円が初回合計5,000円（45,000円軽減）です。</strong>上記の試作・表示・デザイン費が特典の対象です。試作で特殊食材の使用の場合は別途お見積りとなります。製造代金・原料実費・送料は特典対象外です。</p>
         </details>
         <details className={styles.disclosure}>
           <summary>道の駅・ふるさと納税向けの商品も相談できますか？</summary>
@@ -53,7 +74,7 @@ export function OemServiceQuestions() {
       <ol className={styles.process}>
         <li><h3>概算を見る</h3><p>商品・材料・包装を選び、ご予算の目安を確認します。この時点では発注になりません。</p></li>
         <li><h3>商品について相談</h3><p>使いたい原料、目指す味、販売する場所、希望時期をお知らせください。対応できる内容を確認します。</p></li>
-        <li><h3>試作で味を確認</h3><p>商品の方向性を相談し、試作で味を確認します。試作費と初回無料の適用条件も確認します。</p></li>
+        <li><h3>試作で味を確認</h3><p>商品の方向性を相談し、試作で味を確認します。試作費と初回特典の適用条件も確認します。</p></li>
         <li><h3>仕様・見積もりを確定</h3><p>味・包装・表示内容と正式見積もりを確認し、製造する内容と納品予定を決めます。</p></li>
         <li><h3>前金のお支払い・製造</h3><p>正式発注後、正式見積金額の50％を前金としてお支払いいただきます。ご入金確認後、確定した仕様で製造・包装します。</p></li>
         <li><h3>残額の精算・出荷</h3><p>完成した全数をお買い取りいただき、実際の製造数量で金額を確定します。前金を差し引いた残額を出荷前にご精算いただきます。</p></li>
