@@ -64,4 +64,3 @@ async function main(){
  } catch(e){await db.query('ROLLBACK').catch(()=>{});console.error(`verify-oem-trial-prepayment-boundaries: FAIL [${stage}] ${e.message}`);process.exitCode=1} finally {await db.end()}
 }
 main()
-
