@@ -13,6 +13,7 @@ import { OEM_METADATA } from '@/lib/oem-seo'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Facebook, Instagram, Youtube, MapPin, Phone, Clock, CalendarDays } from 'lucide-react'
+import styles from './page.module.css'
 
 // LP画像セクション（ハードコード）
 const LP_IMAGES = [
@@ -76,7 +77,7 @@ function StoreSection() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '60px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '64px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '64px', alignItems: 'center' }}>
             {/* 写真 */}
             <div style={{ position: 'relative', aspectRatio: '4/3', width: '100%' }}>
               <Image
@@ -313,9 +314,8 @@ export default async function HomePage({ params, searchParams }: { params: Promi
                 {/* 画像部分 */}
                 {section.image_url && (
                   <div
+                    className={`${styles.imageFrame} ${section.section_type === 'hero' ? styles.heroImage : ''} ${currentPageId === SAMPLE_PAGE_ID ? styles.oemImage : ''}`}
                     style={{
-                      width: '100%',
-                      borderRadius: section.section_type === 'hero' ? '32px' : '24px',
                       overflow: 'hidden',
                       boxShadow: section.section_type === 'hero'
                         ? '0 30px 60px -12px rgba(0,0,0,0.3)'
@@ -340,13 +340,18 @@ export default async function HomePage({ params, searchParams }: { params: Promi
             LP_IMAGES.map((img, i) => (
               <div
                 key={i}
-                style={{ width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
               >
-                <Image
-                  {...oemLpImage(currentPageId, img.src, img.alt)}
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
-                  priority={i === 0}
-                />
+                <div
+                  className={`${styles.imageFrame} ${currentPageId === SAMPLE_PAGE_ID ? styles.oemImage : ''}`}
+                  style={{ overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                >
+                  <Image
+                    {...oemLpImage(currentPageId, img.src, img.alt)}
+                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                    priority={i === 0}
+                  />
+                </div>
                 <SamplePurchaseLink pageId={currentPageId} src={img.src} />
                 {i === 0 && currentPageId === SAMPLE_PAGE_ID && <><OemExplanation /><OemRankingProof /><PackageShowcase /></>}
               </div>
