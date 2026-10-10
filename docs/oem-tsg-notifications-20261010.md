@@ -1,6 +1,6 @@
 # OEM見積もり相談のTSG通知
 
-2026-10-10。OEM側の実装。TSG側の専用受信APIと資格情報設定は担当PC TSAでの正式依頼確認・実装待ち。自動投稿はまだ有効化しない。
+2026-10-10。OEM側 `3d4f695` と、担当PC TSAによるTSG側 `8356f3f` を本番反映。専用キーと通知有効値trueの本番設定を確認。16:15の本番cronで検証通知の自動配信、16:20の同一通知再送で重複防止に成功。
 
 ## 受付と通知
 
@@ -9,7 +9,7 @@
 - 通知内容は受付時点の会社名・商品・数量・税別の製造概算・受付時刻・相談IDだけ。連絡先、自由記載、承認/請求用token URLは送らない。
 - `sourceKey=oem:consultation:<leadId>:received:v1` とpayloadは不変。修正した内容や現在時刻で再生成しない。
 
-## 受信API契約（TSG側の追加が必要）
+## 受信API契約
 
 `POST https://v0-line-blush.vercel.app/api/integrations/oem/consultation-received`
 
@@ -46,7 +46,7 @@ sourceKeyから決定的な投稿UUIDを作り、DBのunique insertと競合時�
 
 ## 検証・反映
 
-2026-10-10に以下の通知/メール/94経路回帰・型チェック・新規TSへのeslint・本番buildが成功。DB検証は合成データを全件ROLLBACKし、028はchecksum管理の正規runnerでOEM本番DBへ適用済み。TSGへの実投稿は行っていない。
+2026-10-10に以下の通知/メール/94経路回帰・型チェック・新規TSへのeslint・本番buildが成功。DB検証は合成データを全件ROLLBACKし、028はchecksum管理の正規runnerでOEM本番DBへ適用済み。その後、下記の本番cronで明示的な動作確認投稿1件と同一通知の再送を検証した。
 
 - `node scripts/verify-oem-tsg.cjs`: fetch完全mock、設定無効/Preview/認証、HTTP・通信不明・CAS・cron契約。
 - `node scripts/verify-oem-tsg-db.cjs`: 通常OEM接続、合成相談のみ、全件ROLLBACK。重複・lease/CAS・再送・不変payload・anon/authenticated拒否。実メール/TSG投稿なし。
@@ -54,4 +54,10 @@ sourceKeyから決定的な投稿UUIDを作り、DBのunique insertと競合時�
 - `npx tsc --noEmit`、変更した新規TSファイルへのeslint、`npm run build`。
 - migrationは `node scripts/oem-db-migrate.cjs 028_oem_tsg_notifications.sql --apply`。既存migrationを変更せず、checksum付きで適用する。
 
-TSAへの連携仕様はCodexMTG投稿 `c800b3d8-6219-497c-a472-cdb4fd5c0665`。回答 `2722dec0-f065-4bf9-af8f-cb2c38f78c86` は、Codex間依頼だけでは改修承認にならず管理職の正式依頼確認が必要との内容。CEO_SからTSG本体は変更していない。TSG側配備・専用secret設定・本番の一報確認が終わるまで、全体を稼働済みとしない。
+TSAへの連携仕様はCodexMTG投稿 `c800b3d8-6219-497c-a472-cdb4fd5c0665`。初回の承認確認待ちの後、担当PC TSAが管理職の直接依頼を確認して着手（報告 `dacc240d-b09c-4103-95a0-6aafade9762b`）。CEO_SからTSG本体は変更していない。TSG `8356f3f` の9項目契約・専用認証・固定宛先・決定的ID・proxy許可をソースで照合済み。本番 `ts-groupware-5nnkc7op0-hajioxs-projects.vercel.app`、OEM `oem-8mhsy5did-hajioxs-projects.vercel.app` のReady/独自ドメインaliasを確認。正規Vercel設定APIでOEM有効値true（非秘密）のみ確認し、秘密値は出力・保存していない。
+
+本番cron検証は `sourceKey=oem:consultation:06fd55ae-8282-4b51-b02e-a58e36e4da79:received:v1` の1件を使用。会社名に「動作確認・実案件ではありません」と明記。合成lead/outboxだけを作成し、メールキューは0件。16:15:48 JSTにフロアへ投稿され、OEM側はsent/attempts=1/errorなし。MCP `posts_get` で投稿先・TSG君・会社/商品/数量/概算/管理リンクを照合。postId `b460a6f2-518c-5fa1-8b4d-8b4cbc5d38d1`。
+
+16:19に同じ通知をpendingへ戻し、16:20:48 JSTの正規cronで再送成功。OEM側はsent/attempts=2/errorなし、postIdは同一。MCP `posts_get` の作成日時・versionは初回のまま、固定フロア内の検証会社名検索は1件・追加ページなしを確認した。専用キー/CRON_SECRETはsensitiveのため取り出さず、正規の定期ジョブで配送した。
+
+検証後、メールキュー0件を確認した上で、厳密なID・会社名・検証用メールアドレスの照合付きトランザクションでOEM仮lead1件を削除。関連outboxはcascade削除され、仮lead/outbox/mailは全て0件。フロアの明示的な動作確認投稿1件は確認用に残した。確認先: `https://v0-line-blush.vercel.app/board/d6453519-ab54-4946-9762-ed266f59cb1e#post-b460a6f2-518c-5fa1-8b4d-8b4cbc5d38d1`。
