@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import OemAnalytics from '@/components/OemAnalytics'
+import OemTrackedQuoteLink from '@/components/OemTrackedQuoteLink'
 import { OemFirstOfferSummary } from '@/components/OemServiceGuide'
 import styles from './OemProductLanding.module.css'
 
@@ -17,7 +18,6 @@ export type OemProductLandingProps = {
 }
 
 export default function OemProductLanding(props: OemProductLandingProps) {
-  const quoteHref = `/btob?product=${props.product}#bto-form`
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -33,7 +33,7 @@ export default function OemProductLanding(props: OemProductLandingProps) {
             <h1 className={styles.title}>{props.title}</h1>
             <p className={styles.lead}>{props.lead}</p>
             <div className={styles.actions}>
-              <Link href={quoteHref} className={styles.primary}>この商品の概算を確認する</Link>
+              <OemTrackedQuoteLink product={props.product} location="hero" className={styles.primary}>この商品の概算を確認する</OemTrackedQuoteLink>
               <Link href="/btob" className={styles.secondary}>食品OEM全体を見る</Link>
             </div>
           </div>
@@ -64,7 +64,7 @@ export default function OemProductLanding(props: OemProductLandingProps) {
           <p>まずは仕様・包装を選び、概算をご確認ください。作りたい味や使いたい原料について伺い、試作の内容を相談します。</p>
           <p>試作で味を確認した後、製造をご希望の場合は仕様・数量・正式見積もりを決めます。</p>
           <div className={styles.actions}>
-            <Link href={quoteHref} className={styles.primary}>この商品で概算を確認する</Link>
+            <OemTrackedQuoteLink product={props.product} location="footer" className={styles.primary}>この商品で概算を確認する</OemTrackedQuoteLink>
           </div>
         </section>
 

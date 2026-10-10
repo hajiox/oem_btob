@@ -11,7 +11,7 @@ import OemQuoteResult from '@/components/OemQuoteResult'
 import type { FormStepWithItems } from '@/actions/publicForm'
 import { submitLead } from '@/actions/publicForm'
 import type { Product } from '@/types/database'
-import { trackOemEvent } from '@/lib/oem-analytics'
+import { trackOemEvent, trackOemInteraction, type OemInteractionDetails, type OemInputType, type OemFieldName } from '@/lib/oem-analytics'
 import { calculateOemQuoteTotals, OEM_INITIAL_OFFER_FEE, OEM_INITIAL_TRIAL_GROSS } from '@/lib/oem-offer-pricing'
 
 // 追加入力（詳細テキスト・数値）を非表示にするキーワード定義
@@ -38,6 +38,9 @@ const CURRY_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000001'
 const TEA_PRODUCT_ID = 'c0000001-0000-0000-0000-000000000006'
 const TEA_CAVEAT = '表示価格は概算です。食材の種類・状態、乾燥や焙煎などの加工内容により金額が変わります。食材によっては乾燥加工をお引き受けできない場合があります。原料確認後に対応可否と正式見積もりをご案内します。'
 const OEM_IDEMPOTENCY_STORAGE_KEY = 'oem-intake-idempotency-v1'
+const CONTACT_ANALYTICS_FIELDS = {
+    companyName: 'company_name', contactName: 'contact_name', email: 'email', phone: 'phone', notes: 'notes',
+} as const
 
 async function getOemIdempotencyKey(payload: Record<string, unknown>, currentKey: string | null): Promise<string> {
     const bytes = new TextEncoder().encode(JSON.stringify(payload))
@@ -79,6 +82,11 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     const idempotencyKeyRef = useRef<string | null>(null)
     const contactFormId = useId()
     const previousScreen = useRef(currentStep)
+    const interactionStartedAt = useRef<number | null>(null)
+    const formStartedProducts = useRef(new Set<string>())
+    const exitSignalSent = useRef(false)
+    const submitAttemptPending = useRef(false)
+    const submitAttemptResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
         if (initialSelectedProduct) trackOemEvent('oem_select_product', initialSelectedProduct)
@@ -199,6 +207,124 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     const RESULT_STEP = FORM_START + activeSteps.length
     const CONTACT_STEP = RESULT_STEP + 1
 
+    const currentFormStep = currentStep >= FORM_START && currentStep < RESULT_STEP
+        ? activeSteps[currentStep - FORM_START] : undefined
+    const analyticsStepKind: NonNullable<OemInteractionDetails['step_kind']> = isSuccess ? 'complete'
+        : currentStep === PRODUCT_STEP ? 'product'
+        : currentStep === RESULT_STEP ? 'quote'
+        : currentStep === CONTACT_STEP ? 'contact' : 'question'
+    const analyticsStepIndex = Math.max(0, Math.min(100, (isSuccess ? CONTACT_STEP + 1 : currentStep) - firstStep))
+    const analyticsStepId = currentFormStep?.id
+    const stepDetails: OemInteractionDetails = {
+        step_kind: analyticsStepKind, step_index: analyticsStepIndex,
+        ...(analyticsStepId ? { step_id: analyticsStepId } : {}),
+    }
+    const exitSnapshot = useRef({ productId: selectedProduct, details: stepDetails, complete: isSuccess })
+
+    useEffect(() => {
+        if (!isBtoBQuotePage || products.length === 0) return
+        const details: OemInteractionDetails = {
+            step_kind: analyticsStepKind, step_index: analyticsStepIndex,
+            ...(analyticsStepId ? { step_id: analyticsStepId } : {}),
+        }
+        exitSnapshot.current = { productId: selectedProduct, details, complete: isSuccess }
+        trackOemInteraction('oem_step_view', selectedProduct, details)
+    }, [isBtoBQuotePage, products.length, selectedProduct, analyticsStepKind, analyticsStepIndex, analyticsStepId, isSuccess])
+
+    useEffect(() => {
+        if (!isBtoBQuotePage) return
+        const signalExit = () => {
+            const snapshot = exitSnapshot.current
+            if (interactionStartedAt.current === null || snapshot.complete || exitSignalSent.current) return
+            exitSignalSent.current = true
+            // A hidden page can return. This is an exit signal, not confirmed abandonment.
+            trackOemInteraction('oem_form_exit', snapshot.productId, {
+                ...snapshot.details,
+                elapsed_seconds: Math.max(0, Math.min(86400, Math.floor((Date.now() - interactionStartedAt.current) / 1000))),
+            }, { once: false })
+        }
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') signalExit()
+            else exitSignalSent.current = false
+        }
+        const onPageShow = () => { exitSignalSent.current = false }
+        document.addEventListener('visibilitychange', onVisibilityChange)
+        window.addEventListener('pagehide', signalExit)
+        window.addEventListener('pageshow', onPageShow)
+        return () => {
+            // Client-side navigation can unmount the form without hiding the document.
+            signalExit()
+            document.removeEventListener('visibilitychange', onVisibilityChange)
+            window.removeEventListener('pagehide', signalExit)
+            window.removeEventListener('pageshow', onPageShow)
+        }
+    }, [isBtoBQuotePage])
+
+    useEffect(() => () => {
+        if (submitAttemptResetTimer.current !== null) clearTimeout(submitAttemptResetTimer.current)
+    }, [])
+
+    const beginFormInteraction = (productId = selectedProduct) => {
+        if (!isBtoBQuotePage) return
+        if (interactionStartedAt.current === null) interactionStartedAt.current = Date.now()
+        if (!productId || formStartedProducts.current.has(productId)) return
+        formStartedProducts.current.add(productId)
+        trackOemInteraction('oem_form_start', productId, stepDetails)
+    }
+
+    const trackAnswer = (questionId: string, inputType: OemInputType, action: OemInteractionDetails['action']) => {
+        if (!isBtoBQuotePage) return
+        beginFormInteraction()
+        trackOemInteraction('oem_answer', selectedProduct, {
+            ...stepDetails, question_id: questionId, input_type: inputType, action,
+        })
+    }
+
+    const recordSubmitAttempt = () => {
+        if (!isBtoBQuotePage || submitAttemptPending.current || submittingRef.current) return
+        submitAttemptPending.current = true
+        trackOemInteraction('oem_submit_attempt', selectedProduct, stepDetails, { once: false })
+        // A click/Enter, native invalid events and onSubmit belong to one browser attempt.
+        submitAttemptResetTimer.current = setTimeout(() => { submitAttemptPending.current = false }, 0)
+    }
+
+    const contactFieldError = (field: OemFieldName): OemInteractionDetails['error_type'] | null => {
+        const requiredValue = field === 'company_name' ? contactInfo.companyName
+            : field === 'contact_name' ? contactInfo.contactName : field === 'email' ? contactInfo.email : null
+        if (requiredValue !== null && !requiredValue.trim()) return 'required'
+        return isValidContactInfo({
+            companyName: field === 'company_name' ? contactInfo.companyName : 'x',
+            contactName: field === 'contact_name' ? contactInfo.contactName : 'x',
+            email: field === 'email' ? contactInfo.email : 'x@example.com',
+            phone: field === 'phone' ? contactInfo.phone : '',
+            notes: field === 'notes' || field === 'desired_product' ? consultationNotes : '',
+        }) ? null : 'invalid_contact'
+    }
+
+    const trackContactValidation = (target: EventTarget | null, nativeInvalid = false) => {
+        if (!isBtoBQuotePage || !(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return
+        const field = target.dataset.oemField as OemFieldName | undefined
+        if (!field || ![...Object.values(CONTACT_ANALYTICS_FIELDS), 'desired_product'].includes(field)) return
+        const errorType = contactFieldError(field) || (nativeInvalid ? (target.validity.valueMissing ? 'required' : 'invalid_contact') : null)
+        if (errorType) trackOemInteraction('oem_validation_error', selectedProduct, {
+            ...stepDetails, field_name: field, error_type: errorType,
+        }, { once: false })
+    }
+
+    const trackContactInput = (field: OemFieldName, value: string, previousValue: string) => {
+        if (!isBtoBQuotePage || (!value && !previousValue)) return
+        beginFormInteraction()
+        trackOemInteraction('oem_contact_start', selectedProduct, stepDetails)
+        trackOemInteraction('oem_field_start', selectedProduct, {
+            ...stepDetails, field_name: field, input_type: field === 'notes' || field === 'desired_product' ? 'textarea' : 'text',
+        })
+    }
+
+    const handleContactChange = (field: keyof typeof contactInfo, value: string) => {
+        trackContactInput(CONTACT_ANALYTICS_FIELDS[field], value, contactInfo[field])
+        setContactInfo({ ...contactInfo, [field]: value })
+    }
+
     useEffect(() => {
         if (isBtoBQuotePage && currentStep === RESULT_STEP) trackOemEvent('oem_view_quote', selectedProduct)
     }, [currentStep, isBtoBQuotePage, RESULT_STEP, selectedProduct])
@@ -292,6 +418,16 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     const consultationNotes = [isBtoBQuotePage && desiredProduct.trim() ? `作りたい商品・味のイメージ：${desiredProduct.trim()}` : '', contactInfo.notes.trim()].filter(Boolean).join('\n\n')
     const isContactInfoValid = () => isValidContactInfo({ ...contactInfo, notes: consultationNotes })
 
+    const trackQuestionValidation = (question: FormStepWithItems['questions'][number]) => {
+        if (!isBtoBQuotePage || !question.is_required) return
+        const value = answers[question.id]
+        const missing = !value || (typeof value === 'string' && !value.trim()) || (Array.isArray(value) && value.length === 0)
+            || (typeof value === 'object' && !Array.isArray(value) && !value.selected)
+        if (missing) trackOemInteraction('oem_validation_error', selectedProduct, {
+            ...stepDetails, question_id: question.id, error_type: 'required',
+        }, { once: false })
+    }
+
     const quoteSummary = activeSteps.flatMap(step => step.questions).flatMap(q => {
         const value = answers[q.id]
         if (value === undefined || value === null || value === '') return []
@@ -338,7 +474,10 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     }
 
     const handleNext = () => {
-        if (!isCurrentStepValid()) return
+        if (!isCurrentStepValid()) {
+            currentFormStep?.questions.forEach(trackQuestionValidation)
+            return
+        }
         if (currentStep >= FORM_START && currentStep < RESULT_STEP) {
             const currentFormIndex = currentStep - FORM_START
             const laterQuestionIds = new Set(
@@ -354,6 +493,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     }
     const handlePrev = () => {
         if (currentStep <= firstStep) return
+        if (isBtoBQuotePage) trackOemInteraction('oem_step_back', selectedProduct, {
+            ...stepDetails, action: 'back',
+        }, { once: false })
         setDirection(-1)
         if (isFixedLotProduct) {
             // Routes move forward; a repeated click must not create a same-screen back entry.
@@ -372,6 +514,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
     }
 
     const handleProductSelect = (productId: string) => {
+        beginFormInteraction(productId)
         if (productId !== selectedProduct) { setAnswers({}); setDesiredProduct('') }
         setSelectedProduct(productId)
         if (isBtoBQuotePage) trackOemEvent('oem_select_product', productId)
@@ -384,15 +527,24 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
         && activeSteps[currentStep - FORM_START]?.questions[0].input_type === 'radio'
 
     const handleInstantChoice = (questionId: string, optionId: string) => {
+        trackAnswer(questionId, 'radio', 'select')
         // Route from the new answer, not the previous render's state.
         const laterIds = new Set(activeSteps.slice(currentStep - FORM_START + 1).flatMap(s => s.questions.map(q => q.id)))
         const nextAnswers = { ...Object.fromEntries(Object.entries(answers).filter(([id]) => !laterIds.has(id))), [questionId]: optionId }
         setAnswers(nextAnswers)
-        if (isTeaProduct && optionId === 'b2026091-6001-4000-8000-000000000203') return
+        if (isTeaProduct && optionId === 'b2026091-6001-4000-8000-000000000203') {
+            trackOemInteraction('oem_validation_error', selectedProduct, {
+                ...stepDetails, question_id: questionId, error_type: 'unavailable',
+            }, { once: false })
+            return
+        }
         navigateTo(getNextScreen(nextAnswers))
     }
 
-    const handleAnswerChange = (questionId: string, value: any, type: string) => {
+    const handleAnswerChange = (questionId: string, value: any, type: OemInputType) => {
+        const action = value === '' || (type === 'checkbox' && Array.isArray(answers[questionId]) && answers[questionId].includes(value))
+            ? 'clear' : ['radio', 'checkbox', 'select', 'select_text_selected', 'select_number_selected'].includes(type) ? 'select' : 'change'
+        trackAnswer(questionId, type, action)
         if (type === 'checkbox') {
             const currentVal = Array.isArray(answers[questionId]) ? answers[questionId] : []
             if (currentVal.includes(value)) setAnswers({ ...answers, [questionId]: currentVal.filter((v: string) => v !== value) })
@@ -410,7 +562,15 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault()
-        if (!isContactInfoValid() || isTeaDeclined || submittingRef.current) return
+        recordSubmitAttempt()
+        if (!isContactInfoValid() || isTeaDeclined || submittingRef.current) {
+            if (isBtoBQuotePage && !submittingRef.current) {
+                trackOemInteraction('oem_validation_error', selectedProduct, {
+                    ...stepDetails, error_type: isTeaDeclined ? 'unavailable' : 'invalid_contact',
+                }, { once: false })
+            }
+            return
+        }
         submittingRef.current = true
         setIsSubmitting(true)
         setErrorData(null)
@@ -465,8 +625,16 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
             if (isBtoBQuotePage) trackOemEvent('generate_lead', selectedProduct)
             setIsSuccess(true)
         }
-        else setErrorData(res.error || '送信に失敗しました。入力内容を確認してください。')
+        else {
+            if (isBtoBQuotePage) trackOemInteraction('oem_submit_error', selectedProduct, {
+                ...stepDetails, error_type: 'submission_failed',
+            }, { once: false })
+            setErrorData(res.error || '送信に失敗しました。入力内容を確認してください。')
+        }
         } catch {
+            if (isBtoBQuotePage) trackOemInteraction('oem_submit_error', selectedProduct, {
+                ...stepDetails, error_type: 'network',
+            }, { once: false })
             setErrorData('通信エラーが発生しました。入力内容は保持しています。受付済みの可能性があるため、確認メールをご確認のうえ、届いていなければ再度お試しください。')
         } finally {
             submittingRef.current = false
@@ -650,7 +818,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                     : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(99,102,241,0.08)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}><span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>💰 現在のお見積り ({quantityLabel})</span><span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #818cf8, #e879f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>¥{estimatedPrice.toLocaleString()}{isFixedLotProduct ? '' : '〜'}</span></div>)}
 
                 {/* メインフォーム */}
-                <div ref={panelRef} tabIndex={-1} aria-label="商品仕様と概算見積もり" style={{ padding: isBtoBQuotePage && isMobile ? '20px 16px' : '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px', outline: isBtoBQuotePage ? 'none' : undefined }}>
+                <div ref={panelRef} tabIndex={-1} aria-label="商品仕様と概算見積もり" data-oem-step-kind={isBtoBQuotePage ? analyticsStepKind : undefined} data-oem-step-index={isBtoBQuotePage ? analyticsStepIndex : undefined} data-oem-step-id={isBtoBQuotePage ? analyticsStepId : undefined} style={{ padding: isBtoBQuotePage && isMobile ? '20px 16px' : '32px 24px', position: 'relative', overflow: 'hidden', minHeight: '320px', outline: isBtoBQuotePage ? 'none' : undefined }}>
                     <AnimatePresence mode="wait" initial={false}>
                         {/* 数量入力 */}
                         {currentStep === 0 && !isBtoBQuotePage && (<motion.div key="step-qty" initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }} transition={{ duration: 0.3 }}><div style={{ marginBottom: '32px' }}><h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>OEM製造数の入力</h2><p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{isFixedLotProduct ? `${products.find(p => p.id === selectedProduct)?.name || '対象商品'}は${oemQuantity}${quantityUnit}の固定ロットです` : isBtoBQuotePage && !selectedProduct ? 'カレー・ラーメン・ふりかけ・ソースは400個（ラーメンは400セット）の固定ロットです' : 'ご希望の製造数をご入力ください（400個〜800個）'}</p></div><div><h4 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>製造予定数量<span style={{ color: '#f87171', fontSize: '12px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)' }}>必須</span></h4><div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '240px' }}><input type="number" value={oemQuantity} onChange={(e) => setOemQuantity(Number(e.target.value))} min={400} max={800} disabled={isFixedLotProduct} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', textAlign: 'right', fontSize: '18px', fontWeight: 'bold' }} /><span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{quantityUnit}</span></div>{(!isFixedLotProduct && (oemQuantity < 400 || oemQuantity > 800)) && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>※ 400個から800個の間で入力してください。</p>}</div></motion.div>)}
@@ -709,7 +877,9 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                                                 {q.help_text && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>{q.help_text}</p>}
                                                 {isInstantChoice && <p style={{ fontSize: 14, color: '#c7d2fe', marginTop: 8 }}>選択肢を押すと進みます。あとから戻って変更できます。</p>}
                                             </div>
-                                            <div>{renderQuestionInput(q)}</div>
+                                            <div data-oem-question-id={isBtoBQuotePage ? q.id : undefined} onBlurCapture={event => {
+                                                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) trackQuestionValidation(q)
+                                            }}>{renderQuestionInput(q)}</div>
                                         </>
                                     )
                                 })()}
@@ -821,7 +991,16 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                                         {quoteSummary.map((item, index) => <div key={index}><dt style={{ color: '#a5b4fc' }}>{item.question}</dt><dd style={{ margin: '4px 0 12px' }}>{item.answer}</dd></div>)}
                                     </dl>
                                 </details>}
-                                <form id={contactFormId} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}>
+                                <form id={contactFormId} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} onSubmit={handleSubmit}
+                                    onBlurCapture={event => trackContactValidation(event.target)}
+                                    onInvalidCapture={event => {
+                                        recordSubmitAttempt()
+                                        trackContactValidation(event.target, true)
+                                    }}
+                                    onKeyDownCapture={event => {
+                                        if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229
+                                            && event.target instanceof HTMLInputElement) recordSubmitAttempt()
+                                    }}>
                                     {errorData && (
                                         <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                                             <AlertCircle style={{ width: '20px', height: '20px', color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
@@ -830,38 +1009,41 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                                     )}
                                     {isBtoBQuotePage && <div>
                                         <label htmlFor={`${contactFormId}-desired`} style={{ display: 'block', fontSize: 16, color: '#e2e8f0', marginBottom: 8 }}>作りたい商品・味のイメージ（任意）</label>
-                                        <textarea id={`${contactFormId}-desired`} maxLength={1000} rows={3} value={desiredProduct} onChange={e => setDesiredProduct(e.target.value)} placeholder="例：桃のジャム、ご飯に合う肉みそ、鶏白湯ラーメンなど" style={{ width: '100%', padding: 14, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, fontSize: 16, resize: 'vertical' }} />
+                                        <textarea id={`${contactFormId}-desired`} data-oem-field="desired_product" maxLength={1000} rows={3} value={desiredProduct} onChange={e => {
+                                            trackContactInput('desired_product', e.target.value, desiredProduct)
+                                            setDesiredProduct(e.target.value)
+                                        }} placeholder="例：桃のジャム、ご飯に合う肉みそ、鶏白湯ラーメンなど" style={{ width: '100%', padding: 14, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, fontSize: 16, resize: 'vertical' }} />
                                         <p style={{ marginTop: 6, color: '#cbd5e1', fontSize: 14 }}>未定でも大丈夫です。内容による調整は正式見積もりでご案内します。</p>
                                     </div>}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
                                             {isBtoBQuotePage ? '会社名・農園名・屋号' : '貴社名 / 屋号'} <span style={{ color: '#f87171' }}>*</span>
                                         </label>
-                                        <input required type="text" value={contactInfo.companyName} onChange={e => setContactInfo({ ...contactInfo, companyName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder={isBtoBQuotePage ? '例：会津〇〇農園' : '株式会社〇〇'} />
+                                        <input required type="text" data-oem-field="company_name" value={contactInfo.companyName} onChange={e => handleContactChange('companyName', e.target.value)} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder={isBtoBQuotePage ? '例：会津〇〇農園' : '株式会社〇〇'} />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
                                             ご担当者名 <span style={{ color: '#f87171' }}>*</span>
                                         </label>
-                                        <input required type="text" value={contactInfo.contactName} onChange={e => setContactInfo({ ...contactInfo, contactName: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="山田 太郎" />
+                                        <input required type="text" data-oem-field="contact_name" value={contactInfo.contactName} onChange={e => handleContactChange('contactName', e.target.value)} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="山田 太郎" />
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
                                         <div>
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
                                                 メールアドレス <span style={{ color: '#f87171' }}>*</span>
                                             </label>
-                                            <input required type="email" value={contactInfo.email} onChange={e => setContactInfo({ ...contactInfo, email: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="info@example.com" />
+                                            <input required type="email" data-oem-field="email" value={contactInfo.email} onChange={e => handleContactChange('email', e.target.value)} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="info@example.com" />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>
                                                 電話番号
                                             </label>
-                                            <input type="tel" value={contactInfo.phone} onChange={e => setContactInfo({ ...contactInfo, phone: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="03-0000-0000" />
+                                            <input type="tel" data-oem-field="phone" value={contactInfo.phone} onChange={e => handleContactChange('phone', e.target.value)} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', fontSize: '15px' }} placeholder="03-0000-0000" />
                                         </div>
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: 'rgba(255,255,255,0.8)', marginBottom: '8px' }}>その他ご要望</label>
-                                        <textarea rows={3} value={contactInfo.notes} onChange={e => setContactInfo({ ...contactInfo, notes: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', resize: 'none', fontSize: '15px' }} placeholder="ご不明点や特記事項があればご記入ください" />
+                                        <textarea rows={3} data-oem-field="notes" value={contactInfo.notes} onChange={e => handleContactChange('notes', e.target.value)} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '12px 16px', color: '#fff', outline: 'none', resize: 'none', fontSize: '15px' }} placeholder="ご不明点や特記事項があればご記入ください" />
                                     </div>
                                 </form>
                             </motion.div>
@@ -875,7 +1057,7 @@ export default function InteractiveForm({ steps: allSteps, products, pageId, ini
                         {currentStep < RESULT_STEP && !(isBtoBQuotePage && currentStep === PRODUCT_STEP) && !isInstantChoice ? (
                             <button onClick={handleNext} disabled={!isCurrentStepValid()} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 700, background: isCurrentStepValid() ? 'linear-gradient(135deg, #818cf8, #6366f1)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isCurrentStepValid() ? 'pointer' : 'not-allowed', opacity: isCurrentStepValid() ? 1 : 0.4, boxShadow: isCurrentStepValid() ? '0 8px 24px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.2s' }}>{currentStep >= FORM_START && getNextScreen() === RESULT_STEP ? '結果を見る' : '次のステップへ'} <ChevronRight style={{ width: '16px', height: '16px' }} /></button>
                         ) : currentStep === CONTACT_STEP ? (
-                            <button type="submit" form={contactFormId} disabled={!isContactInfoValid() || isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700, background: isContactInfoValid() ? 'linear-gradient(135deg, #22c55e, #10b981)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isContactInfoValid() ? 'pointer' : 'not-allowed', opacity: isContactInfoValid() && !isSubmitting ? 1 : 0.5, boxShadow: isContactInfoValid() ? '0 8px 24px rgba(34,197,94,0.3)' : 'none' }}>{isSubmitting ? <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 style={{ width: '20px', height: '20px' }} />}{isSubmitting ? '送信中...' : 'この内容で送信する'}</button>
+                            <button type="submit" form={contactFormId} onClick={recordSubmitAttempt} disabled={!isContactInfoValid() || isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700, background: isContactInfoValid() ? 'linear-gradient(135deg, #22c55e, #10b981)' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: isContactInfoValid() ? 'pointer' : 'not-allowed', opacity: isContactInfoValid() && !isSubmitting ? 1 : 0.5, boxShadow: isContactInfoValid() ? '0 8px 24px rgba(34,197,94,0.3)' : 'none' }}>{isSubmitting ? <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.2)', borderTop: '2px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <CheckCircle2 style={{ width: '20px', height: '20px' }} />}{isSubmitting ? '送信中...' : 'この内容で送信する'}</button>
                         ) : <div />}
                     </div>
                 </div>
