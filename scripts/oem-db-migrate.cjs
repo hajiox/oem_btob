@@ -2,7 +2,7 @@
 const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { Client } = require('pg')
-const allowed = new Set(['008_oem_mail.sql','009_oem_intake.sql','010_oem_cases.sql','011_oem_intake_enforcement.sql','012_oem_conversations.sql','013_oem_orders.sql','014_oem_payments.sql','015_oem_invoices.sql','016_oem_mail_attention.sql','017_oem_fulfillment.sql','018_oem_settlements.sql','019_oem_reply_assist.sql','020_oem_fulfillment_hold_alerts.sql','021_oem_trials_approvals.sql','022_oem_invoice_documents.sql','023_oem_portal_reorder.sql','024_oem_invoice_issue_guards.sql','025_offer_copy.sql','026_oem_trial_prepayments.sql','027_oem_additional_trial_payments.sql'])
+const allowed = new Set(['008_oem_mail.sql','009_oem_intake.sql','010_oem_cases.sql','011_oem_intake_enforcement.sql','012_oem_conversations.sql','013_oem_orders.sql','014_oem_payments.sql','015_oem_invoices.sql','016_oem_mail_attention.sql','017_oem_fulfillment.sql','018_oem_settlements.sql','019_oem_reply_assist.sql','020_oem_fulfillment_hold_alerts.sql','021_oem_trials_approvals.sql','022_oem_invoice_documents.sql','023_oem_portal_reorder.sql','024_oem_invoice_issue_guards.sql','025_offer_copy.sql','026_oem_trial_prepayments.sql','027_oem_additional_trial_payments.sql','028_oem_tsg_notifications.sql'])
 function connection() {
     // Reuse the repository's existing DB connection until moved to environment configuration.
     const connectionString = process.env.OEM_DATABASE_URL || fs.readFileSync('run-schema.js','utf8').match(/connectionString: '([^']+)'/)?.[1]

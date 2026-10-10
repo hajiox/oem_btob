@@ -6,6 +6,7 @@ import { Resend } from 'resend'
 import { OEM_PAGE_ID, OEM_PRODUCT_IDS, validateContactInfo, validateOemQuote, type ContactInfo } from '@/lib/oem-quote-validation'
 import { reserveOemLead } from '@/lib/oem-intake'
 import { buildOemMailPayloads, dispatchOemLeadMail } from '@/lib/oem-mail'
+import { dispatchOemTsgNotifications } from '@/lib/oem-tsg-notifications'
 
 export type FormStepWithItems = FormStep & {
     questions: (FormQuestion & {
@@ -196,7 +197,10 @@ export async function submitLead(formData: {
             }
             // The durable queue survives a provider/network failure. Never ask the
             // customer to submit a second lead just because notification failed.
-            try { await dispatchOemLeadMail(reservation.leadId) } catch { console.error('OEM mail dispatch pending', { leadId: reservation.leadId }) }
+            await Promise.allSettled([
+                dispatchOemLeadMail(reservation.leadId).catch(() => console.error('OEM mail dispatch pending', { leadId: reservation.leadId })),
+                dispatchOemTsgNotifications({ leadId: reservation.leadId }).catch(() => console.error('OEM TSG notification dispatch pending', { leadId: reservation.leadId })),
+            ])
             return { success: true }
         } catch {
             console.error('OEM intake unavailable')

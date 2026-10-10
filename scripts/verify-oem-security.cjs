@@ -125,7 +125,9 @@ async function runSubmitMocks(snapshots, all) {
   const oldResend = require.cache[require.resolve('resend')]; require.cache[require.resolve('resend')] = { exports: fakeResend }
   const source = ts.transpileModule(fs.readFileSync('src/actions/publicForm.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
   const mod = new Module(require.resolve('../package.json')); mod.filename = require('path').resolve('src/actions/publicForm.ts'); mod.paths = Module._nodeModulePaths(process.cwd())
-  const helper = loadValidator(); mod.require = id => id === '@/lib/supabase/server' ? { createClient: async () => fakeDb } : id === '@/lib/oem-quote-validation' ? helper : id === '@/lib/oem-intake' ? fakeIntake : id === '@/lib/oem-mail' ? fakeOemMail : id === 'resend' ? fakeResend : require(id)
+  const tsgCalls = []
+  const fakeTsg = { dispatchOemTsgNotifications: async input => { tsgCalls.push(input); throw new Error('TSG unavailable') } }
+  const helper = loadValidator(); mod.require = id => id === '@/lib/supabase/server' ? { createClient: async () => fakeDb } : id === '@/lib/oem-quote-validation' ? helper : id === '@/lib/oem-intake' ? fakeIntake : id === '@/lib/oem-mail' ? fakeOemMail : id === '@/lib/oem-tsg-notifications' ? fakeTsg : id === 'resend' ? fakeResend : require(id)
   mod._compile(source, mod.filename); const { submitLead } = mod.exports
   const candidate = all.find(x => x.s.product.id !== TEA_ID && x.s.product.id === 'c0000001-0000-0000-0000-000000000001') || all[0]
   const exp = expected(candidate.s, candidate.answers)
@@ -134,10 +136,13 @@ async function runSubmitMocks(snapshots, all) {
   if (intakeCalls.length) { assert.equal(intakeCalls.length, 1, 'valid submit must reserve intake once'); assert.match(intakeCalls[0].idempotencyKey, /^[0-9a-f-]{36}$/i, 'idempotency key contract') }
   const lead = inserted[0]; assert.equal(lead.estimated_total_price, exp.total); assert(lead.selected_options.some(x => x.question === '商品')); assert(!lead.selected_options.some(x => x.answer === '偽装価格')); assert.equal(sent.length, 0, 'OEM queue path must not send directly from publicForm')
   assert.equal(dispatchCalls.length, 1, 'accepted lead attempts queued mail once even when provider fails')
+  assert.equal(tsgCalls.length, 1, 'TSG failure must not prevent successful consultation acceptance')
+  assert.equal(tsgCalls[0].leadId, 'mock-lead-id')
   // A crash after atomic lead/queue creation may leave pending rows; an
   // idempotent retry is allowed to re-attempt that durable queue. The claim RPC
   // (covered by verify-oem-mail.cjs) prevents a sent row from being sent again.
   const duplicateResult = await submitLead(common); assert.equal(duplicateResult.success, true, 'idempotent retry should remain accepted'); assert.equal(inserted.length, 1, 'duplicate retry must not insert another lead'); assert.equal(dispatchCalls.length, 2, 'duplicate retry may re-attempt pending mail rows')
+  assert.equal(tsgCalls.length, 2, 'duplicate retries may drain the same durable TSG notice')
   const teaCase = all.find(x => x.s.product.id === TEA_ID && Object.values(x.answers).some(v => typeof v === 'string' && v.includes('202')))
   assert(teaCase, 'tea valid path missing')
   const teaExp = expected(teaCase.s, teaCase.answers)
