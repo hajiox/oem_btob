@@ -192,7 +192,7 @@ function Footer({ showAnalytics = false }: { showAnalytics?: boolean }) {
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
 
   if (slug === 'btob') return OEM_METADATA

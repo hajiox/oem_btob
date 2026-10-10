@@ -81,3 +81,7 @@ GA4 の「探索」で行に商品名・到達段階・質問ID・入力欄、�
 - Chromeのローカル画面でカレーの材料→包装→原料なし→概算146,000円→連絡先→戻るを確認。不正メール入力では送信不可。実問い合わせ送信は行っていない。
 - GA4設定証跡: `output/oem-detailed-tracking-20261010/ga4-dimensions.jpg`、`ga4-metric.jpg`、`ga4-dimensions.txt`。
 - 本番公開はGitHub main→Vercelで行い、Readyと本番ドメイン・配信資産を別途照合する。実ユーザーの新イベント受信・人数は公開後の集計待ち。テスト除外URLで操作した結果を本番顧客イベントの受信と見なさない。
+
+## 公開時のビルド復旧
+
+最初の本番デプロイ `oem-fa8bui8k9-hajioxs-projects.vercel.app` はNoto Sans JP取得時のTurbopack内部クエリ解析で失敗した（`next/font/google queries have exactly one entry`）。同時刻のローカルbuildは成功しており、取得CSSには環境差がある。ビルドを公式対応の `next build --webpack` に変更し、フォント・レイアウトの設定は維持した（[Next.js公式](https://nextjs.org/blog/next-16)）。これに伴い検出された3か所の既存 `params` 型をPromiseに修正した。各処理は既にawaitしており、実行処理の変更はない。変更後のローカルbuildは全ルート成功。失敗ログは `output/oem-detailed-tracking-20261010/deploy-error.log` に保存した。

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'LPエディタ',
 }
 
-export default async function LpEditorPage({ params }: { params: { pageId: string } }) {
+export default async function LpEditorPage({ params }: { params: Promise<{ pageId: string }> }) {
     const { pageId } = await params
     let sections = await getLpSections(pageId)
     let formSteps = await getActiveForm(pageId)

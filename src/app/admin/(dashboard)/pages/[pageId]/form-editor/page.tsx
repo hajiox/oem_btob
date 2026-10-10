@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     title: 'フォームエディタ | OEM管理',
 }
 
-export default async function FormEditorPage({ params }: { params: { pageId: string } }) {
+export default async function FormEditorPage({ params }: { params: Promise<{ pageId: string }> }) {
     const { pageId } = await params
     const supabase = await createClient()
 
