@@ -127,7 +127,11 @@ async function runSubmitMocks(snapshots, all) {
   const mod = new Module(require.resolve('../package.json')); mod.filename = require('path').resolve('src/actions/publicForm.ts'); mod.paths = Module._nodeModulePaths(process.cwd())
   const tsgCalls = []
   const fakeTsg = { dispatchOemTsgNotifications: async input => { tsgCalls.push(input); throw new Error('TSG unavailable') } }
-  const helper = loadValidator(); mod.require = id => id === '@/lib/supabase/server' ? { createClient: async () => fakeDb } : id === '@/lib/oem-quote-validation' ? helper : id === '@/lib/oem-intake' ? fakeIntake : id === '@/lib/oem-mail' ? fakeOemMail : id === '@/lib/oem-tsg-notifications' ? fakeTsg : id === 'resend' ? fakeResend : require(id)
+  const helper = loadValidator()
+  const consultationMod = new Module(mod.filename)
+  consultationMod.require = id => id === '@/lib/oem-quote-validation' ? helper : require(id)
+  consultationMod._compile(ts.transpileModule(fs.readFileSync('src/lib/oem-consultation.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, mod.filename)
+  mod.require = id => id === '@/lib/supabase/server' ? { createClient: async () => fakeDb } : id === '@/lib/oem-consultation' ? consultationMod.exports : id === '@/lib/oem-quote-validation' ? helper : id === '@/lib/oem-intake' ? fakeIntake : id === '@/lib/oem-mail' ? fakeOemMail : id === '@/lib/oem-tsg-notifications' ? fakeTsg : id === 'resend' ? fakeResend : require(id)
   mod._compile(source, mod.filename); const { submitLead } = mod.exports
   const candidate = all.find(x => x.s.product.id !== TEA_ID && x.s.product.id === 'c0000001-0000-0000-0000-000000000001') || all[0]
   const exp = expected(candidate.s, candidate.answers)

@@ -4,7 +4,6 @@ const TSG_ENDPOINT = 'https://v0-line-blush.vercel.app/api/integrations/oem/cons
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 export type OemTsgPayload = {
-    schemaVersion: 1
     event: 'consultation_received'
     sourceKey: string
     leadId: string
@@ -12,8 +11,7 @@ export type OemTsgPayload = {
     companyName: string
     productName: string
     quantityLabel: string
-    estimatedTotalPrice: number
-}
+} & ({ schemaVersion: 1; estimatedTotalPrice: number } | { schemaVersion: 2; estimatedTotalPrice: null })
 
 const PAYLOAD_KEYS = ['schemaVersion', 'event', 'sourceKey', 'leadId', 'receivedAt', 'companyName', 'productName', 'quantityLabel', 'estimatedTotalPrice']
 
@@ -25,14 +23,16 @@ export function validateOemTsgPayload(input: unknown): OemTsgPayload {
     const validText = (value: unknown) => typeof value === 'string' && value.trim().length > 0
         && Array.from(value).length <= 200 && !/[\u0000-\u001f\u007f-\u009f]/u.test(value)
     if (keys.length !== PAYLOAD_KEYS.length || keys.some(key => !PAYLOAD_KEYS.includes(key))
-        || row.schemaVersion !== 1 || row.event !== 'consultation_received'
+        || ![1, 2].includes(row.schemaVersion as number) || row.event !== 'consultation_received'
         || typeof row.leadId !== 'string' || !UUID.test(row.leadId)
         || row.sourceKey !== `oem:consultation:${row.leadId}:received:v1`
         || typeof row.receivedAt !== 'string' || row.receivedAt.length > 40
         || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(row.receivedAt)
         || !Number.isFinite(Date.parse(row.receivedAt))
         || !validText(row.companyName) || !validText(row.productName) || !validText(row.quantityLabel)
-        || typeof row.estimatedTotalPrice !== 'number' || !Number.isSafeInteger(row.estimatedTotalPrice) || row.estimatedTotalPrice < 0) {
+        || (row.schemaVersion === 1
+            ? typeof row.estimatedTotalPrice !== 'number' || !Number.isSafeInteger(row.estimatedTotalPrice) || row.estimatedTotalPrice < 0
+            : row.estimatedTotalPrice !== null)) {
         throw new Error('invalid_notification_payload')
     }
     return row as OemTsgPayload
@@ -79,7 +79,11 @@ export async function dispatchOemTsgNotifications(input: { leadId?: string; limi
     const limit = input.leadId ? 1 : Math.min(10, Math.max(1, Number.isFinite(input.limit) ? Math.floor(input.limit!) : 10))
     summary.enabled = true
     for (let index = 0; index < limit; index++) {
-        const { data, error } = await adminClient.rpc('claim_oem_tsg_notification', { p_lead_id: input.leadId ?? null })
+        const includeUnestimated = process.env.OEM_TSG_UNESTIMATED_NOTIFICATIONS_ENABLED === 'true'
+        const { data, error } = await adminClient.rpc(includeUnestimated ? 'claim_oem_tsg_notification_batch' : 'claim_oem_tsg_notification', {
+            p_lead_id: input.leadId ?? null,
+            ...(includeUnestimated ? { p_include_unestimated: true } : {}),
+        })
         if (error) throw new Error('tsg_notification_claim_failed')
         const delivery = data?.[0]
         if (!delivery) break

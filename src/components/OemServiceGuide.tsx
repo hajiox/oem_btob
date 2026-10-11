@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import OemConsultationLink from '@/components/OemConsultationLink'
+import OemTrackedQuoteLink from '@/components/OemTrackedQuoteLink'
 import styles from './OemServiceGuide.module.css'
 
 // Server-rendered copy for the OEM page only; quote rules remain in the BTO.
@@ -8,7 +10,12 @@ export function OemExplanation() {
       <h1 id="oem-service-title"><span className={styles.headingLine}>あなたの農園・お店の</span><span className={styles.headingLine}><span className={styles.phrase}>オリジナル商品を</span><span className={styles.phrase}>作りませんか？</span></span></h1>
       <p>育てた農産物を加工品にしたい。自分の売り場だけの商品を作りたい。会津ブランド館が製造・包装を担い、あなたの農園名・店名で販売できる食品に仕上げます。</p>
       <p className={styles.definition}>こうした「自分のブランドの商品を、他社に製造してもらう仕組み」が <strong>OEM</strong> です。</p>
-      <a className={styles.introButton} href="#bto-form"><span>作りたい商品を選んで、<wbr />概算費用を見る</span><span aria-hidden="true">→</span></a>
+      <p className={styles.consultationNote}>製造の目安：カレー約400個、ラーメン約400セット（2食入り）。お茶は専用プランです。</p>
+      <div className={styles.introActions}>
+        <OemConsultationLink className={styles.introButton} location="hero">商品づくりを相談する<span aria-hidden="true">→</span></OemConsultationLink>
+        <OemTrackedQuoteLink className={styles.secondaryButton} location="hero">概算費用を確認する</OemTrackedQuoteLink>
+      </div>
+      <p className={styles.consultationNote}>商品や包装、数量が未定でもご相談いただけます。相談の送信だけで費用は発生せず、正式発注にもなりません。</p>
     </section>
   )
 }
@@ -83,9 +90,9 @@ export function OemServiceQuestions() {
       <details className={styles.disclosure} id="oem-process">
       <summary>ご相談から製造・納品までの流れ</summary>
       <ol className={styles.process}>
-        <li><h3>概算を見る</h3><p>商品・材料・包装を選び、ご予算の目安を確認します。この時点では発注になりません。</p></li>
-        <li><h3>商品について相談</h3><p>使いたい原料、目指す味、販売する場所、希望時期をお知らせください。対応できる内容を確認します。</p></li>
-        <li><h3>試作で味を確認</h3><p>初回試作費5,000円（税別・税込5,500円）を先にお支払いいただき、入金確認後に試作を開始します。2回までの試作を含み、試作のみで終了することもできます。</p></li>
+        <li><h3>商品づくりを相談</h3><p>使いたい食材や目指す味をお知らせください。商品や包装、数量が未定でも相談できます。この時点では費用・発注は発生しません。</p></li>
+        <li><h3>概算を確認</h3><p>費用の目安を知りたい場合は、商品・材料・包装を選んで概算を確認できます。具体的な対応可否や試作内容は個別に確認します。</p></li>
+        <li><h3>試作で味を確認</h3><p>初回試作費5,000円（税別・税込5,500円）を先にお支払いいただき、入金確認後に試作を開始します。2回までの試作を含み、試作のみで終了することもできます。試作で特殊食材の使用の場合は別途お見積りとなります。</p></li>
         <li><h3>仕様・見積もりを確定</h3><p>味・包装・表示内容と正式見積もりを確認し、製造する内容と納品予定を決めます。</p></li>
         <li><h3>製造着手金のお支払い</h3><p>製造へ進む場合は、製造代金の50％を着手金としてお支払いいただきます。入金確認後、確定した仕様で製造・包装します。</p></li>
         <li><h3>残額の精算・出荷</h3><p>完成した全数をお買い取りいただき、実際の製造数量で金額を確定します。前金を差し引いた残額を出荷前にご精算いただきます。</p></li>
@@ -93,7 +100,10 @@ export function OemServiceQuestions() {
       <p className={styles.note}>納期は、試作・原料の準備・包装仕様・製造状況によって異なります。販売したい時期が決まっている場合は、ご相談時にお知らせください。</p>
       </details>
       </div>
-      <a className={styles.link} href="#bto-form">商品・包装を選んで、概算見積もりへ →</a>
+      <div className={styles.introActions}>
+        <OemConsultationLink className={styles.introButton} location="footer">商品づくりを相談する<span aria-hidden="true">→</span></OemConsultationLink>
+        <OemTrackedQuoteLink className={styles.secondaryButton} location="footer">概算費用を確認する</OemTrackedQuoteLink>
+      </div>
     </section>
   )
 }

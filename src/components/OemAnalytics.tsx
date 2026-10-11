@@ -35,7 +35,7 @@ export default function OemAnalytics({ measurementId }: { measurementId?: string
             for (const threshold of [25, 50, 75, 90] as const) {
                 if (percent < threshold || reached.has(threshold)) continue
                 reached.add(threshold)
-                trackOemInteraction('oem_scroll', productId, { scroll_percent: threshold })
+                trackOemInteraction('oem_scroll', productId, { scroll_percent: threshold, inquiry_type: pathname === '/btob/consult' ? 'direct' : 'quote' })
             }
         }
         window.addEventListener('scroll', onScroll, { passive: true })

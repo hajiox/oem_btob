@@ -58,6 +58,15 @@
   margin-top: 30px;
 }
 
+.consultationNote {
+  margin: 16px 0 0;
+  color: #53625c;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.lotNote { margin: 16px 0 0; color: #53625c; font-size: 14px; line-height: 1.8; }
+
 .primary,
 .secondary {
   display: inline-flex;
@@ -68,6 +77,12 @@
   border-radius: 999px;
   font-weight: 800;
   text-decoration: none;
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 3px solid #1d6b4f;
+  outline-offset: 4px;
 }
 
 .primary {
@@ -201,10 +216,6 @@
 @media (max-width: 720px) {
   .heroGrid {
     grid-template-columns: 1fr;
-  }
-
-  .heroImage {
-    order: -1;
   }
 
   .facts {

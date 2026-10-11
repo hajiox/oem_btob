@@ -20,6 +20,9 @@ export type SafeSelectedOption = { question: string; answer: string }
 
 export type ReplyContext = {
   lead: ValidatedReplyLead
+  intakeKind?: 'quote' | 'consultation'
+  consultationOnly?: boolean
+  consultationTrialPrepayment?: { id: string; status: string; gross_amount: number } | null
   order: SafeOrder | null
   fulfillment: SafeFulfillment | null
   plans: SafePlan[]
@@ -75,7 +78,7 @@ export function safeSelectedOptions(value: unknown): SafeSelectedOption[] {
     const answer = typeof raw.answer === 'string' ? raw.answer.trim() : ''
     if (!question || !answer || question.length > 100 || answer.length > 200) continue
     if (/(同意|規約|承認|正式発注|確認期限|メール|電話|会社|担当者|備考|希望時期|味のイメージ|レシピ|配合)/.test(question)) continue
-    if (!/(商品|製品|包装|容器|パッケージ|容量|内容量|原料|素材|食材|支給|製造数|数量|プラン)/.test(question)) continue
+    if (!/(商品|製品|包装|容器|パッケージ|容量|内容量|原料|素材|食材|支給|製造数|数量|プラン|相談テーマ)/.test(question)) continue
     rows.push({ question, answer })
   }
   return rows
@@ -88,11 +91,20 @@ export async function prepareReplyContext(lead: ValidatedReplyLead, templateId: 
     adminClient.from('oem_conversation_drafts').select('subject,text_body,updated_at').eq('lead_id', id).maybeSingle(),
     adminClient.from('oem_conversation_messages').select('id,subject,text_body,status,sent_at,reply_closed_at,handled_at').eq('lead_id', id).eq('direction', 'inbound').eq('status', 'received').is('reply_closed_at', null).is('handled_at', null).order('sent_at', { ascending: false }).order('id', { ascending: false }).limit(1),
     adminClient.from('oem_conversation_messages').select('id,subject,text_body,status,sent_at,reply_closed_at,handled_at').eq('lead_id', id).eq('direction', 'inbound').eq('status', 'received').order('sent_at', { ascending: false }).order('id', { ascending: false }).limit(1),
-    adminClient.from('leads').select('selected_options').eq('id', id).maybeSingle(),
+    adminClient.from('leads').select('selected_options,intake_kind,consultation_theme').eq('id', id).maybeSingle(),
   ])
   if (orderResult.error || draftResult.error || pendingInboundResult.error || latestInboundResult.error || leadResult.error) throw new Error('返信用案件情報を取得できませんでした。')
   const orders = (orderResult.data || []) as SafeOrder[]
   const order = orders[0] || null
+  const intakeKind = leadResult.data?.intake_kind === 'consultation' ? 'consultation' : 'quote'
+  let consultationOnly: boolean = intakeKind === 'consultation' && !order
+  let consultationTrialPrepayment: ReplyContext['consultationTrialPrepayment'] = null
+  if (consultationOnly) {
+    const { data: prepayment, error: prepaymentError } = await adminClient.from('oem_trial_prepayments').select('id,status,gross_amount').eq('lead_id', id).neq('status', 'void').limit(1).maybeSingle()
+    if (prepaymentError) throw new Error('試作前払いの状態を取得できませんでした。')
+    consultationTrialPrepayment = prepayment
+    consultationOnly = !prepayment
+  }
   const activeOrder = order && order.status !== 'cancelled' ? order : null
   const legacyCancellation = Boolean(order?.status === 'cancelled' && order.accepted_at)
   let fulfillment: SafeFulfillment | null = null
@@ -129,13 +141,15 @@ export async function prepareReplyContext(lead: ValidatedReplyLead, templateId: 
   const selectedOptions = safeSelectedOptions(leadResult.data?.selected_options)
   const question = cleanQuestion(inbound?.text_body || '', lead)
   const warnings: string[] = ['返信案は下書きです。送信前に担当者が事実・宛先・添付を確認してください。', '本文の匿名化は保証されません。']
+  if (consultationOnly) warnings.push('相談のみ・見積未算定です。相談の受付を試作への承諾・請求・製造発注として案内しないでください。')
   if (order?.terms_version && order.terms_version !== OEM_TERMS_VERSION) warnings.push(`発注規約版が現行版（${OEM_TERMS_VERSION}）と異なるため、現行規約の条件を過去発注へ自動適用しないでください。`)
   if (settlement?.state === 'draft') warnings.push('精算は下書きであり、確定請求・返金の案内ではありません。')
   const settlementRemaining = settlement && settlement.state !== 'draft' ? settlement.target_gross - cashNet : null
   if (legacyCancellation && !settlement) warnings.push('キャンセル済みの旧発注について、確定した精算情報を確認できません。旧発注の金額を現在の請求額として案内しないでください。')
-  const context: ReplyContext = { lead, order: activeOrder, fulfillment, plans, receiptTotals, settlement, cashNet, ledgerReceived, settlementRemaining, legacyCancellation, draft: draftResult.data as SafeDraft | null, inbound, question, sourceSubject: inbound?.subject || null, warnings, selectedOptions }
+  const context: ReplyContext = { lead, intakeKind, consultationOnly, consultationTrialPrepayment, order: activeOrder, fulfillment, plans, receiptTotals, settlement, cashNet, ledgerReceived, settlementRemaining, legacyCancellation, draft: draftResult.data as SafeDraft | null, inbound, question, sourceSubject: inbound?.subject || null, warnings, selectedOptions }
   const template = buildReplyTemplate(context, replyTemplateId(templateId))
-  const snapshotPayload = { lead, templateId, termsVersion: OEM_TERMS_VERSION, orders, fulfillment, plans, receiptTotals, settlement, cashNet, ledgerReceived, settlementRemaining, selectedOptions, inbound: inbound ? { id: inbound.id, subject: inbound.subject, text_body: inbound.text_body, status: inbound.status, awaitingReply: inbound.awaitingReply } : null }
+  const consultationSnapshot = intakeKind === 'consultation' ? { intakeKind, consultationOnly, consultationTrialPrepayment } : {}
+  const snapshotPayload = { lead, templateId, termsVersion: OEM_TERMS_VERSION, ...consultationSnapshot, orders, fulfillment, plans, receiptTotals, settlement, cashNet, ledgerReceived, settlementRemaining, selectedOptions, inbound: inbound ? { id: inbound.id, subject: inbound.subject, text_body: inbound.text_body, status: inbound.status, awaitingReply: inbound.awaitingReply } : null }
   const hashes = replySnapshotHashes(snapshotPayload, context.draft)
   return { ...template, ...hashes, question, facts: template.facts, aiConfigured: Boolean(process.env.GEMINI_API_KEY), sourceMessageId: inbound?.id || null, sourceSubject: inbound?.subject || null, warnings }
 }

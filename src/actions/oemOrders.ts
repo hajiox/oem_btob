@@ -52,7 +52,7 @@ export async function getOemOrder(leadId: string): Promise<ActionResult & { acce
       if (result.error) throw result.error
       acceptance = result.data
     }
-    const { data: estimate, error: estimateError } = await adminClient.from('leads').select('selected_options,estimated_total_price').eq('id', lead.id).single()
+    const { data: estimate, error: estimateError } = await adminClient.from('leads').select('selected_options,estimated_total_price,intake_kind').eq('id', lead.id).single()
     if (estimateError || !estimate) throw estimateError || new Error('見積情報を取得できません')
     return { success: true, order: order as OemOrder | undefined, acceptance, defaultSpecification: caseData?.final_spec_revision || '', defaultManufacturingAmount: getOemManufacturingEstimate(estimate) }
   } catch (error) { return failure(error, '正式発注情報を取得できませんでした') }

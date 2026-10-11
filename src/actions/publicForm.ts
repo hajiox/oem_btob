@@ -7,6 +7,7 @@ import { OEM_PAGE_ID, OEM_PRODUCT_IDS, validateContactInfo, validateOemQuote, ty
 import { reserveOemLead } from '@/lib/oem-intake'
 import { buildOemMailPayloads, dispatchOemLeadMail } from '@/lib/oem-mail'
 import { dispatchOemTsgNotifications } from '@/lib/oem-tsg-notifications'
+import { OEM_CONSULTATION_THEMES, validateOemConsultation, type OemConsultationInput } from '@/lib/oem-consultation'
 
 export type FormStepWithItems = FormStep & {
     questions: (FormQuestion & {
@@ -112,6 +113,50 @@ export async function getFormStepsForProduct(pageId: string, productId: string):
                 options: (optionsData || []).filter((o) => o.question_id === q.id)
             }))
     }))
+}
+
+export async function submitOemConsultation(input: OemConsultationInput) {
+    const checked = validateOemConsultation(input)
+    if (checked.error) return { success: false, error: checked.error }
+    const data = checked.data!
+    try {
+        let productName = '商品未定'
+        if (data.productId) {
+            const supabase = await createClient()
+            const { data: product, error } = await supabase.from('products').select('id,name').eq('id', data.productId).eq('page_id', OEM_PAGE_ID).eq('is_visible', true).single()
+            if (error || !product) return { success: false, error: '商品を確認できません。' }
+            productName = product.name
+        }
+        const theme = OEM_CONSULTATION_THEMES[data.theme]
+        const selectedOptions = [
+            { question: '商品', answer: productName, type: 'text' },
+            { question: '受付区分', answer: '相談のみ・見積未算定', type: 'text' },
+            { question: '相談テーマ', answer: theme, type: 'text' },
+        ]
+        const lead = {
+            page_id: OEM_PAGE_ID, company_name: data.companyName, contact_name: data.contactName,
+            email: data.email, phone: data.phone || null, notes: data.notes || null,
+            selected_options: selectedOptions, estimated_total_price: null,
+            intake_kind: 'consultation', consultation_theme: data.theme, status: 'new',
+        }
+        const mailPayloads = await buildOemMailPayloads({ ...data, pageId: OEM_PAGE_ID, selectedOptions, estimatedTotalPrice: null, intakeKind: 'consultation', consultationTheme: theme })
+        const reservation = await reserveOemLead({ idempotencyKey: data.idempotencyKey, payload: lead, email: data.email, lead, mailPayloads })
+        if (reservation.status === 'rejected' || !reservation.leadId) {
+            return { success: false, error: reservation.reason === 'rate_limited'
+                ? `短時間に複数のご相談を受け付けました。約${Math.ceil((reservation.retryAfterSeconds || 3600) / 60)}分後にお試しください。`
+                : '送信内容を確認できませんでした。ページを再読み込みしてお試しください。' }
+        }
+        // Acceptance is durable before either notification is attempted. No trial,
+        // approval, invoice or order is created by this consultation-only action.
+        await Promise.allSettled([
+            dispatchOemLeadMail(reservation.leadId).catch(() => console.error('OEM mail dispatch pending', { leadId: reservation.leadId })),
+            dispatchOemTsgNotifications({ leadId: reservation.leadId }).catch(() => console.error('OEM TSG notification dispatch pending', { leadId: reservation.leadId })),
+        ])
+        return { success: true, duplicate: reservation.duplicate === true }
+    } catch {
+        console.error('OEM consultation intake unavailable')
+        return { success: false, error: '受付結果を確認できませんでした。少し時間をおいて同じ内容で再試行してください。' }
+    }
 }
 
 export async function submitLead(formData: {

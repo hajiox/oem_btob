@@ -7,25 +7,30 @@ export type OemMailPayloads = { customer: OemMailPayload; admin: OemMailPayload 
 const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
 export async function buildOemMailPayloads(input: {
-    pageId: string; companyName: string; contactName: string; email: string; phone: string;
-    notes: string; estimatedTotalPrice: number; selectedOptions: unknown;
+    pageId: string; companyName: string; contactName: string; email: string; phone?: string;
+    notes?: string; estimatedTotalPrice: number | null; selectedOptions: unknown;
+    intakeKind?: 'quote' | 'consultation'; consultationTheme?: string;
 }): Promise<OemMailPayloads> {
+    const isConsultation = input.intakeKind === 'consultation'
+    if (isConsultation ? input.estimatedTotalPrice !== null : typeof input.estimatedTotalPrice !== 'number' || !Number.isFinite(input.estimatedTotalPrice)) throw new Error('mail_estimate_invalid')
     const { data: page, error } = await adminClient.from('pages').select('email_from_name,email_from_address,admin_notification_email,customer_email_subject,admin_email_subject,customer_email_intro,customer_email_closing,admin_email_intro').eq('id', input.pageId).single()
     if (error || !page) throw new Error('mail_settings_unavailable')
     const fromAddress = page.email_from_address || 'staff@aizu-tv.com'
     const paragraphs = (text: string) => escapeHtml(text).split('\n').map(line => `<p>${line}</p>`).join('')
     const answers = (Array.isArray(input.selectedOptions) ? input.selectedOptions : []).map(opt => `<li><strong>${escapeHtml(opt.question ?? opt.question_text ?? opt.step_title)}:</strong> ${escapeHtml(opt.answer ?? opt.selected_label)}</li>`).join('')
-    const details = `<h3>概算お見積り内容</h3><p>製造概算：¥${input.estimatedTotalPrice.toLocaleString()}（税別・試作費別）</p><p>初回特典は1企業（個人は1名）につき1回限りです。試作費5,000円（税別・税込5,500円）は試作着手前に全額先入金いただき、入金確認後に試作を開始します。試作は2回までで、試作のみで終了でき、製造発注の義務はありません。原材料表示・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。初回特典対象外の場合は通常料金が適用されます。製造へ進む場合は、試作費とは別に製造代金50％の着手金と、完成数量確定後の出荷前精算金が発生します。試作費は製造代金に二重計上しません。追加試作は1回3,000円（税別）です。${OEM_SPECIAL_INGREDIENT_NOTE}。原料・製造費・送料は特典対象外です。</p><p>販売シミュレーションの粗利率・粗利は商品原価ベースの参考値で、試作・表示・デザインの初回費用、送料・発送梱包手数料、販売手数料、消費税などを含みません。</p><ul>${answers}</ul><p>ご要望：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p>`
+    const details = isConsultation
+        ? `<h3>ご相談の受付内容</h3><p><strong>相談のみ・見積未算定</strong></p><p>相談テーマ：${escapeHtml(input.consultationTheme || '未定・まずは相談したい')}</p><ul>${answers}</ul><p>補足：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p><p>この受付では、試作への承諾、費用の請求、製造発注は行われません。製造可否や仕様・金額は、担当者が内容を確認して別途ご案内します。試作・製造に進む場合は、条件と費用を確認いただいたうえで、別途お手続きいただきます。</p>`
+        : `<h3>概算お見積り内容</h3><p>製造概算：¥${input.estimatedTotalPrice!.toLocaleString()}（税別・試作費別）</p><p>初回特典は1企業（個人は1名）につき1回限りです。試作費5,000円（税別・税込5,500円）は試作着手前に全額先入金いただき、入金確認後に試作を開始します。試作は2回までで、試作のみで終了でき、製造発注の義務はありません。原材料表示・栄養成分表示（計算値）・簡易パッケージデザインは各0円です。初回特典対象外の場合は通常料金が適用されます。製造へ進む場合は、試作費とは別に製造代金50％の着手金と、完成数量確定後の出荷前精算金が発生します。試作費は製造代金に二重計上しません。追加試作は1回3,000円（税別）です。${OEM_SPECIAL_INGREDIENT_NOTE}。原料・製造費・送料は特典対象外です。</p><p>販売シミュレーションの粗利率・粗利は商品原価ベースの参考値で、試作・表示・デザインの初回費用、送料・発送梱包手数料、販売手数料、消費税などを含みません。</p><ul>${answers}</ul><p>ご要望：<br>${escapeHtml(input.notes || 'なし').replace(/\n/g, '<br>')}</p>`
     return {
         customer: {
-            from: `${page.email_from_name || 'OEM自動見積り'} <${fromAddress}>`, to: input.email,
-            subject: page.customer_email_subject || '【自動回答】お見積り依頼を承りました', replyTo: fromAddress,
-            html: `<div style="font-family:sans-serif;line-height:1.8"><p>${escapeHtml(input.companyName)} ${escapeHtml(input.contactName)} 様</p>${paragraphs(page.customer_email_intro || 'ご相談を承りました。担当者より3営業日以内にご連絡します。')}${details}${paragraphs(page.customer_email_closing || '本メールは自動送信です。')}</div>`,
+            from: `${page.email_from_name || (isConsultation ? '会津ブランド館 OEM相談窓口' : 'OEM自動見積り')} <${fromAddress}>`, to: input.email,
+            subject: isConsultation ? '【相談受付】ご相談を承りました（見積未算定）' : page.customer_email_subject || '【自動回答】お見積り依頼を承りました', replyTo: fromAddress,
+            html: `<div style="font-family:sans-serif;line-height:1.8"><p>${escapeHtml(input.companyName)} ${escapeHtml(input.contactName)} 様</p>${paragraphs(isConsultation ? 'ご相談を承りました。担当者より3営業日以内にご連絡します。' : page.customer_email_intro || 'ご相談を承りました。担当者より3営業日以内にご連絡します。')}${details}${paragraphs(isConsultation ? '本メールはご相談内容の控えとして自動送信しています。' : page.customer_email_closing || '本メールは自動送信です。')}</div>`,
         },
         admin: {
             from: `OEM System Notification <${fromAddress}>`, to: page.admin_notification_email || fromAddress,
-            subject: page.admin_email_subject || '【新規リード獲得】新しいお見積り依頼が届きました', replyTo: input.email,
-            html: `<div style="font-family:sans-serif;line-height:1.8">${paragraphs(page.admin_email_intro || 'OEMのご相談が届きました。')}<p>${escapeHtml(input.companyName)} / ${escapeHtml(input.contactName)}</p><p>メール：${escapeHtml(input.email)}<br>電話：${escapeHtml(input.phone || '未登録')}</p>${details}<p><a href="${escapeHtml(process.env.NEXT_PUBLIC_BASE_URL || 'https://oem.aizubrandhall.com')}/admin/dashboard">管理画面で確認</a></p></div>`,
+            subject: isConsultation ? '【新規OEM相談】相談のみ・見積未算定の受付が届きました' : page.admin_email_subject || '【新規リード獲得】新しいお見積り依頼が届きました', replyTo: input.email,
+            html: `<div style="font-family:sans-serif;line-height:1.8">${paragraphs(isConsultation ? '仕様が未定のOEM相談が届きました。内容を確認し、お客様へご連絡ください。' : page.admin_email_intro || 'OEMのご相談が届きました。')}<p>${escapeHtml(input.companyName)} / ${escapeHtml(input.contactName)}</p><p>メール：${escapeHtml(input.email)}<br>電話：${escapeHtml(input.phone || '未登録')}</p>${details}<p><a href="${escapeHtml(process.env.NEXT_PUBLIC_BASE_URL || 'https://oem.aizubrandhall.com')}/admin/dashboard">管理画面で確認</a></p></div>`,
         },
     }
 }

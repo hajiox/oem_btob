@@ -15,6 +15,9 @@ import { OemTrialPanel } from './OemTrialPanel'
 export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: () => void | Promise<void> }) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [consultationWorkflowsOpen, setConsultationWorkflowsOpen] = useState(false)
+    const isConsultation = lead.intake_kind === 'consultation'
+    const hasEstimate = !isConsultation && lead.estimated_total_price !== null
     const options = Array.isArray(lead.selected_options)
         ? lead.selected_options as Array<{ question?: string; answer?: string }>
         : null
@@ -49,7 +52,7 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </span>
                         <span style={{ opacity: isDeleting ? 0.5 : 1 }}>
-                            {lead.company_name} {lead.followupOverdue && <span style={{ color: '#f87171', fontSize: 12, marginLeft: 8 }}>フォロー期限超過</span>} {lead.followupAt && !lead.followupOverdue && <span style={{ color: 'var(--admin-accent)', fontSize: 12, marginLeft: 8 }}>次回 {new Date(lead.followupAt).toLocaleDateString('ja-JP')}</span>} {lead.mailAttention && <span style={{ color: '#fbbf24', fontSize: 12, marginLeft: 8 }}>メール要確認</span>}
+                            {lead.company_name} {isConsultation && <span style={{ display: 'inline-block', color: '#67e8f9', fontSize: 12, marginLeft: 8 }}>相談のみ・見積未算定</span>} {lead.followupOverdue && <span style={{ color: '#f87171', fontSize: 12, marginLeft: 8 }}>フォロー期限超過</span>} {lead.followupAt && !lead.followupOverdue && <span style={{ color: 'var(--admin-accent)', fontSize: 12, marginLeft: 8 }}>次回 {new Date(lead.followupAt).toLocaleDateString('ja-JP')}</span>} {lead.mailAttention && <span style={{ color: '#fbbf24', fontSize: 12, marginLeft: 8 }}>メール要確認</span>}
                         </span>
                     </div>
                 </td>
@@ -66,8 +69,8 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                     </div>
                 </td>
                 <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '800', color: 'var(--admin-text)' }}>
-                    <div>¥{(lead.estimated_total_price || 0).toLocaleString()}</div>
-                    {lead.page_id === OEM_PAGE_ID && <small style={{ display: 'block', marginTop: 4, fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>
+                    <div>{hasEstimate ? `¥${lead.estimated_total_price!.toLocaleString()}` : '見積未算定'}</div>
+                    {lead.page_id === OEM_PAGE_ID && hasEstimate && <small style={{ display: 'block', marginTop: 4, fontSize: 11, fontWeight: 500, color: 'var(--admin-text-muted)' }}>
                         {hasSeparatedManufacturingEstimate ? '製造概算（税別・試作費別）' : '保存時点のOEM見積（内訳を確認）'}
                     </small>}
                 </td>
@@ -109,7 +112,7 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                         <ClipboardList size={16} />
                                     </div>
                                     <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--admin-text)', letterSpacing: '0.04em' }}>
-                                        BTO構成・詳細
+                                        {isConsultation ? 'ご相談の受付内容' : 'BTO構成・詳細'}
                                     </h4>
                                 </div>
                                 {options && options.length > 0 ? (
@@ -177,7 +180,19 @@ export function LeadRow({ lead, onChanged }: { lead: EnrichedLead; onChanged?: (
                                 </div>
                             </div>
                         </div>
-                        {lead.page_id === OEM_PAGE_ID && <><OemLeadCasePanel leadId={lead.id} onChanged={onChanged} /><details style={{ marginTop: 24 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>試作・初回特典を管理する</summary><OemTrialPanel leadId={lead.id} /></details><OemOrderPanel leadId={lead.id} estimatedTotalPrice={lead.estimated_total_price || 0} /><OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} /></>}
+                        {lead.page_id === OEM_PAGE_ID && <>
+                            {isConsultation && <section aria-label="相談受付の状態" style={{ marginTop: 24, padding: 20, border: '1px solid var(--admin-border)', borderRadius: 8 }}>
+                                <strong>相談のみ・見積未算定</strong>
+                                <p style={{ marginTop: 8, fontSize: 14, lineHeight: 1.8 }}>相談の受付では、試作への承諾・費用の請求・製造発注は開始されません。担当者が製造可否や仕様・条件を確認し、費用と手続きを別途案内してください。</p>
+                                <button type="button" aria-expanded={consultationWorkflowsOpen} onClick={() => setConsultationWorkflowsOpen(value => !value)} style={{ marginTop: 12, padding: '8px 12px', cursor: 'pointer' }}>{consultationWorkflowsOpen ? '試作・正式見積の管理を閉じる' : '条件確認後に試作・正式見積の管理を開く'}</button>
+                            </section>}
+                            <OemLeadCasePanel leadId={lead.id} onChanged={onChanged} />
+                            {(!isConsultation || consultationWorkflowsOpen) && <>
+                                <details style={{ marginTop: 24 }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>試作・初回特典を管理する</summary><OemTrialPanel leadId={lead.id} /></details>
+                                <OemOrderPanel leadId={lead.id} estimatedTotalPrice={isConsultation ? null : lead.estimated_total_price} />
+                            </>}
+                            <OemMailPanel leadId={lead.id} /><OemConversationPanel leadId={lead.id} leadEmail={lead.email} />
+                        </>}
                     </td>
                 </tr>
             )}

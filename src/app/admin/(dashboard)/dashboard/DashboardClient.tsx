@@ -429,6 +429,7 @@ export default function DashboardClient() {
         />
         <StatCard
           title="総見積額"
+          subtext="見積未算定の相談は金額集計に含めません"
           value={isLoading ? "..." : `¥${stats.totalEstimate.toLocaleString()}`}
           color="#EC4899"
           icon={

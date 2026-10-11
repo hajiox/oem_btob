@@ -1,0 +1,9 @@
+.page { min-height: 100vh; background: #f3f5f4; color: #17211e; }
+.header { padding: 22px 20px; border-bottom: 1px solid #e0e7e3; background: #fff; }
+.header a { display: block; max-width: 700px; margin: 0 auto; color: #1d6b4f; font-size: 14px; font-weight: 800; letter-spacing: .08em; }
+.content { width: min(100%, 740px); margin: 0 auto; padding: clamp(30px, 5vw, 56px) 20px 72px; }
+.content h1 { margin: 0; font-size: clamp(28px, 5vw, 38px); font-weight: 800; line-height: 1.5; }
+.lead { margin: 18px 0 28px; color: #53625c; font-size: 16px; line-height: 1.9; }
+.panel { padding: clamp(20px, 4vw, 36px); border: 1px solid #dbe3df; border-radius: 16px; background: #fff; overflow-wrap: anywhere; }
+.back { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 26px 0 0; color: #53625c; font-size: 14px; line-height: 1.8; }
+.back a { color: #1d6b4f; text-decoration: underline; text-underline-offset: 3px; }

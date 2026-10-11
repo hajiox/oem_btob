@@ -7,6 +7,21 @@
   border-radius: 32px;
 }
 
+.consultationLink {
+  display: inline-block;
+  min-height: 44px;
+  padding-top: 8px;
+  color: #c7d2fe;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.consultationLink:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 4px;
+}
+
 @media (max-width: 640px) {
   .oemImage {
     /* Reclaim the LP's 20px side padding without cropping image text. */

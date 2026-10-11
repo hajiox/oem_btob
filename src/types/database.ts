@@ -121,12 +121,14 @@ export type FormOptionUpdate = Partial<FormOptionInsert>
 export interface Lead {
     id: string
     page_id: string | null
+    intake_kind: 'quote' | 'consultation'
+    consultation_theme: string | null
     company_name: string
     contact_name: string
     email: string
     phone: string | null
     selected_options: SelectedOption[]
-    estimated_total_price: number
+    estimated_total_price: number | null
     notes: string | null
     status: 'new' | 'contacted' | 'quoted' | 'negotiating' | 'won' | 'lost'
     created_at: string

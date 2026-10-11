@@ -67,7 +67,8 @@ function fixture({ rows = [row()], response = () => Response.json({ success: tru
   const calls = { claim: [], finish: [], fetch: [] }
   const db = {
     async rpc(name, input) {
-      if (name === 'claim_oem_tsg_notification') {
+      if (name === 'claim_oem_tsg_notification' || name === 'claim_oem_tsg_notification_batch') {
+        if (name === 'claim_oem_tsg_notification_batch') assert.equal(input.p_include_unestimated, true)
         calls.claim.push(input)
         const next = pending.shift()
         return { data: next ? [next] : [], error: claimError }
@@ -111,6 +112,18 @@ async function senderChecks() {
   const boundaries = { ...PAYLOAD, companyName: '会'.repeat(200), productName: '品'.repeat(200), quantityLabel: '数'.repeat(200), estimatedTotalPrice: Number.MAX_SAFE_INTEGER }
   assert.deepEqual(valid.validateOemTsgPayload(boundaries), boundaries)
   assert.equal(valid.validateOemTsgPayload({ ...PAYLOAD, estimatedTotalPrice: 0 }).estimatedTotalPrice, 0)
+  const consultationPayload = { ...PAYLOAD, schemaVersion: 2, estimatedTotalPrice: null, quantityLabel: '未定（相談のみ）' }
+  assert.deepEqual(valid.validateOemTsgPayload(consultationPayload), consultationPayload)
+  assert.throws(() => valid.validateOemTsgPayload({ ...PAYLOAD, estimatedTotalPrice: null }))
+  assert.throws(() => valid.validateOemTsgPayload({ ...PAYLOAD, schemaVersion: 2, estimatedTotalPrice: 0 }))
+  await withEnv({ OEM_TSG_UNESTIMATED_NOTIFICATIONS_ENABLED: 'true' }, async () => {
+    const direct = fixture({ rows: [row({ payload: consultationPayload })] })
+    assertOutcome(await direct.dispatchOemTsgNotifications({ leadId: LEAD, limit: 1 }), { sent: 1 })
+    assert.deepEqual(direct.calls.claim, [{ p_lead_id: LEAD, p_include_unestimated: true }])
+    assert.deepEqual(JSON.parse(direct.calls.fetch[0].options.body), consultationPayload)
+    assert.equal(direct.calls.fetch[0].url, ENDPOINT)
+    assertFinished(direct, false, POST)
+  })
   assert.equal(valid.validateOemTsgPayload({ ...PAYLOAD, companyName: '🍎'.repeat(200) }).companyName, '🍎'.repeat(200), 'Unicode text limit counts code points')
   assert.equal(valid.validateOemTsgPayload({ ...PAYLOAD, receivedAt: '2026-10-10T14:00:00+09:00' }).receivedAt, '2026-10-10T14:00:00+09:00')
   const invalid = [null, [], 'payload', { ...PAYLOAD, schemaVersion: 2 }, { ...PAYLOAD, event: 'other' },
@@ -302,7 +315,7 @@ async function main() {
   const originalFetch = global.fetch
   global.fetch = async () => { throw new Error('Unmocked network access is forbidden') }
   try {
-    await withEnv({ OEM_TSG_NOTIFICATIONS_ENABLED: 'true', OEM_TSG_NOTIFICATION_SECRET: SECRET, VERCEL_ENV: 'production' }, async () => {
+    await withEnv({ OEM_TSG_NOTIFICATIONS_ENABLED: 'true', OEM_TSG_UNESTIMATED_NOTIFICATIONS_ENABLED: undefined, OEM_TSG_NOTIFICATION_SECRET: SECRET, VERCEL_ENV: 'production' }, async () => {
       await senderChecks()
       await cronChecks()
     })

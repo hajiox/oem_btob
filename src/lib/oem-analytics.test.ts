@@ -4,6 +4,7 @@ import {
     getCanonicalPageLocation,
     getSafeReferrer,
     getSafeCampaign,
+    getOemNavigationSearch,
     getOemInternalTrafficExcluded,
     hasOemTestCampaign,
     OEM_PRODUCT_IDS,
@@ -27,10 +28,12 @@ test('test campaign detection is exact and does not set persistent state', () =>
     assert.equal(hasOemTestCampaign('?utm_campaign=oem_tracking_test&utm_campaign=oem_fukushima'), true)
 })
 
-test('OEM analytics is restricted to the three public acquisition pages', () => {
+test('OEM analytics is restricted to the public acquisition and consultation pages', () => {
     assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/btob' }), true)
     assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/curry-oem' }), true)
     assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/ramen-oem' }), true)
+    assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/btob/consult' }), true)
+    assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/btob/consult/private@example.com' }), false)
     assert.equal(isOemAnalyticsPage({ hostname: 'oem.aizubrandhall.com', pathname: '/admin' }), false)
     assert.equal(isOemAnalyticsPage({ hostname: 'localhost', pathname: '/btob' }), false)
 })
@@ -42,6 +45,7 @@ test('measurement IDs and locations are privacy-safe', () => {
     assert.equal(getSafeReferrer('https://example.test/source?email=secret#x'), 'https://example.test')
     assert.equal(getSafeReferrer('https://example.test/private@example.com'), 'https://example.test')
     assert.equal(getSafeReferrer('https://oem.aizubrandhall.com/curry-oem?gclid=secret'), 'https://oem.aizubrandhall.com/curry-oem')
+    assert.equal(getSafeReferrer('https://oem.aizubrandhall.com/btob/consult?email=secret'), 'https://oem.aizubrandhall.com/btob/consult')
     assert.equal(getSafeReferrer('https://oem.aizubrandhall.com/customers/private@example.com'), 'https://oem.aizubrandhall.com')
     assert.equal(getSafeReferrer('not a URL'), undefined)
 })
@@ -52,6 +56,18 @@ test('campaign attribution accepts only reviewed labels, never arbitrary query d
     })
     assert.deepEqual(getSafeCampaign('?utm_source=google&utm_medium=cpc&utm_campaign=private@example.com&utm_term=private'), { campaign_source: 'google', campaign_medium: 'cpc' })
     for (const query of ['', '?utm_source=google', '?utm_source=private&utm_medium=social', '?utm_source=google&utm_source=instagram&utm_medium=cpc']) assert.deepEqual(getSafeCampaign(query), {})
+})
+
+test('internal navigation retains reviewed attribution and a normalized test marker without copying private queries', () => {
+    assert.equal(getOemNavigationSearch('?utm_source=GOOGLE&utm_medium=CPC&utm_campaign=oem_pmax_fukushima&utm_content=curry&gclid=secret&email=private@example.com&product=ramen'),
+        'utm_source=google&utm_medium=cpc&utm_campaign=oem_pmax_fukushima&utm_content=curry')
+    assert.equal(getOemNavigationSearch('?utm_source=google&utm_medium=cpc&utm_campaign=oem_curry&utm_campaign=OEM_TRACKING_TEST&email=private@example.com'),
+        'utm_source=google&utm_medium=cpc&utm_campaign=oem_tracking_test')
+    assert.equal(getOemNavigationSearch('?utm_source=private@example.com&utm_campaign=OEM_TRACKING_TEST'), 'utm_campaign=oem_tracking_test')
+    assert.equal(getOemNavigationSearch('?utm_source=google&utm_source=instagram&utm_medium=cpc&utm_campaign=oem_tracking_test'), 'utm_campaign=oem_tracking_test')
+    assert.equal(getOemNavigationSearch('?utm_source=google&utm_campaign=oem_curry&notes=secret'), '')
+    assert.equal(getOemNavigationSearch('?utm_source=google&utm_medium=cpc&utm_campaign=private@example.com&utm_content=secret'), 'utm_source=google&utm_medium=cpc')
+    assert.equal(getOemNavigationSearch(), '')
 })
 
 test('runtime queue, ad-signal denial, dedupe, and PII exclusion are enforced', async () => {
@@ -259,6 +275,9 @@ test('interaction sanitizer accepts reviewed metadata and drops values, labels, 
     for (const value of [-1, 86401, 1.5, NaN, '60']) assert.equal(sanitizeOemInteractionDetails({ elapsed_seconds: value }).elapsed_seconds, undefined)
     for (const details of [null, 'secret', { step_id: 'private@example.com', question_id: 'question-1', input_type: 'private', field_name: 'password', scroll_percent: '25', action: 'submit', error_type: 'secret' }]) assert.deepEqual(sanitizeOemInteractionDetails(details), {})
     assert.equal(getSafeReferrer('javascript:alert(1)'), undefined)
+    assert.deepEqual(sanitizeOemInteractionDetails({ inquiry_type: 'direct', consultation_text: 'private@example.com', product_name: 'private' }), { inquiry_type: 'direct' })
+    assert.deepEqual(sanitizeOemInteractionDetails({ inquiry_type: 'quote' }), { inquiry_type: 'quote' })
+    assert.deepEqual(sanitizeOemInteractionDetails({ inquiry_type: 'private@example.com' }), {})
 })
 
 test('interaction dedupe follows stable questions, field names and deliberate repeat options', () => withAnalyticsBrowser(({ window, calls }) => {
@@ -396,4 +415,107 @@ test('loading on an excluded route does not configure GA or replay actions', () 
     scripts[0].onload?.()
     assert.equal(await loading, false)
     assert.equal(calls.some(call => call[0] === 'config' || call[0] === 'event'), false)
+}))
+
+test('lead and consultation milestones distinguish direct from quote and allow only direct unknown products', () => withAnalyticsBrowser(({ window, calls }) => {
+    window.__oemGaLoaded = true
+    Object.assign(window.location, { pathname: '/btob/consult', search: '?email=private@example.com' })
+    assert.equal(trackOemEvent('generate_lead'), false)
+    assert.equal(trackOemEvent('generate_lead', null, { inquiry_type: 'quote' }), false)
+    assert.equal(trackOemEvent('oem_view_quote', null, { inquiry_type: 'direct' }), false)
+    assert.equal(trackOemEvent('oem_select_product', null, { inquiry_type: 'direct' }), false)
+    assert.equal(trackOemEvent('generate_lead', 'invalid', { inquiry_type: 'direct' }), false)
+    assert.equal(trackOemEvent('generate_lead', null, { inquiry_type: 'private@example.com' } as unknown as Parameters<typeof trackOemEvent>[2]), false)
+    assert.equal(trackOemEvent('generate_lead', null, { inquiry_type: 'direct', notes: 'private@example.com', product_name: 'private' } as Parameters<typeof trackOemEvent>[2]), true)
+    assert.deepEqual(calls.at(-1), ['event', 'generate_lead', { inquiry_type: 'direct' }])
+    assert.equal(trackOemEvent('generate_lead', null, { inquiry_type: 'direct' }), false)
+    assert.equal(trackOemEvent('oem_start_consultation', undefined, { inquiry_type: 'direct' }), true)
+    assert.deepEqual(calls.at(-1), ['event', 'oem_start_consultation', { inquiry_type: 'direct' }])
+    assert.equal(trackOemEvent('generate_lead', curry, { inquiry_type: 'direct' }), true)
+    assert.equal(trackOemEvent('generate_lead', curry), true)
+    assert.equal((calls.at(-1)?.[2] as Record<string, unknown>).inquiry_type, 'quote')
+    assert.equal(trackOemEvent('generate_lead', curry, { inquiry_type: 'quote' }), false)
+    assert.equal(JSON.stringify(calls).includes('private'), false)
+}))
+
+test('direct inquiry interaction allowlist covers unknown-product forms without relaxing quote validation', () => withAnalyticsBrowser(({ window, calls }) => {
+    window.__oemGaLoaded = true
+    Object.assign(window.location, { pathname: '/btob/consult' })
+    for (const event of ['oem_cta_click', 'oem_form_start', 'oem_contact_start', 'oem_field_start', 'oem_validation_error', 'oem_submit_attempt', 'oem_submit_error', 'oem_form_exit'] as const) {
+        const details = { inquiry_type: 'direct' as const, field_name: 'email' as const, cta_location: 'hero' as const, error_type: 'required' as const, notes: 'private@example.com', answer: 'private' }
+        assert.equal(trackOemInteraction(event, null, details), true)
+        const payload = calls.at(-1)?.[2] as Record<string, unknown>
+        assert.equal(payload.inquiry_type, 'direct')
+        assert.equal(payload.product_id, undefined)
+        assert.equal(payload.product_name, undefined)
+        assert.equal(payload.page_location, 'https://oem.aizubrandhall.com/btob/consult')
+        assert.equal(trackOemInteraction(event, null, { ...details, inquiry_type: 'quote' }), event === 'oem_cta_click')
+        assert.equal(trackOemInteraction(event, null), event === 'oem_cta_click')
+    }
+    assert.equal(trackOemInteraction('oem_step_view', null, { inquiry_type: 'direct', step_kind: 'contact' }), true)
+    assert.equal(trackOemInteraction('oem_step_view', null, { inquiry_type: 'direct', step_kind: 'complete' }), true)
+    assert.equal(trackOemInteraction('oem_step_view', null, { inquiry_type: 'direct', step_kind: 'question' }), false)
+    assert.equal(trackOemInteraction('oem_answer', null, { inquiry_type: 'direct', question_id: question }), false)
+    assert.equal(trackOemInteraction('oem_step_back', null, { inquiry_type: 'direct' }), false)
+    assert.equal(trackOemInteraction('oem_form_start', 'private@example.com', { inquiry_type: 'direct' }), false)
+    assert.equal(JSON.stringify(calls).includes('private'), false)
+}))
+
+test('interaction dedupe separates direct and quote but normalizes default quote callers', () => withAnalyticsBrowser(({ window, calls }) => {
+    window.__oemGaLoaded = true
+    for (const event of ['oem_form_start', 'oem_contact_start', 'oem_field_start', 'oem_cta_click', 'oem_submit_attempt'] as const) {
+        const details = { field_name: 'email' as const, cta_location: 'hero' as const }
+        assert.equal(trackOemInteraction(event, curry, details), true)
+        assert.equal(trackOemInteraction(event, curry, { ...details, inquiry_type: 'quote' }), false)
+        assert.equal(trackOemInteraction(event, curry, { ...details, inquiry_type: 'direct' }), true)
+        assert.equal(trackOemInteraction(event, curry, { ...details, inquiry_type: 'direct' }), false)
+    }
+    assert.equal(trackOemInteraction('oem_submit_attempt', curry, { inquiry_type: 'direct' }, { once: false }), true)
+    assert.equal(trackOemInteraction('oem_submit_attempt', curry, { inquiry_type: 'direct' }, { once: false }), true)
+    assert.equal(calls.filter(call => (call[2] as Record<string, unknown>)?.inquiry_type === 'quote').length, 5)
+    assert.equal(calls.filter(call => (call[2] as Record<string, unknown>)?.inquiry_type === 'direct').length, 7)
+}))
+
+test('direct consultation navigation retains safe acquisition context and queued fixed metadata', () => withAnalyticsBrowser(async ({ window, calls, scripts }) => {
+    const loading = installOemGoogleTag('G-TEST123')
+    trackOemInteraction('oem_cta_click', curry, { inquiry_type: 'direct', cta_location: 'hero' })
+    Object.assign(window.location, { pathname: '/btob/consult', search: '?product=curry&notes=private@example.com' })
+    assert.equal(installOemGoogleTag('G-TEST123'), loading)
+    const details = { inquiry_type: 'direct' as 'direct' | 'quote', field_name: 'email' as const, answer: 'private@example.com' }
+    trackOemInteraction('oem_contact_start', null, details)
+    details.inquiry_type = 'quote'
+    scripts[0].onload?.()
+    assert.equal(await loading, true)
+    const configs = calls.filter(call => call[0] === 'config').map(call => call[2] as Record<string, unknown>)
+    assert.deepEqual(configs.map(config => config.page_location), ['https://oem.aizubrandhall.com/curry-oem', 'https://oem.aizubrandhall.com/btob/consult'])
+    assert.equal(configs.at(-1)?.page_referrer, 'https://oem.aizubrandhall.com/curry-oem')
+    assert.equal(configs.at(-1)?.campaign_name, 'oem_pmax_fukushima')
+    assert.equal(configs.at(-1)?.campaign_content, 'curry')
+    const contact = calls.find(call => call[1] === 'oem_contact_start')?.[2] as Record<string, unknown>
+    assert.equal(contact.inquiry_type, 'direct')
+    assert.equal(contact.campaign_name, 'oem_pmax_fukushima')
+    assert.equal(contact.page_location, 'https://oem.aizubrandhall.com/btob/consult')
+    assert.equal(JSON.stringify(calls).includes('private'), false)
+    assert.equal(JSON.stringify(calls).includes('gclid'), false)
+}))
+
+test('direct consultation internal and test exclusions suppress success and discard pending events', () => withAnalyticsBrowser(async ({ window, calls, scripts }) => {
+    Object.assign(window.location, { pathname: '/btob/consult', search: '?utm_campaign=OEM_TRACKING_TEST&utm_campaign=oem_curry' })
+    assert.equal(await installOemGoogleTag('G-TEST123'), false)
+    assert.equal(scripts.length, 0)
+    assert.equal(trackOemEvent('generate_lead', null, { inquiry_type: 'direct' }), false)
+    assert.equal(trackOemInteraction('oem_form_start', null, { inquiry_type: 'direct' }), false)
+    Object.assign(window.location, { search: '' })
+    const loading = installOemGoogleTag('G-TEST123')
+    trackOemInteraction('oem_submit_attempt', null, { inquiry_type: 'direct' })
+    trackOemEvent('generate_lead', null, { inquiry_type: 'direct' })
+    assert.equal(setOemInternalTrafficExcluded(true), true)
+    assert.equal(trackOemEvent('generate_lead', null, { inquiry_type: 'direct' }), false)
+    scripts[0].onload?.()
+    assert.equal(await loading, false)
+    assert.equal(setOemInternalTrafficExcluded(false), true)
+    const retry = installOemGoogleTag('G-TEST123')
+    scripts[1].onload?.()
+    assert.equal(await retry, true)
+    assert.equal(calls.some(call => call[1] === 'oem_submit_attempt' || call[1] === 'generate_lead' || call[1] === 'oem_form_start'), false)
 }))

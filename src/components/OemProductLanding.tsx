@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import OemAnalytics from '@/components/OemAnalytics'
 import OemTrackedQuoteLink from '@/components/OemTrackedQuoteLink'
+import OemConsultationLink from '@/components/OemConsultationLink'
 import { OemFirstOfferSummary } from '@/components/OemServiceGuide'
 import styles from './OemProductLanding.module.css'
 
@@ -32,10 +33,12 @@ export default function OemProductLanding(props: OemProductLandingProps) {
             <p className={styles.eyebrow}>福島の食品OEM</p>
             <h1 className={styles.title}>{props.title}</h1>
             <p className={styles.lead}>{props.lead}</p>
+            <p className={styles.lotNote}>製造ロットの目安：{props.lot}{props.product === 'ramen' ? '（2食入り）' : ''}</p>
             <div className={styles.actions}>
-              <OemTrackedQuoteLink product={props.product} location="hero" className={styles.primary}>この商品の概算を確認する</OemTrackedQuoteLink>
-              <Link href="/btob" className={styles.secondary}>食品OEM全体を見る</Link>
+              <OemConsultationLink product={props.product} location="hero" className={styles.primary}>商品づくりを相談する</OemConsultationLink>
+              <OemTrackedQuoteLink product={props.product} location="hero" className={styles.secondary}>概算費用を確認する</OemTrackedQuoteLink>
             </div>
+            <p className={styles.consultationNote}>商品や包装、数量が未定でもご相談いただけます。相談の送信だけで費用は発生せず、正式発注にもなりません。</p>
           </div>
 
           <figure className={styles.heroImage}>
@@ -61,10 +64,11 @@ export default function OemProductLanding(props: OemProductLandingProps) {
 
         <section className={styles.section} aria-labelledby="flow-title">
           <h2 id="flow-title">ご相談から商品づくりへ</h2>
-          <p>まずは仕様・包装を選び、概算をご確認ください。作りたい味や使いたい原料について伺い、試作の内容を相談します。</p>
+          <p>作りたい味や使いたい食材から、商品づくりをご相談ください。商品化できるか、どんな仕様にするかが未定でもお送りいただけます。費用の目安を知りたい場合は、商品・包装を選んで概算を確認できます。</p>
           <p>試作で味を確認した後、製造をご希望の場合は仕様・数量・正式見積もりを決めます。</p>
           <div className={styles.actions}>
-            <OemTrackedQuoteLink product={props.product} location="footer" className={styles.primary}>この商品で概算を確認する</OemTrackedQuoteLink>
+            <OemConsultationLink product={props.product} location="footer" className={styles.primary}>商品づくりを相談する</OemConsultationLink>
+            <OemTrackedQuoteLink product={props.product} location="footer" className={styles.secondary}>概算費用を確認する</OemTrackedQuoteLink>
           </div>
         </section>
 

@@ -4,6 +4,7 @@ import type { LpSection, Product } from '@/types/database'
 import { getActiveForm, getPublicProducts } from '@/actions/publicForm'
 import InteractiveForm from '@/components/InteractiveForm'
 import OemAnalytics from '@/components/OemAnalytics'
+import OemConsultationLink from '@/components/OemConsultationLink'
 import PackageShowcase from '@/components/PackageShowcase'
 import OemRankingProof from '@/components/OemRankingProof'
 import { OemExplanation, OemFirstOfferSummary, OemServiceQuestions } from '@/components/OemServiceGuide'
@@ -239,8 +240,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function HomePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ product?: string | string[] }> }) {
   const { slug } = await params
   const requestedProduct = (await searchParams).product
-  const initialProductId = slug === 'btob' && typeof requestedProduct === 'string'
-    ? ({ curry: 'c0000001-0000-0000-0000-000000000001', ramen: 'c0000001-0000-0000-0000-000000000002' } as Record<string, string>)[requestedProduct]
+  const initialProductId = slug === 'btob'
+    ? requestedProduct === 'curry' ? 'c0000001-0000-0000-0000-000000000001'
+      : requestedProduct === 'ramen' ? 'c0000001-0000-0000-0000-000000000002' : undefined
     : undefined
   let sections: LpSection[] = []
   let formSteps: any[] = []
@@ -382,6 +384,11 @@ export default async function HomePage({ params, searchParams }: { params: Promi
           pointerEvents: 'none',
         }} />
 
+        {currentPageId === SAMPLE_PAGE_ID && <aside style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto 32px', padding: '18px 22px', border: '1px solid rgba(165,180,252,0.3)', borderRadius: 12, background: 'rgba(15,23,42,0.55)', color: '#e2e8f0', fontSize: 15, lineHeight: 1.9 }}>
+          商品や仕様が未定の方は、概算を確認する前でも相談できます。<br />
+          <OemConsultationLink className={styles.consultationLink} location="offer" product={requestedProduct === 'curry' || requestedProduct === 'ramen' ? requestedProduct : undefined}>商品づくりを相談する →</OemConsultationLink>
+        </aside>}
+
         {/* セクション見出し */}
         <div style={{ textAlign: 'center', marginBottom: '56px', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'inline-block', padding: '10px 24px', borderRadius: '9999px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', marginBottom: '24px' }}>
@@ -399,7 +406,7 @@ export default async function HomePage({ params, searchParams }: { params: Promi
         {currentPageId === SAMPLE_PAGE_ID && (
           <aside aria-labelledby="oem-payment-title" data-testid="oem-payment-notice" style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto 28px', padding: '20px 24px', border: '1px solid rgba(165,180,252,0.3)', borderRadius: 12, background: 'rgba(15,23,42,0.55)', color: '#e2e8f0', textAlign: 'left', overflowWrap: 'anywhere' }}>
             <h3 id="oem-payment-title" style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#fff' }}>お支払いについて</h3>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.9 }}><strong>試作着手前：</strong>初回試作費5,000円（税別・税込5,500円）を先にお支払いいただき、入金確認後に試作を開始します。試作のみで終了でき、製造発注の義務はありません。</p>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.9 }}><strong>試作着手前：</strong>初回試作費5,000円（税別・税込5,500円）を先にお支払いいただき、入金確認後に試作を開始します。試作のみで終了でき、製造発注の義務はありません。試作で特殊食材の使用の場合は別途お見積りとなります。</p>
             <p style={{ margin: '10px 0 0', fontSize: 16, lineHeight: 1.9 }}><strong>製造に進む場合：</strong>製造代金の50％を着手金としてお支払いいただき、完成数量確定後に残額を<strong>出荷前にご精算</strong>いただきます。通常は3回のお支払いです。</p>
             <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.8, color: '#c7d2fe' }}>※サイトの概算確認・ご相談だけで、お支払いが発生することはありません。</p>
           </aside>

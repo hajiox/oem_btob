@@ -1,6 +1,6 @@
 export const OEM_ANALYTICS_HOST = 'oem.aizubrandhall.com'
 export const OEM_ANALYTICS_PATH = '/btob'
-export const OEM_ANALYTICS_PATHS = new Set([OEM_ANALYTICS_PATH, '/curry-oem', '/ramen-oem'])
+export const OEM_ANALYTICS_PATHS = new Set([OEM_ANALYTICS_PATH, '/btob/consult', '/curry-oem', '/ramen-oem'])
 export const OEM_INTERNAL_TRAFFIC_STORAGE_KEY = 'oem_analytics_internal_v1'
 export const OEM_PRODUCT_IDS = new Set([
     'c0000001-0000-0000-0000-000000000001',
@@ -51,7 +51,26 @@ export function getSafeCampaign(search: string = ''): Record<string, string> {
         ...(name ? { campaign_name: name } : {}), ...(content ? { campaign_content: content } : {}) }
 }
 
+// Navigation may retain reviewed acquisition labels and the explicit test
+// marker, never the original query (which may contain contact details).
+export function getOemNavigationSearch(search: string = ''): string {
+    const campaign = getSafeCampaign(search)
+    const query = new URLSearchParams()
+    for (const [key, value] of [
+        ['utm_source', campaign.campaign_source], ['utm_medium', campaign.campaign_medium],
+        ['utm_campaign', campaign.campaign_name], ['utm_content', campaign.campaign_content],
+    ]) {
+        if (value) query.set(key, value)
+    }
+    // Test exclusion stays URL-scoped and must survive an internal link even
+    // when campaign attribution is incomplete or has duplicate parameters.
+    if (hasOemTestCampaign(search)) query.set('utm_campaign', 'oem_tracking_test')
+    return query.toString()
+}
+
 export type OemEventName = 'oem_select_product' | 'oem_view_quote' | 'oem_start_consultation' | 'generate_lead'
+export type OemInquiryType = 'direct' | 'quote'
+export type OemEventDetails = { inquiry_type?: OemInquiryType }
 
 export type OemInteractionName = 'oem_form_start' | 'oem_step_view' | 'oem_answer' | 'oem_step_back'
     | 'oem_contact_start' | 'oem_field_start' | 'oem_validation_error' | 'oem_submit_attempt'
@@ -60,6 +79,7 @@ export type OemFieldName = 'company_name' | 'contact_name' | 'email' | 'phone' |
 export type OemInputType = 'radio' | 'checkbox' | 'select' | 'text' | 'number' | 'textarea'
     | 'select_text_selected' | 'select_text_extra' | 'select_number_selected' | 'select_number_extra'
 export type OemInteractionDetails = {
+    inquiry_type?: OemInquiryType
     step_id?: string
     question_id?: string
     step_index?: number
@@ -80,6 +100,7 @@ type PageContext = { page_location: string; page_referrer?: string; campaign: Re
 type PendingEvent = {
     name: OemEventName | OemInteractionName
     productId?: string
+    inquiryType: OemInquiryType
     details?: OemInteractionDetails
     once: boolean
     dedupeKey: string
@@ -101,6 +122,10 @@ const MAX_PENDING_EVENTS = 200
 const MAX_DEDUPE_EVENTS = 2048
 const interactionNames: readonly OemInteractionName[] = ['oem_form_start', 'oem_step_view', 'oem_answer', 'oem_step_back', 'oem_contact_start', 'oem_field_start', 'oem_validation_error', 'oem_submit_attempt', 'oem_submit_error', 'oem_form_exit', 'oem_cta_click', 'oem_scroll']
 const legacyNames: readonly OemEventName[] = ['oem_select_product', 'oem_view_quote', 'oem_start_consultation', 'generate_lead']
+const directProductOptionalNames: readonly OemInteractionName[] = [
+    'oem_form_start', 'oem_contact_start', 'oem_field_start', 'oem_validation_error',
+    'oem_submit_attempt', 'oem_submit_error', 'oem_form_exit', 'oem_cta_click',
+]
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function getState(): AnalyticsState {
@@ -126,6 +151,7 @@ export function sanitizeOemInteractionDetails(details: unknown): OemInteractionD
         if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max) safe[key] = value
     }
     const enums = {
+        inquiry_type: ['direct', 'quote'],
         step_kind: ['product', 'question', 'quote', 'contact', 'complete'],
         field_name: ['company_name', 'contact_name', 'email', 'phone', 'notes', 'desired_product'],
         input_type: ['radio', 'checkbox', 'select', 'text', 'number', 'textarea', 'select_text_selected', 'select_text_extra', 'select_number_selected', 'select_number_extra'],
@@ -167,7 +193,7 @@ function queuePageView(page: PageContext) {
     state.pendingPages.push(page)
 }
 
-function interactionDedupeKey(name: OemInteractionName, productId: string | undefined, details: OemInteractionDetails): string {
+function interactionDedupeKey(name: OemInteractionName, productId: string | undefined, inquiryType: OemInquiryType, details: OemInteractionDetails): string {
     let context: OemInteractionDetails
     if (name === 'oem_form_start' || name === 'oem_contact_start') context = {}
     else if (name === 'oem_field_start') context = { field_name: details.field_name }
@@ -183,7 +209,10 @@ function interactionDedupeKey(name: OemInteractionName, productId: string | unde
         delete context.elapsed_seconds
         if (details.step_id || details.question_id) delete context.step_index
     }
-    return `${name}:${productId ?? ''}:${JSON.stringify(context)}`
+    // The type is already in the key prefix. Exclude its insertion order from
+    // JSON so default quote callers match explicit quote callers.
+    delete context.inquiry_type
+    return `${name}:${inquiryType}:${productId ?? ''}:${JSON.stringify(context)}`
 }
 
 function queueEvent(event: PendingEvent) {
@@ -276,13 +305,18 @@ function canSend(): boolean {
     return Boolean((window as OemWindow).__oemGaLoaded)
 }
 
-export function trackOemEvent(name: OemEventName, productId?: string | null): boolean {
+export function trackOemEvent(name: OemEventName, productId?: string | null, details: OemEventDetails = {}): boolean {
     if (typeof window === 'undefined' || !isOemAnalyticsPage(window.location)) return false
     if (isOemAnalyticsExcluded()) { clearPending(getState()); return false }
-    if (!productId || !OEM_PRODUCT_IDS.has(productId)) return false
     if (!legacyNames.includes(name)) return false
-    const dedupeKey = `${name}:${productId}`
-    return sendEvent({ name, productId, once: true, dedupeKey, page: capturePageContext() })
+    if (productId != null && !OEM_PRODUCT_IDS.has(productId)) return false
+    const inquiryType = sanitizeOemInteractionDetails(details).inquiry_type ?? 'quote'
+    // A direct inquiry may start before a product is known. Quote milestones
+    // still require a catalog product and must never fabricate one.
+    if (!productId && !(inquiryType === 'direct' && (name === 'oem_start_consultation' || name === 'generate_lead'))) return false
+    const product = productId || undefined
+    const dedupeKey = `${name}:${inquiryType}:${product ?? ''}`
+    return sendEvent({ name, productId: product, inquiryType, once: true, dedupeKey, page: capturePageContext() })
 }
 
 export function trackOemInteraction(name: OemInteractionName, productId?: string | null, details: OemInteractionDetails = {}, options: OemInteractionOptions = {}): boolean {
@@ -290,12 +324,20 @@ export function trackOemInteraction(name: OemInteractionName, productId?: string
     if (isOemAnalyticsExcluded()) { clearPending(getState()); return false }
     if (!interactionNames.includes(name)) return false
     const safe = sanitizeOemInteractionDetails(details)
+    const inquiryType = safe.inquiry_type ?? 'quote'
     if (productId != null && !OEM_PRODUCT_IDS.has(productId)) return false
-    if (!productId && name !== 'oem_scroll' && !(name === 'oem_step_view' && safe.step_kind === 'product')) return false
+    const directWithoutProduct = inquiryType === 'direct' && (directProductOptionalNames.includes(name)
+        || (name === 'oem_step_view' && (safe.step_kind === 'contact' || safe.step_kind === 'complete')))
+    // The general estimate CTA precedes product selection. This exception
+    // does not relax product validation for quote form starts or submissions.
+    if (!productId && name !== 'oem_scroll' && name !== 'oem_cta_click'
+        && !(name === 'oem_step_view' && safe.step_kind === 'product') && !directWithoutProduct) return false
     const product = productId || undefined
     const once = options?.once !== false
-    return sendEvent({ name, productId: product, details: safe, once,
-        dedupeKey: interactionDedupeKey(name, product, safe), page: capturePageContext() })
+    // Normalize the default so explicit quote and old callers share dedupe.
+    safe.inquiry_type = inquiryType
+    return sendEvent({ name, productId: product, inquiryType, details: safe, once,
+        dedupeKey: interactionDedupeKey(name, product, inquiryType, safe), page: capturePageContext() })
 }
 
 function sendEvent(event: PendingEvent): boolean {
@@ -308,10 +350,11 @@ function sendEvent(event: PendingEvent): boolean {
     const gtag = (window as OemWindow).gtag
     if (typeof gtag !== 'function') return false
     const product = event.productId ? { product_id: event.productId, product_name: OEM_PRODUCT_NAMES[event.productId] } : {}
-    // Keep the original four event payloads exactly compatible. Detailed
-    // events contain only reviewed metadata and a query-free page location.
+    // Retain the original product metadata and add only a fixed inquiry type.
+    // Detailed events use reviewed metadata and a query-free page location.
     const params = event.details ? { ...product, ...event.details,
-        page_location: event.page.page_location, page_referrer: event.page.page_referrer ?? '', ...event.page.campaign } : product
+        page_location: event.page.page_location, page_referrer: event.page.page_referrer ?? '', ...event.page.campaign }
+        : { ...product, inquiry_type: event.inquiryType }
     try {
         gtag('event', event.name, params)
         if (event.once) {

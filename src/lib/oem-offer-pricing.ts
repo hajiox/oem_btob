@@ -24,7 +24,8 @@ export function calculateOemQuoteTotals(values: { subtotal: number; offerFee: nu
 
 // Old consultation estimates included the trial service. Preserve the stored estimate,
 // but exclude its known line item when suggesting a NEW manufacturing quotation.
-export function getOemManufacturingEstimate(lead: { estimated_total_price: number; selected_options: unknown }): number {
+export function getOemManufacturingEstimate(lead: { estimated_total_price: number | null; selected_options: unknown; intake_kind?: 'quote' | 'consultation' }): number | undefined {
+    if (lead.intake_kind === 'consultation' || lead.estimated_total_price === null) return undefined
     const rows = Array.isArray(lead.selected_options) ? lead.selected_options as Array<{ question?: unknown; answer?: unknown }> : []
     const amount = (row: { answer?: unknown } | undefined) => {
         if (!row || typeof row.answer !== 'string') return null

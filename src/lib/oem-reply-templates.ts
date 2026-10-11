@@ -11,6 +11,9 @@ function safeSubject(c: ReplyContext) {
 }
 const factsFor = (c: ReplyContext) => {
   const out = [c.order ? `発注状態：${OEM_ORDER_STATUS_LABELS[c.order.status as keyof typeof OEM_ORDER_STATUS_LABELS]}` : c.legacyCancellation || c.settlement?.kind === 'cancellation' ? '発注状態：キャンセル済み' : '正式発注：未発行']
+  if (c.intakeKind === 'consultation') out.push('受付区分：相談のみ・概算見積未算定')
+  if (c.consultationOnly) out.push('相談の受付では試作への承諾・費用の請求・製造発注は開始されません。')
+  if (c.consultationTrialPrepayment) out.push(`別途発行した試作前払いの請求額（税込）：${yen(c.consultationTrialPrepayment.gross_amount)}／${c.consultationTrialPrepayment.status === 'paid' ? '入金確認済み' : '入金待ち'}`)
   if (c.order && !c.settlement) { out.push(`正式見積額（税別）：${yen(c.order.formal_quote_amount)}`, `前金額（税別）：${yen(c.order.deposit_amount)}`); if (c.order.final_amount !== null) out.push(`製造後の最終金額（税別）：${yen(c.order.final_amount)}`) }
   for (const plan of c.plans) {
     const stage = plan.stage === 'deposit' ? '前金' : '残額'
@@ -42,6 +45,21 @@ export function buildReplyTemplate(c: ReplyContext, id: ReplyTemplateId): ReplyS
     progress: `${salutation(c.lead)}\n\nご注文の現在の状態は「${status}」です。確認済みの進捗情報は以下のとおりです。\n${progressFacts}\n納期は試作、原料準備、包装仕様、製造状況等により異なるため、確定情報のみ別途ご案内します。`,
     shipping: `${salutation(c.lead)}\n\nご注文の現在の状態は「${status}」です。確認済みの出荷情報は以下のとおりです。\n${shippingFacts}\n${cancelled ? 'キャンセル済みのため、新たな出荷のご案内ではありません。精算内容は確認してご案内します。' : c.fulfillment?.shipped_on ? '上記は記録済みの出荷情報です。' : '出荷前に残額の入金を確認します。出荷予定は確認してご案内します。'}`,
     settlement: `${salutation(c.lead)}\n\n変更・キャンセル精算について、個別発注の規約版・資材手配状況・合意内容を確認してご案内します。\n${settlementFacts}\n${c.settlement?.state === 'draft' ? '現在の精算は下書きであり、確定した請求・返金の案内ではありません。' : c.settlement ? '上記は確認済みの精算情報です。' : '確定した精算情報は現在確認できません。'}`,
+  }
+  if (c.consultationOnly) {
+    const consultationStatus = '現在は相談のみ・見積未算定です。この相談の受付では、試作への承諾、費用の請求、製造発注は行われていません。製造可否や仕様・金額は、内容を確認して別途ご案内します。'
+    bodies.acknowledge = `${salutation(c.lead)}\n\nお問い合わせありがとうございます。${consultationStatus}${c.selectedOptions.length ? `\n\nご相談内容：${c.selectedOptions.map(item => `${item.question}＝${item.answer}`).join('／')}` : ''}`
+    bodies.trial = `${salutation(c.lead)}\n\n${consultationStatus}試作をご希望の場合も、条件と費用を確認いただいたうえで、別途お手続きいただきます。`
+    bodies.payment = `${salutation(c.lead)}\n\n${consultationStatus}`
+    bodies.progress = `${salutation(c.lead)}\n\n${consultationStatus}納期についても、条件を確認してご案内します。`
+    bodies.shipping = `${salutation(c.lead)}\n\n${consultationStatus}出荷の予定は確定しておりません。`
+    bodies.settlement = `${salutation(c.lead)}\n\n${consultationStatus}この相談受付に伴う確定した精算情報はありません。`
+  }
+  if (c.consultationTrialPrepayment && !c.order) {
+    const trialState = c.consultationTrialPrepayment.status === 'paid' ? '試作費は入金確認済みです。試作の進捗は確認してご案内します。' : '入金確認後に試作を開始します。お支払いの状況は、発行済みの試作前払い請求書をご確認ください。'
+    const trialSummary = `${salutation(c.lead)}\n\n相談受付の後に別途発行した試作前払いの請求情報です。\n${factText(facts, /試作前払いの請求額/)}\n${trialState}製造の正式発注は未発行です。`
+    bodies.payment = trialSummary
+    bodies.trial = trialSummary
   }
   return { source: 'template', templateId: id, snapshot: '', subject: safeSubject(c), text: bodies[id], warnings: c.warnings, sourceMessageId: c.inbound?.id || null, facts }
 }

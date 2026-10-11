@@ -12,10 +12,10 @@ import { OemDocumentPanel } from './OemDocumentPanel'
 import { OemPortalPanel } from './OemPortalPanel'
 import { OemApprovalPanel } from './OemApprovalPanel'
 
-export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string; estimatedTotalPrice: number }) {
+export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string; estimatedTotalPrice: number | null }) {
   const [order, setOrder] = useState<OemOrder | null>(null)
   const [acceptance, setAcceptance] = useState<Record<string, unknown> | null>(null)
-  const [amount, setAmount] = useState(String(estimatedTotalPrice || ''))
+  const [amount, setAmount] = useState(String(estimatedTotalPrice ?? ''))
   const [trialFeeSeparateConfirmed, setTrialFeeSeparateConfirmed] = useState(false)
   const [specification, setSpecification] = useState('')
   const [message, setMessage] = useState('')
@@ -30,7 +30,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
     const result = await getOemOrder(leadId)
     if (result.success) {
       setOrder(result.order || null); setAcceptance(result.acceptance || null)
-      if (!result.order && result.defaultManufacturingAmount != null) setAmount(previous => previous === String(estimatedTotalPrice || '') ? String(result.defaultManufacturingAmount) : previous)
+      if (!result.order && result.defaultManufacturingAmount != null) setAmount(previous => previous === String(estimatedTotalPrice ?? '') ? String(result.defaultManufacturingAmount) : previous)
       if (result.defaultSpecification) setSpecification(previous => previous || result.defaultSpecification || '')
     } else setMessage(result.error || '正式発注情報を取得できませんでした')
     setLoading(false)
@@ -41,7 +41,7 @@ export function OemOrderPanel({ leadId, estimatedTotalPrice }: { leadId: string;
       if (!active) return
       if (result.success) {
         setOrder(result.order || null); setAcceptance(result.acceptance || null)
-        if (!result.order && result.defaultManufacturingAmount != null) setAmount(previous => previous === String(estimatedTotalPrice || '') ? String(result.defaultManufacturingAmount) : previous)
+        if (!result.order && result.defaultManufacturingAmount != null) setAmount(previous => previous === String(estimatedTotalPrice ?? '') ? String(result.defaultManufacturingAmount) : previous)
         if (result.defaultSpecification) setSpecification(previous => previous || result.defaultSpecification || '')
         setMessage('')
       } else setMessage(result.error || '正式発注情報を取得できませんでした')
