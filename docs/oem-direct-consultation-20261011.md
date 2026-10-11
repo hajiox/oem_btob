@@ -18,7 +18,7 @@
 
 `OEM_TSG_UNESTIMATED_NOTIFICATIONS_ENABLED=true` の場合だけ新RPC `claim_oem_tsg_notification_batch(uuid,boolean)` でv2をclaimする。未設定・falseおよび旧workerはv1のみ処理し、v2を永続pendingに保持する。TSG担当PC TSAによる受信APIの後方互換対応と本番確認後に限り有効化する。従来の `OEM_TSG_NOTIFICATIONS_ENABLED`、専用secret、固定フロア、lease/CAS、cron認証は維持する。
 
-2026-10-11時点、CodexMTGで仕様調整を実施（e7a3cabe-c1be-4578-bd00-4deb45df3ce6）。本人投稿c1d9556c-734e-486f-9362-bf4f617b9a60は確認済みだが、TSA応答47015dd5-ab3f-44a0-b5e2-5f93a6906b75では担当開発チャットへの人間の直接依頼が必要とされ、TSG変更は未実施。CEO_SではTSGコードを変更していない。
+2026-10-11時点、CodexMTGで仕様調整を実施（e7a3cabe-c1be-4578-bd00-4deb45df3ce6）。本人投稿c1d9556c-734e-486f-9362-bf4f617b9a60と追加許可764580a6-5441-4feb-b5df-d5258417eaceを確認。TSA応答c8180084-366c-4706-8b2d-f2a48c3b83a7では、担当チャットへの送信経路なし・共有同期のGit所有者不一致・GitHub接続不可が報告され、TSG変更は未実施。担当PC開発チャットへの直接依頼が必要との回答。CEO_SではTSGコードを変更していない。
 
 ## 検証
 
@@ -28,4 +28,10 @@
 - 既存概算94経路、通知/cron mock、analytics23件、型チェック、production buildが成功。scoped ESLintは新規実装でエラーなし。変更ファイル全体では既存のany 3件と警告3件が残り、全体lint合格とは扱わない。
 - Chromeで390×844、1280×900を確認。カレー/ラーメンCTAから商品引継ぎ、未定入口、必須エラー、概算フォームとUTM/テスト除外を確認。実問い合わせ・実顧客メール・請求は作成しない。
 
-本番反映・公開画面の確認結果は反映後に追記する。
+## 本番確認
+
+実装コミット `1d07ea61ee789d94d7618dec19745e243d3f481f` をmainへpush。migration029を通常runnerでdry-run後に適用。Vercel `dpl_3eaha4qaa6vNmJFRjYFL8eWrmtA5`（`oem-d33umhibu-hajioxs-projects.vercel.app`）のREADY・同コミット・`oem.aizubrandhall.com` aliasを確認した。
+
+公開 `/btob`、`/curry-oem`、`/ramen-oem`、`/btob/consult` はHTTP200、主CTAと特殊食材注記あり。通知cronは未認証401。Chromeで公開390pxのカレー/ラーメンCTA→商品引継ぎ、商品未定、必須エラー、PC1280px、既存概算フォームと一般相談リンクを確認。390pxのscrollWidth384px、PC1280pxのscrollWidth1274pxで横overflowなし。UTMとテスト除外マーカーを引き継ぎ、検証中のGoogleタグ読み込み0件を確認。実問い合わせは送信していない。
+
+本番envメタデータでは従来の通知フラグは設定継続、新しい未算定通知フラグは未設定。従来の概算相談通知を維持し、直接相談v2は保留する。公開証跡は `output/oem-direct-consultation-20261011/public-*.png` と `public-http.json`（成果物はcommit対象外）。
